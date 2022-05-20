@@ -41,7 +41,7 @@ class Hkey:
                       'q': (exit,
                             ': quit')}
 
-        self.history_path = self.config['MISC']['history_path']
+        self.history_path = self.config['GENERAL']['history_path']
         self.help_dialog = ''.join([f"'{key}'{func[1]}\n"
                                     for key, func in self.rkeys.items()])
 
