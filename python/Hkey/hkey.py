@@ -4,8 +4,8 @@ da execução de comandos na shell. Este script podia ser substituido por
 'bashrc aliases' no terminal, no entanto isso iria criar conflitos com comandos
 da shell, dada a enorme diversidade de potenciais hotkeys.
 Além das hkeys, existem as rkeys (ou reserved keys) que executam uma função
-específica deste script. Em breve, o mesmo terá uma interface gráfica,
-e talvez será feito em Go (Golang)'''
+específica deste script. Em breve, o mesmo terá uma interface gráfica.
+A versão princial está escrita em Go (Golang)'''
 
 import subprocess
 import json
