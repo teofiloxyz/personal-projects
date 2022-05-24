@@ -1,0 +1,252 @@
+% !Mode:: "TeX:UTF-8"
+%----------------------------------------------------------------------------------------
+% Definições gerais e packages
+%----------------------------------------------------------------------------------------
+% Doc definition
+\documentclass[12pt, A4]{article}
+% Font basics
+\usepackage[T1]{fontenc}
+% Font calibri
+\usepackage{fontspec}
+\setmainfont{calibri}
+\usepackage{microtype} % Justificação melhorada
+% Imagens
+\usepackage{graphicx}
+% Listas
+\usepackage{listings}
+\usepackage{enumitem}
+% Unir os pdf's
+\usepackage{pdfpages}
+% Língua portuguesa
+\usepackage{babel}
+% Hipenation rules
+\usepackage{hyphenat}
+% Page layout
+\usepackage{paracol} % Colunas justificadas
+\usepackage[a4paper]{geometry}
+\geometry{top=0.75cm, bottom=0.75cm, left=0.75cm, right=0.75cm} % Margens
+\thispagestyle{empty} % Para não numerar a página
+\setlength{\parindent}{0mm} % Sem indentação
+\frenchspacing % Espaçamento após frases normal
+% Repeat
+\usepackage{expl3}
+\ExplSyntaxOn
+\cs_new_eq:NN \Repeat \prg_replicate:nn
+\ExplSyntaxOff
+% Colours
+\usepackage{transparent}
+\usepackage{color}
+\usepackage{xcolor}
+\definecolor{titlecol}{RGB}{24, 190, 173}
+\definecolor{localcol}{RGB}{89, 89, 89}
+\definecolor{circcol}{RGB}{171, 171, 171}
+\definecolor{iconcol}{RGB}{0, 103, 222}
+% Icones
+\usepackage{fontawesome5}
+\usepackage{amssymb}
+% Hyperlinks (deve ficar no final de todas as packages)
+\usepackage{hyperref}
+\usepackage{algpseudocode}
+\hypersetup{
+colorlinks=true,
+linkcolor=blue,
+filecolor=magenta,
+urlcolor=blue,
+pdftitle={Nome do PDF!},
+pdfpagemode=FullScreen,
+}
+\urlstyle{same}
+%----------------------------------------------------------------------------------------
+% Comandos CV
+%----------------------------------------------------------------------------------------
+% Texto "justificado" nas colunas
+\newcommand{\mpwidth}{\linewidth-\fboxsep-\fboxsep}
+\newcommand{\cvtext}[1]{
+    \begin{tabular*}{1\mpwidth}{p{1\mpwidth}}
+		\parbox{1\mpwidth}{\large{#1}}
+	\end{tabular*}
+}
+% Formatação dos títulos
+\newcommand{\cvtitle}[1]{
+    \cvtext{
+        \textbf{{\Large{\textcolor{titlecol}{\uppercase{#1}}}}}
+    }
+}
+% Formatação dos títulos da página 2
+\newcommand{\cvtitlex}[1]{
+        \textbf{{\Large{\textcolor{titlecol}{\uppercase{#1}}}}}
+}
+% Formatação do nome da formação\função
+\newcommand{\cvdegree}[1]{
+    \cvtext{
+        {\textbf{\uppercase{#1}}}
+    }
+}
+% Formatação dos nomes dos locais
+\newcommand{\cvlocal}[1]{
+    \cvtext{
+        {\textcolor{localcol}{\uppercase{#1}}}
+    }
+}
+% Separadores
+\newcommand{\cvsep}{
+    {\textcolor{titlecol}{ \rule{0.999\columnwidth}{1.25pt} }}
+}
+% Icones
+\newcommand{\icone}[1]{
+    {\color{iconcol}{\faIcon{#1}}}
+}
+% Medida das habilidades
+\newcommand{\skill}[1]{
+    \small{
+        \Repeat{#1}{\color{titlecol}{\faIcon{circle}} }\Repeat{5-#1}{\color{circcol}{\faIcon{circle}} }
+    }
+}
+% Distância entre elementos principais esquerda
+\newcommand{\elsepe}{
+    {\\[25pt]}
+}
+% Distância entre elementos principais direita
+\newcommand{\elsepd}{
+    {\\[40pt]}
+}
+% Distância entre títulos e texto
+\newcommand{\txsep}{
+    {\\[10pt]}
+}
+% Distância entre formações
+\newcommand{\degsep}{
+    {\\[8pt]}
+}
+% Distância entre formações e respetivos locais e datas
+\newcommand{\locsep}{
+    {\\[4pt]}
+}
+% Distância entre skills
+\newcommand{\skisep}{
+    {\\[0.75pt]}
+}
+%----------------------------------------------------------------------------------------
+% Conteúdo CV
+%----------------------------------------------------------------------------------------
+\begin{document}
+% Página 1
+\columnratio{0.36} % Rácio de colunas
+\setlength{\columnsep}{9pt} % Distância separação entre as colunas
+\begin{paracol}{2}
+% Coluna da esquerda
+\begin{leftcolumn}
+% Foto
+\includegraphics[width=\columnwidth]{path/to/portrait.png}\\
+% Separador
+\cvsep\\[7pt]
+% Nome
+\cvtitle{Apelido,\\[4pt]Nome}\\[7pt]
+% Separador
+\cvsep\\[20pt]
+% Contactos
+\cvtitle{Contactos}
+\txsep
+\cvtext{
+    \icone{envelope}\ \ mail@domain.com\\[2pt]
+    \icone{mobile-alt}\ \ \ phone number\\[2pt]
+    \icone{linkedin}\ \ \href{https://www.linkedin.com/in/...}{/in/username}\\[2pt]
+    \icone{github}\ \ \href{https://github.com/...}{@username}}
+\elsepe
+% Competências gerais
+\cvtitle{Competências Gerais}
+\txsep
+\cvtext{
+    Competência I • Competência II • Competência III • 
+    Competência IV • Competência V • Competência VI • 
+    Competência VII • Competência VIII • Competência IX •}
+\elsepe
+% Competências digitais
+\cvtitle{Competências Digitais}
+\txsep
+\cvtext{
+    \textbf{C++\hfill{\skill{4}}\skisep Python\hfill{\skill{5}}\skisep Linux\hfill{\skill{5}}\skisep Go (Golang)\hfill{\skill{3}}\skisep SQL\hfill{\skill{4}}\skisep LaTeX\hfill{\skill{1}}\skisep MS Office\hfill{\skill{2}}\skisep VBA\hfill{\skill{2}}\skisep}
+\end{leftcolumn}
+% Coluna da direita
+\begin{rightcolumn}
+% Experiência
+\setlist[itemize]{align=parleft,left=0pt..1em, itemsep=0.25pt, topsep=2pt,
+    label=\scriptsize{\footnotesize{\faIcon{caret-right}}}, labelsep=-15pt, leftmargin=15pt} % Definições lista
+\cvtitle{Experiência}
+\txsep
+    \cvdegree{Área etc}
+    \locsep
+        \cvlocal{Firma, S.A.}
+        \locsep
+            \cvtext{
+                Fevereiro de 2022 – Julho de 2025
+                \begin{itemize}
+                    \item Analisou diversos dados
+                    \item Inspecionou várias coisas
+                    \item Elaborou tal
+                    \item Apoiou tais processos
+                    \item Realizou xyz
+                \end{itemize}
+            }
+\elsepd
+% Educação
+\cvtitle{Educação}
+\txsep
+    \cvdegree{Mestrado em x}
+    \locsep
+        \cvlocal{Faculdade y}
+        \locsep
+            \cvtext{Janeiro de 1999}
+    \degsep
+    \cvdegree{Licenciatura z}
+    \locsep
+        \cvlocal{Faculdade j}
+        \locsep
+            \cvtext{Julho de 1997}
+\elsepd
+% Educação complementar
+\cvtitle{Educação Complementar}
+\txsep
+    \cvdegree{Curso tal}
+    \locsep
+        \cvlocal{Faculdade i}
+        \degsep
+    \cvdegree{Certificado x}
+    \locsep
+        \cvlocal{Instituto y}
+        \degsep
+    \cvdegree{Curso z}
+    \locsep
+        \cvlocal{Instituto j}
+\elsepd
+\end{rightcolumn}
+\end{paracol}
+% Página 2
+\newpage
+\thispagestyle{empty}
+\newgeometry{margin=1in} % Alterar as margens da próxima página
+\setlist[itemize]{align=parleft,left=0pt..1em, itemsep=3pt, topsep=8pt,
+    label=\scriptsize{\scriptsize{\faIcon{link}}}, labelsep=-12pt, leftmargin=11.5pt}
+% Anexos
+\cvtitlex{Anexos}
+    \begin{itemize}
+        \item \hyperlink{page.3}{\underline{Diploma do Mestrado}}
+        \item \hyperlink{page.4}{\underline{Diploma da Licenciatura}}
+        \item \hyperlink{page.5}{\underline{Diploma do Curso tal}}
+        \item \hyperlink{page.6}{\underline{Carta de recomendação de xyz}}
+        \item \hyperlink{page.7}{\underline{Certificados da conferência tal}}
+        \elsepe
+    \end{itemize}
+% Links úteis
+\cvtitlex{Links úteis}
+    \begin{itemize}
+        \item \href{https://domain.com}
+        {\underline{domain.org(comprovativo cetificado tal)}}
+        \item \href{https://domain2.com}
+        {\underline{domain2.org(comprovativo diploma x)}}
+        \item \href{https://verify.domain3.com/}
+        {\underline{Verificação de diploma y}}
+    \end{itemize}
+% Páginas restantes
+\includepdf[pages=-]{path/to/Appendix.pdf}
+\end{document}
