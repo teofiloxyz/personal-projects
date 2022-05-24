@@ -9,6 +9,7 @@ A versão princial está escrita em Go (Golang)'''
 
 import subprocess
 import json
+import sys
 from threading import Thread
 from datetime import datetime
 from configparser import ConfigParser
@@ -279,4 +280,11 @@ class Hkey:
             json.dump(self.hkeys, hk, indent=4)
 
 
-Hkey().main()
+if len(sys.argv) == 2:
+    option = sys.argv[1]
+    if option == 'history_menu':
+        Hkey().history_menu()
+    else:
+        print('Argument error...')
+else:
+    Hkey().main()
