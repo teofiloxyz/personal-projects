@@ -2,19 +2,22 @@
 
 import sys
 import subprocess
-import time
 from datetime import datetime, timedelta
-from Tfuncs import gmenu, qst
+from Tfuncs import gmenu, qst, rofi
 
 
 class Calendars:
-    def get_title(self, title=None):
+    def get_title(self, title=None, use_rofi=False):
+        message = ""
         while True:
             if title is None:
-                self.title = input("Who's the lucky person to have its "
-                                   "birthday noted: ") \
+                qst = "Who's the lucky person to have its birthday noted" \
                     if self.event == 'birthday' else \
-                    input('Enter the descriptive title for the event: ')
+                    'Enter the descriptive title for the event'
+                if use_rofi:
+                    self.title = rofi.simple_prompt(qst, message)
+                else:
+                    self.title = input(qst + ": ")
             else:
                 self.title = title
                 title = None
@@ -24,12 +27,13 @@ class Calendars:
             elif 0 < len(self.title) <= 30:
                 break
             else:
-                print('Title is too large, try another')
+                message = 'Title is too large, try another'
+                print(message)
 
         if self.event == 'birthday':
             self.title = 'Aniversário: ' + self.title
 
-    def get_date(self):
+    def get_date(self, use_rofi=False):
         if self.event == 'birthday':
             question = 'Enter the date for the birthday (e.g.: 20-2; 3 = 3-' \
                        'curr.month): '
@@ -37,11 +41,12 @@ class Calendars:
             question = 'Enter the date for the event (e.g.: 28-8-21; 28 = ' \
                        '28-curr.M-curr.Y): '
 
-        self.date = qst.get_date(question, date_type="%d/%m/%Y")
+        self.date = qst.get_date(question, date_type="%d/%m/%Y",
+                                 use_rofi=use_rofi)
         if self.date == 'q':
             return False
 
-    def get_hour(self, time):
+    def get_hour(self, time, use_rofi=False):
         if time == 'beggining':
             question = 'Enter the hour of the event (e.g.: 9-35; ' \
                        '9 = 9-00) or leave empty for all day: '
@@ -49,7 +54,8 @@ class Calendars:
             question = 'Enter the hour for the end of the event (e.g.: ' \
                        '18-23; 18 = 18-00) or leave empty for none: '
 
-        self.hour = qst.get_hour(question, hour_type="%H:%M")
+        self.hour = qst.get_hour(question, hour_type="%H:%M",
+                                 use_rofi=use_rofi)
         if self.hour == 'q':
             return False
 
@@ -73,26 +79,27 @@ class Calendars:
               f'khal list -a {calendar} {today} {end_date}'
         subprocess.run(cmd, shell=True)
 
-    def personal_event(self, title=None):
+    def personal_event(self, title=None, use_rofi=False):
         self.event = 'personal'
 
-        if self.get_title(title) is False:
+        if self.get_title(title, use_rofi=use_rofi) is False:
             print('Aborted...')
             return
 
-        if self.get_date() is False:
+        if self.get_date(use_rofi=use_rofi) is False:
             print('Aborted...')
             return
 
-        if self.get_hour('beginning') is False:
+        if self.get_hour('beginning', use_rofi=use_rofi) is False:
             print('Aborted...')
             return
 
-        alarm_qst = '[1] at the beginning of the event\n[2] 3h ' \
+        alarm_msg = '[1] at the beginning of the event\n[2] 3h ' \
                     'before\n[3] 6h before\n[4] 1 day before\n' \
                     '[5] 3 days before\n[6] 7 days before\n[7] 14 days ' \
-                    'before\n[8] 21 days\n:: Enter the alarms (e.g.: 2+5+1), '\
-                    'or leave empty for none:'
+                    'before\n[8] 21 days'
+        alarm_qst = 'Enter the alarms (e.g.: 2+5+1), ' \
+                    'or leave empty for none'
         alarm_opts = {'1': '0m',
                       '2': '3h',
                       '3': '6h',
@@ -101,9 +108,13 @@ class Calendars:
                       '6': '7d',
                       '7': '14d',
                       '8': '21d'}
-
+        print(alarm_msg)
+        message = alarm_msg
         while True:
-            alarm = input(alarm_qst)
+            if use_rofi:
+                alarm = rofi.simple_prompt(alarm_qst, message)
+            else:
+                alarm = input(alarm_qst + ": ")
             if alarm == 'q':
                 print('Aborted...')
                 return
@@ -119,26 +130,37 @@ class Calendars:
                     alarm = '--alarms ' + ','.join([alarm_opts[alarm]
                                                     for alarm in alarms_list])
                     break
-                print('Invalid answer...')
+                message = 'Invalid answer...'
+                print(message)
 
-        description, category = '', ''
-        if input(':: Do you want any special option (Description or end-hour)?'
-                 ' [y/N] ') == 'y':
-            description = input('Enter the description for the event, '
-                                'or leave empty for none: ')
+        description, category, special_options = '', '', False
+        question = "Do you want any special option (Description or end-hour)?"
+        if use_rofi:
+            dmenu = ["No", "Yes"]
+            ans = rofi.custom_dmenu(question, dmenu)
+            if ans == "Yes":
+                special_options = True
+        else:
+            if input(f':: {question} [y/N] ') == 'y':
+                special_options = True
+
+        if special_options:
+            question = 'Enter the description for the event, ' \
+                'or leave empty for none'
+            if use_rofi:
+                description = rofi.simple_prompt(question)
+            else:
+                description = input(question + ": ")
             if description == 'q':
                 print('Aborted...')
                 return
             description = \
                 ':: "' + description + '"' if description != '' else ''
-            # category = input('Enter the category of the event, '
-            # 'or leave empty for none: ')
-            # category = '-g ' + category if category != '' else ''
 
             if self.hour != '':
                 # Muda a variável pq a função self.get_hour dá self.hour
                 hour_begin = self.hour
-                self.get_hour('end')
+                self.get_hour('end', use_rofi=use_rofi)
                 if self.hour == 'q':
                     print('Aborted...')
                     return
@@ -149,9 +171,14 @@ class Calendars:
               f'{description} {category} {alarm}'
         exec_cmd = subprocess.call(cmd, shell=True)
         if exec_cmd == 0:
-            print('Calendar event added successfuly!')
+            msg = 'Calendar event added successfuly!'
         else:
-            print('Error adding the calendar event...')
+            msg = 'Error adding the calendar event...'
+
+        if use_rofi:
+            rofi.message(msg)
+        else:
+            print(msg)
 
     def recurrent_event(self):
         self.event = 'recurrent'
@@ -236,8 +263,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         title = ' '.join(sys.argv[2:])
         if sys.argv[1] == 'create_personal_event':
-            Calendars().personal_event(title)
-            time.sleep(2)
+            Calendars().personal_event(title, use_rofi=True)
         else:
             print('Argument error...')
     else:
