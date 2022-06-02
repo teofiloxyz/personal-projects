@@ -1,11 +1,9 @@
 #!/usr/bin/python3
 
 import os
-import subprocess
 import sys
-import time
 from configparser import ConfigParser
-from Tfuncs import qst, ffmt, fcol
+from Tfuncs import rofi
 
 
 class Code:
@@ -28,11 +26,10 @@ class Code:
         self.entry = entry
         self.get_files_list()
 
-        if self.search_entry() is False:
-            exit()
-
-        if self.open_file() is False:
-            exit()
+        if self.search_entry():
+            self.rofi_dmenu()
+            if self.choice != "":
+                self.open_choice()
 
     def get_files_list(self):
         # follow links only if in bash (old scripts)
@@ -63,22 +60,25 @@ class Code:
                         n += 1
 
         if len(self.results) == 0:
-            print(f"Didn't find any line of code with '{self.entry}'")
-            time.sleep(1)
+            rofi.message(f"Didn't find any line of code with '{self.entry}'")
             return False
+        return True
 
-        [print(f'[{n}] {result[0]} {ffmt.bold}{fcol.green}'
-               f'{os.path.basename(result[1])}{ffmt.reset}')
-         for n, result in self.results.items()]
+    def rofi_dmenu(self):
+        prompt = 'Choose which one to open'
+        dmenu = [f"{result[0]} -> {os.path.basename(result[1])}: {result[2]}"
+                 for result in self.results.values()]
+        self.choice = rofi.custom_dmenu(prompt, dmenu)
 
-    def open_file(self):
-        choice = qst.opts('\nPick the file to open: ', self.results)
-        if choice == 'q':
-            return False
-
-        file, line_num = choice[1], choice[2]
-        cmd = f'nvim +{line_num} {file}'
-        subprocess.run(cmd, shell=True)
+    def open_choice(self):
+        line, file = self.choice.split(" -> ")[-2], ""
+        file_basename, line_num = self.choice.split(" -> ")[-1].split(": ")
+        for result in self.results.values():
+            if result[0] == line and result[1].endswith(file_basename) \
+                    and str(result[2]) == line_num:
+                file = result[1]
+                break
+        os.system(f'alacritty -e nvim +{line_num} {file}')
 
 
 if len(sys.argv) > 2:

@@ -4,10 +4,9 @@
 import os
 import sys
 import pickle
-import time
 from datetime import datetime
 from configparser import ConfigParser
-from Tfuncs import gmenu, ffmt, fcol, qst
+from Tfuncs import gmenu, ffmt, fcol, qst, rofi
 
 
 class History:
@@ -84,24 +83,34 @@ class Scheduled:
                 print(f"[{self.alarms_list.index(alarm) + 1}] {alarm['date']} "
                       f"- {alarm['msg']}")
 
-    def get_date(self, date=None):
+    def get_date(self, date=None, use_rofi=False):
         question = 'Enter the date for the alarm (e.g.: 12-1-21; 27 = ' \
-            '27-curr.M-curr.Y): '
-        return qst.get_date(question, date_type="%Y-%m-%d", answer=date)
+            '27-curr.M-curr.Y)'
+        if not use_rofi:
+            question += ": "
+        return qst.get_date(question, date_type="%Y-%m-%d",
+                            answer=date, use_rofi=use_rofi)
 
-    def get_hour(self, hour=None):
+    def get_hour(self, hour=None, use_rofi=False):
         question = 'Enter the hour of the event ' \
-            '(e.g.: 9-35; 9 = 9-00): '
-        return qst.get_hour(question, hour_type="%H:%M", answer=hour)
+            '(e.g.: 9-35; 9 = 9-00)'
+        if not use_rofi:
+            question += ": "
+        return qst.get_hour(question, hour_type="%H:%M",
+                            answer=hour, use_rofi=use_rofi)
 
     def update_scheduled_alarms(self):
         with open(self.scheduled_path, 'wb') as sa:
             pickle.dump([self.calendar_alarms_last_update, self.alarms_list],
                         sa)
 
-    def create_alarm(self, msg=None, date=None, hour=None):
+    def create_alarm(self, msg=None, date=None, hour=None, use_rofi=False):
         if msg is None:
-            new_alarm_msg = input('Enter the message of the alarm: ')
+            qst = 'Enter the message of the alarm'
+            if use_rofi:
+                new_alarm_msg = rofi.simple_prompt(qst)
+            else:
+                new_alarm_msg = input(qst + ": ")
         else:
             new_alarm_msg = msg
         if new_alarm_msg in ('', 'q'):
@@ -112,12 +121,12 @@ class Scheduled:
             print('Cannot find the file!')
             return False
 
-        new_alarm_date = self.get_date(date)
+        new_alarm_date = self.get_date(date, use_rofi=use_rofi)
         if new_alarm_date in ('', 'q'):
             print('Aborted...')
             return False
 
-        new_alarm_hour = self.get_hour(hour)
+        new_alarm_hour = self.get_hour(hour, use_rofi=use_rofi)
         if new_alarm_hour in ('', 'q'):
             print('Aborted...')
             return False
@@ -145,7 +154,11 @@ class Scheduled:
                     self.alarms_list.append(new_alarm_entry)
                     break
 
-        print(f'New alarm "{new_alarm_msg}" on {new_alarm_date} added!')
+        msg = f"New alarm '{new_alarm_msg}' on {new_alarm_date} added!"
+        if use_rofi:
+            rofi.message(msg)
+        else:
+            print(msg)
         self.update_scheduled_alarms()
 
     def remove_alarm(self):
@@ -194,8 +207,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         msg = ' '.join(sys.argv[2:])
         if sys.argv[1] == 'create_notif':
-            Scheduled().create_alarm(msg)
-            time.sleep(2)
+            Scheduled().create_alarm(msg, use_rofi=True)
         else:
             print('Argument error...')
     else:

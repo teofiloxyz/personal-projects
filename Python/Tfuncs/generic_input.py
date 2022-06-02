@@ -17,12 +17,18 @@ class Questions:
                 print(invalid_msg)
 
     @staticmethod
-    def get_date(question: str, date_type="%Y-%m-%d", answer=None):
+    def get_date(question: str, date_type="%Y-%m-%d",
+                 answer=None, use_rofi=False):
         from datetime import datetime
+        from Tfuncs import rofi
 
+        message = ""
         while True:
             if answer is None:
-                date = input(question)
+                if use_rofi:
+                    date = rofi.simple_prompt(question, message)
+                else:
+                    date = input(question)
             else:
                 date = answer
 
@@ -48,17 +54,24 @@ class Questions:
                 date = datetime.strptime(date, "%d/%m/%Y")
                 return date.strftime(date_type)
             except ValueError:
-                print("Invalid date")
+                message = "Invalid date"
+                print(message)
                 if answer is not None:
                     return 'q'
 
     @staticmethod
-    def get_hour(question: str, hour_type="%H:%M:%S", answer=None):
+    def get_hour(question: str, hour_type="%H:%M:%S",
+                 answer=None, use_rofi=False):
         from datetime import datetime
+        from Tfuncs import rofi
 
+        message = ""
         while True:
             if answer is None:
-                hour = input(question)
+                if use_rofi:
+                    hour = rofi.simple_prompt(question, message)
+                else:
+                    hour = input(question)
             else:
                 hour = answer
 
@@ -72,7 +85,8 @@ class Questions:
             try:
                 hour = datetime.strptime(hour, hour_type)
             except ValueError:
-                print("Invalid hour")
+                message = "Invalid hour"
+                print(message)
                 if answer is not None:
                     return 'q'
                 continue
@@ -133,46 +147,56 @@ class Inputs:
                 return file_input
 
     @staticmethod
-    def dirs(question: str, dir_input=None, multiple=False):
+    def dirs(question: str, dir_input=None, multiple=False, use_rofi=False):
         import os
+        from Tfuncs import rofi
 
-        def get_path(question):
-            dir_input = input(question)
+        def get_path(question, message):
+            if use_rofi:
+                dir_input = rofi.simple_prompt(question, message)
+            else:
+                dir_input = input(question)
             if dir_input == '':
                 return False
             return dir_input
 
         def check_path(dir_input):
             if not os.path.exists(dir_input):
-                print('Invalid answer, directory does not exist')
-                return False
+                message = 'Invalid answer, directory does not exist'
+                print(message)
+                return False, message
+            return True, ""
 
         if dir_input is not None:
             if check_path(dir_input) is False:
                 return False
             return True
 
+        message = ""
         if multiple:
             dirs_list = []
             while True:
-                dir_input = get_path(question)
+                dir_input = get_path(question, message)
                 if dir_input == 'q':
                     return dir_input
-                if dir_input is False:
+                elif dir_input is False:
                     break
-                if check_path(dir_input) is False:
+                good_path, message = check_path(dir_input)
+                if not good_path:
                     continue
                 dirs_list.append(dir_input)
             return dirs_list
         else:
             while True:
-                dir_input = get_path(question)
+                dir_input = get_path(question, message)
                 if dir_input == 'q':
                     return dir_input
-                if dir_input is False:
-                    print("If you want to quit enter 'q'")
+                elif dir_input is False:
+                    message = "If you want to quit enter 'q'"
+                    print(message)
                     continue
-                if check_path(dir_input) is False:
+                good_path, message = check_path(dir_input)
+                if not good_path:
                     continue
                 return dir_input
 

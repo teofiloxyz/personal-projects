@@ -3,27 +3,27 @@
 import os
 import sys
 import subprocess
-import fitz  # need PyMuPDF module also installed
-import time
-from Tfuncs import qst, ffmt, fcol, inpt
+import fitz  # need PyMuPDF module installed
+from Tfuncs import inpt, rofi
 
 
 class Pdf:
     def main(self, entry):
         self.entry = entry.split()
-        if self.get_files_list() is False:
-            exit()
-        self.get_number_of_pages()
-        if self.search_entry() is False:
-            exit()
-        if self.open_file() is False:
-            exit()
+        if self.get_files_list():
+            self.get_number_of_pages()
+            if self.search_entry():
+                self.rofi_dmenu()
+                if self.choice != "":
+                    self.open_choice()
 
     def get_files_list(self):
         '''Eu sei que com "shell=True" é possível fazer uma "shell injection"
-        através do prompt. No entanto, isso não é possível visto que a função 
+        através do prompt. No entanto, isso não é possível visto que a função
         "inpt.dirs" só aceita dirs válidos...'''
-        self.dir_path = inpt.dirs(question='Enter the directory to search: ')
+        question = 'Enter the directory to search'
+        self.dir_path = inpt.dirs(question, use_rofi=True)
+        # $fd é apenas pela piada, pois podia usar os.walk()
         cmd = 'fd --hidden --absolute-path --type file --extension pdf ' \
               f'--base-directory {self.dir_path}'
         self.files_list = subprocess.run(cmd, shell=True, capture_output=True)\
@@ -31,30 +31,34 @@ class Pdf:
 
         self.number_of_pdfs = len(self.files_list)
         if self.number_of_pdfs == 0:
-            print("Didn't found any pdf file in the provided directory...")
-            time.sleep(2)
+            rofi.message("Didn't found any pdf file in the provided directory")
             return False
-        print(f'Found {self.number_of_pdfs} pdf files in the provided '
-              'directory.\n')
+        return True
 
     def get_number_of_pages(self):
+        message = f'Found {self.number_of_pdfs} pdf files in the provided ' \
+                  'directory.\n'
+
         total_pages = 0
         for file in self.files_list:
             cmd = f'qpdf --show-npages {file}'
             page_num = subprocess.run(cmd, shell=True, capture_output=True) \
-            .stdout.decode('utf-8')
+                .stdout.decode('utf-8')
             if page_num == '':
-                print(f'Cannot access {file} is it encrypted?')
+                message += f'Cannot access {file} is it encrypted?\n'
                 self.files_list.remove(file)
                 continue
             total_pages += int(page_num)
 
-        print(f'Total number of pages is {total_pages}')
+        message += f'Total number of pages is {total_pages}\n'
         if 100 >= total_pages > 25:
-            print('Search might take a while.')
+            message += 'Search might take a while.'
         elif total_pages > 100:
-            print('Search might take a long time.')
-        print()
+            message += 'Search might take a long time.'
+        else:
+            message += 'Search should be quick.'
+
+        rofi.message(message)
 
     def search_entry(self):
         self.results = {}
@@ -85,21 +89,26 @@ class Pdf:
         if len(self.results) == 0:
             if type(self.entry) is list:
                 self.entry = "' or '".join(self.entry)
-            print(f"Didn't find any pdf file with '{self.entry}'")
-            time.sleep(2)
+            rofi.message(f"Didn't find any pdf file with '{self.entry}'")
             return False
+        return True
 
-        [print(f'[{n}] Page {result[1]} in {ffmt.bold}{fcol.green}'
-               f'...{os.path.dirname(result[0]).split("/")[-1]}/'
-               f'{os.path.basename(result[0])}{ffmt.reset}')
-         for n, result in self.results.items()]
+    def rofi_dmenu(self):
+        prompt = 'Choose which one to open'
+        dmenu = [f"Page {result[1]} in "
+                 f"...{os.path.dirname(result[0]).split('/')[-1]}/"
+                 f"{os.path.basename(result[0])}"
+                 for result in self.results.values()]
+        self.choice = rofi.custom_dmenu(prompt, dmenu)
 
-    def open_file(self):
-        choice = qst.opts('\nPick the file to open: ', self.results)
-        if choice == 'q':
-            return False
+    def open_choice(self):
+        page, file = self.choice.split(" in ...")
+        page = page.split("Page ")[-1]
+        for result in self.results.values():
+            if result[0].endswith(file) and str(result[1]) == page:
+                file = result[0]
+                break
 
-        file, page = choice
         cmd = f'mupdf {file} {page}'
         subprocess.Popen(cmd, shell=True, start_new_session=True)
 

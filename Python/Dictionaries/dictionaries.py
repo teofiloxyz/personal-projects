@@ -2,16 +2,17 @@
 
 import os
 import sys
+from Tfuncs import rofi
 
 
 class PtDefinition:
     def main(self, entry):
-        print(f'A buscar a definição de: {entry}\n')
-        self.url = f'https://dicionario.priberam.org/{entry}'
-        if self.get_site_info() is False:
-            return
-        self.select_info()
-        self.quit_driver()
+        self.entry = entry
+        self.message = ""
+        if self.get_site_info():
+            self.select_info()
+            self.quit_driver()
+        return self.message
 
     def get_site_info(self):
         from selenium import webdriver
@@ -23,7 +24,8 @@ class PtDefinition:
         options = Options()
         options.headless = True  # Browser invisível
         self.driver = webdriver.Firefox(options=options)
-        self.driver.get(self.url)
+        url = f'https://dicionario.priberam.org/{self.entry}'
+        self.driver.get(url)
 
         # Esperar que a página carregue para copiar a informação
         WebDriverWait(self.driver, 10).until(
@@ -37,13 +39,16 @@ class PtDefinition:
             self.info2 = self.driver.find_element(
                 By.CLASS_NAME, 'pb-main-content').find_element(
                     By.CLASS_NAME, 'pb-relacionadas-results')
+            return True
         except Exception as exc:
-            print(f'Error: {exc}')
+            self.message = f'Error: {exc}'
             self.quit_driver()
             return False
 
     def select_info(self):
         import re
+
+        self.message = f'Definição de {self.entry}:\n'
 
         # Processo de seleção e limpeza do string
         info_html = self.info.get_attribute('innerHTML')
@@ -52,16 +57,15 @@ class PtDefinition:
             word = entry.split('.</s')[0]
             if word[0].isupper():
                 word = re.sub('<.*?>', '', word)
-                print(word + ';')
+                self.message += word + ';\n'
 
-        print('\nPalavras relacionadas:')
+        self.message += '\nPalavras relacionadas:\n'
         info_html2 = self.info2.get_attribute('innerHTML')
         info_html2 = re.search('href="/(.*)</a>', info_html2).group(1)
         word_list2 = re.split('</a>', info_html2)
         for entry2 in word_list2:
             word2 = re.search('>(.*)', entry2).group(1)
-            print(word2 + ';')
-        print('')
+            self.message += word2 + ';\n'
 
     def quit_driver(self):
         self.driver.quit()
@@ -71,22 +75,24 @@ class PtDefinition:
 class EnDefinition:
     # Public-APIs: https://github.com/public-apis/public-apis
     def main(self, entry):
-        print(f'Getting definition for: {entry}\n')
-        self.url = f'https://api.dictionaryapi.dev/api/v2/entries/en/{entry}'
-        if self.get_info() is False:
-            return
-        self.select_info()
-        self.show_info()
+        self.entry = entry
+        self.message = ""
+        if self.get_info():
+            self.select_info()
+            self.show_info()
+        return self.message
 
     def get_info(self):
         import json
         import requests
 
-        info = requests.get(self.url).text
+        url = f'https://api.dictionaryapi.dev/api/v2/entries/en/{self.entry}'
+        info = requests.get(url).text
         try:
             self.info = json.loads(info)[0]
+            return True
         except KeyError:
-            print('Error...')
+            self.message = 'Error...'
             return False
 
     def select_info(self):
@@ -97,43 +103,47 @@ class EnDefinition:
         for entry in meaning[0]['definitions']:
             self.definitions.append(entry['definition'])
             if len(entry['synonyms']) != 0:
-                self.synonyms.append(entry['synonyms'])
+                [self.synonyms.append(synonym)
+                 for synonym in entry['synonyms']]
             try:
                 self.examples.append(entry['example'])
             except KeyError:
                 continue
 
     def show_info(self):
-        print(f'Type: {self.part_of_speech}')
-        [print(definition) for definition in self.definitions]
+        self.message = f"Definition of {self.entry}:"
+
+        self.message += f'\nType: {self.part_of_speech}\n'
+        self.message += "\n".join(self.definitions)
 
         if len(self.examples) != 0:
-            print('Examples:')
-            [print(example) for example in self.examples]
+            self.message += '\n\nExamples:\n'
+            self.message += "\n".join(self.examples)
 
         if len(self.synonyms) != 0:
-            print('Synonyms:')
-            [print(synonym) for synonym in self.synonyms]
-        print('')
+            self.message += '\n\nSynonyms:\n'
+            self.message += "\n".join(self.synonyms)
+
+
+def general_loop(func, entry):
+    while True:
+        message = func.main(entry)
+        prompt = 'Enter another entry to search its definition, or quit'
+        entry = rofi.simple_prompt(prompt, message)
+        if entry == 'q':
+            return
 
 
 if len(sys.argv) > 2:
     entry = ' '.join(sys.argv[2:])
     if sys.argv[1] == 'pt':
-        while True:
-            PtDefinition().main(entry)
-            entry = input('Enter another entry to search its definition, '
-                          'or quit: ')
-            if entry == 'q':
-                break
+        func = PtDefinition()
     elif sys.argv[1] == 'en':
-        while True:
-            EnDefinition().main(entry)
-            entry = input('Enter another entry to search its definition, '
-                          'or quit: ')
-            if entry == 'q':
-                break
+        func = EnDefinition()
     else:
         print('Argument error...')
+        exit(1)
+    general_loop(func, entry)
 else:
     print('Argument needed...')
+    exit(1)
