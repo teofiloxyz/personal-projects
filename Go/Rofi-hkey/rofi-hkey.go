@@ -23,7 +23,6 @@ import (
 
 var hkeysPath string 
 var historyPath string 
-var rofiListPath string
 var hkeys map[string][]string
 var rkeys map[int][]string
 
@@ -45,8 +44,9 @@ func main() {
 
         // Search/filter mode das hkeys, com dropdown menu
         if userInput == "ls" {
-            userInput = rofiDmenuHkeys("Search Hkey", "")
+            dmenu := createHkeysList()
             menuMessage = ""
+            userInput = rofiCustomDmenu("Search Hkey", dmenu, menuMessage, true)
         }
 
         fullUserInput := userInput
@@ -116,7 +116,6 @@ func getInfoFromConfig() {
 
     hkeysPath = config.Section("GENERAL").Key("hkeysPath").String()
     historyPath = config.Section("GENERAL").Key("historyPath").String()
-    rofiListPath = config.Section("GENERAL").Key("rofiListPath").String()
 }
 
 func getHkeysFromJson() {
@@ -208,27 +207,15 @@ func rofiSimplePrompt(prompt string, message string) string {
     return strings.TrimSuffix(string(output), "\n")
 }
 
-func rofiDmenuHkeys(prompt string, message string) string {
-    cmd := "rofi -dmenu -i -input " + rofiListPath + " -p '" + prompt + "' -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; }'" + message
-    output, err := exec.Command("bash", "-c", cmd).Output()
-    if err != nil {
-        log.Fatal(err)
-        os.Exit(1)
+func rofiCustomDmenu(prompt string, dmenu []string, message string, isHkeyList bool) string {
+    inputFile := "/tmp/rofi_hkey.dmenulist"
+    rl, _ := os.OpenFile(inputFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+    defer rl.Close()
+
+    for _, entry := range dmenu {
+        rl.WriteString(entry + "\n")
     }
 
-    hkey := strings.Split(string(output), ":")[0]
-    return strings.Trim(hkey, "'")
-}
-
-func rofiCustomDmenu(prompt string, message string, dmenu []string) string {
-    var dmenuInput string
-    for i, entry := range dmenu {
-        dmenuInput += entry
-        if i < len(dmenu) - 1 {
-            dmenuInput += "|"
-        }
-    }
-    
     var dmenuLines string
     if len(dmenu) < 15 {
         dmenuLines = strconv.Itoa(len(dmenu))
@@ -236,13 +223,19 @@ func rofiCustomDmenu(prompt string, message string, dmenu []string) string {
         dmenuLines = "15"
     }
 
-    cmd := "echo '" + dmenuInput + "' | rofi -sep '|' -dmenu -i -p '" + prompt + "' -l " + dmenuLines + " -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; }'" + message
+    cmd := "rofi -dmenu -i -input " + inputFile + " -p '" + prompt + "' -l " + dmenuLines + " -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; }'" + message + "; rm " + inputFile 
     output, err := exec.Command("bash", "-c", cmd).Output()
     if err != nil {
         log.Fatal(err)
+        os.Exit(1)
     }
 
+    if isHkeyList {
+    hkey := strings.Split(string(output), ":")[0]
+    return strings.Trim(hkey, "'")
+    } else {
     return strings.TrimSuffix(string(output), "\n")
+    }
 }
 
 func rofiMessage(message string) {
@@ -276,7 +269,6 @@ func addHkey() string {
 
     hkeys[newHkey] = []string{newCommand, newDescription}
     go updateHkeysJson()
-    go updateRofiList()
     return " -mesg \"'" + newHkey + "' Added!\""
 }
 
@@ -295,7 +287,6 @@ func removeHkey() string {
 
     delete(hkeys, hkey)
     go updateHkeysJson()
-    go updateRofiList()
 
     return " -mesg \"'" + hkey + "' Removed!\""
 }
@@ -312,9 +303,9 @@ func editHkey() string {
     menuMessage := ""
     for {
         prompt := "Edit what?"
-        dmenuOpts := []string {"Hkey: " + hkey, "Command: " + command, "Description: " + description, "Quit"}
+        dmenu := []string {"Hkey: " + hkey, "Command: " + command, "Description: " + description, "Quit"}
 
-        section := rofiCustomDmenu(prompt, menuMessage, dmenuOpts)
+        section := rofiCustomDmenu(prompt, dmenu, menuMessage, false)
         if strings.Contains(section, ":") {
             section = strings.Split(section, ":")[0]
         }
@@ -334,7 +325,6 @@ func editHkey() string {
             delete(hkeys, hkey)
             hkeys[newHkey] = []string{command, description}
             go updateHkeysJson()
-            go updateRofiList()
 
             menuMessage = " -mesg \"Hkey changed from '" + hkey + "' to '" + newHkey + "'\""
             hkey = newHkey
@@ -350,7 +340,6 @@ func editHkey() string {
 
             hkeys[hkey] = []string{newCommand, description}
             go updateHkeysJson()
-            go updateRofiList()
 
             menuMessage = " -mesg \"Command changed from '" + command + "' to '" + newCommand + "'\""
             command = newCommand
@@ -366,7 +355,6 @@ func editHkey() string {
 
             hkeys[hkey] = []string{command, newDescription}
             go updateHkeysJson()
-            go updateRofiList()
 
             menuMessage = " -mesg \"Description changed from '" + description + "' to '" + newDescription + "'\""
             description = newDescription
@@ -379,7 +367,8 @@ func editHkey() string {
 func hkeySearch(prompt string) string {
     menuMessage := ""
     hkeySearchLoop:for {
-        userInput := rofiDmenuHkeys(prompt, menuMessage)
+        dmenu := createHkeysList()
+        userInput := rofiCustomDmenu(prompt, dmenu, menuMessage, true)
 
         if userInput == "q" {
             return "q"
@@ -481,9 +470,9 @@ func getDescription(menuMessagePrefix string) string {
 func confirmation(mode string, hkey string, command string, description string) bool{
     prompt := mode + " this entry?"
     menuMessage := " -mesg \"Hkey: " + hkey + "\nCommand: " + command + "\nDescription: " + description + "\""
-    dmenuOpts := []string {"Yes", "No"}
+    dmenu := []string {"Yes", "No"}
 
-    confirmation := rofiCustomDmenu(prompt, menuMessage, dmenuOpts)
+    confirmation := rofiCustomDmenu(prompt, dmenu, menuMessage, false)
     if confirmation == "Yes" {
         return true
     } else {
@@ -501,31 +490,21 @@ func updateHkeysJson() {
     }
 }
 
-func updateRofiList() {
+func createHkeysList() []string {
     // Organizar as keys alfabeticamente
     hkeysArray := make([]string, 0, len(hkeys))
     for hkey := range hkeys {
-        hkeysArray = append(hkeysArray, hkey)
+        description := hkeys[hkey][1]
+        hkeysArray = append(hkeysArray, "'" + hkey + "': " + description)
     }
     sort.Strings(hkeysArray)
 
-    e := os.Remove(rofiListPath)
-    if e != nil {
-        log.Fatal(e)
-    }
-
-    rl, _ := os.OpenFile(rofiListPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-    defer rl.Close()
-
-    for _, hkey := range hkeysArray {
-        description := hkeys[hkey][1]
-        entry := "'" + hkey + "': " + description + "\n"
-        rl.WriteString(entry)
-    }
+    // Pôr rkeys no final da lista
     for i := 0; i < len(rkeys); i++ {
         rkey := rkeys[i][0]
         description := rkeys[i][1]
-        entry := "'" + rkey + "': " + description + "\n"
-        rl.WriteString(entry)
+        hkeysArray = append(hkeysArray, "'" + rkey + "': " + description)
     }
+
+    return hkeysArray
 }
