@@ -8,17 +8,17 @@
 package main
 
 import (
-     "os"
-     "os/exec"
-     "log"
-     "time"
-     "fmt"
-     "strings"
-     "strconv"
-     "io/ioutil"
-     "encoding/json"
-     "gopkg.in/ini.v1"
-     "sort"
+    "rofi-hkey/rofi"
+    "os"
+    "os/exec"
+    "log"
+    "time"
+    "fmt"
+    "strings"
+    "io/ioutil"
+    "encoding/json"
+    "gopkg.in/ini.v1"
+    "sort"
 )
 
 var hkeysPath string 
@@ -40,13 +40,13 @@ func main() {
     var menuMessage string
 
     hkeyLoop:for {
-        userInput := rofiSimplePrompt("Enter Hkey", menuMessage)
+        userInput := rofi.SimplePrompt("Enter Hkey", menuMessage)
 
         // Search/filter mode das hkeys, com dropdown menu
         if userInput == "ls" {
-            dmenu := createHkeysList()
+            dmenu := createHkeysArray()
             menuMessage = ""
-            userInput = rofiCustomDmenu("Search Hkey", dmenu, menuMessage, true)
+            userInput = rofi.CustomDmenu("Search Hkey", dmenu, menuMessage, true)
         }
 
         fullUserInput := userInput
@@ -69,7 +69,7 @@ func main() {
             if hkey == userInput {
 
                 if needsInput {
-                    commandInput = rofiSimplePrompt(hkeys[hkey][1], menuMessage)
+                    commandInput = rofi.SimplePrompt(hkeys[hkey][1], menuMessage)
                     if commandInput == "" || commandInput == "q" {
                         menuMessage = ""
                         continue hkeyLoop
@@ -102,7 +102,6 @@ func main() {
             menuMessage = " -mesg \"Invalid key... \nEnter 'h' for help\""
             continue
         }
-
     }
 }
 
@@ -122,7 +121,6 @@ func getHkeysFromJson() {
     hkeysJson, err := os.Open(hkeysPath)
     if err != nil {
         fmt.Println("No hkeys.json file found...\nCreating one...")
-        fmt.Println()
         go updateHkeysJson()
     }
     defer hkeysJson.Close()
@@ -194,303 +192,10 @@ func showHelpDialog() {
         }
     }
 
-    rofiMessage(message)
+    rofi.Message(message)
 }
 
-func rofiSimplePrompt(prompt string, message string) string {
-    cmd := "rofi -dmenu -p '" + prompt + "' -l 0 -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; } listview { border: 0; }'" + message
-    output, err := exec.Command("bash", "-c", cmd).Output()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    return strings.TrimSuffix(string(output), "\n")
-}
-
-func rofiCustomDmenu(prompt string, dmenu []string, message string, isHkeyList bool) string {
-    inputFile := "/tmp/rofi_hkey.dmenulist"
-    rl, _ := os.OpenFile(inputFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-    defer rl.Close()
-
-    for _, entry := range dmenu {
-        rl.WriteString(entry + "\n")
-    }
-
-    var dmenuLines string
-    if len(dmenu) < 15 {
-        dmenuLines = strconv.Itoa(len(dmenu))
-    } else {
-        dmenuLines = "15"
-    }
-
-    cmd := "rofi -dmenu -i -input " + inputFile + " -p '" + prompt + "' -l " + dmenuLines + " -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; }'" + message + "; rm " + inputFile 
-    output, err := exec.Command("bash", "-c", cmd).Output()
-    if err != nil {
-        log.Fatal(err)
-        os.Exit(1)
-    }
-
-    if isHkeyList {
-    hkey := strings.Split(string(output), ":")[0]
-    return strings.Trim(hkey, "'")
-    } else {
-    return strings.TrimSuffix(string(output), "\n")
-    }
-}
-
-func rofiMessage(message string) {
-    cmd := exec.Command("rofi", "-e", message)
-    err := cmd.Run()
-    if err != nil {
-        log.Fatal(err)
-        os.Exit(1)
-    }
-}
-
-func addHkey() string {
-    newHkey := nameHkey("")
-    if newHkey == "q" {
-        return " -mesg \"Aborted...\""
-    }
-
-    newCommand := getCommand("")
-    if newCommand == "q" {
-        return " -mesg \"Aborted...\""
-    }
-
-    newDescription := getDescription("")
-    if newDescription == "q" {
-        return " -mesg \"Aborted...\""
-    }
-
-    if !confirmation("Add", newHkey, newCommand, newDescription) {
-        return " -mesg \"Aborted...\""
-    }
-
-    hkeys[newHkey] = []string{newCommand, newDescription}
-    go updateHkeysJson()
-    return " -mesg \"'" + newHkey + "' Added!\""
-}
-
-func removeHkey() string {
-    hkey := hkeySearch("Search Hkey to Remove")
-    if hkey == "q" {
-        return " -mesg \"Aborted...\""
-    }
-
-    command := hkeys[hkey][0]
-    description := hkeys[hkey][1]
-
-    if !confirmation("Remove", hkey, command, description) {
-        return " -mesg \"Aborted...\""
-    }
-
-    delete(hkeys, hkey)
-    go updateHkeysJson()
-
-    return " -mesg \"'" + hkey + "' Removed!\""
-}
-
-func editHkey() string {
-    hkey := hkeySearch("Search Hkey to Edit")
-    if hkey == "q" {
-        return " -mesg \"Aborted...\""
-    }
-
-    command := hkeys[hkey][0]
-    description := hkeys[hkey][1]
-
-    menuMessage := ""
-    for {
-        prompt := "Edit what?"
-        dmenu := []string {"Hkey: " + hkey, "Command: " + command, "Description: " + description, "Quit"}
-
-        section := rofiCustomDmenu(prompt, dmenu, menuMessage, false)
-        if strings.Contains(section, ":") {
-            section = strings.Split(section, ":")[0]
-        }
-
-        // Optimizar isto... (talvez com uma nested func)
-        switch(section) {
-        case "Hkey":
-            menuMessagePrefix := "Current Hkey: " + hkey + "\n"
-            newHkey := nameHkey(menuMessagePrefix)
-            if newHkey == "q" {
-                return " -mesg \"Aborted...\""
-            } else if newHkey == hkey {
-                menuMessage = " -mesg \"Nothing has been changed...\""
-                continue
-            }
-
-            delete(hkeys, hkey)
-            hkeys[newHkey] = []string{command, description}
-            go updateHkeysJson()
-
-            menuMessage = " -mesg \"Hkey changed from '" + hkey + "' to '" + newHkey + "'\""
-            hkey = newHkey
-        case "Command":
-            menuMessagePrefix := "Current Command: " + command
-            newCommand := getCommand(menuMessagePrefix)
-            if newCommand == "q" {
-                return " -mesg \"Aborted...\""
-            } else if newCommand == command {
-                menuMessage = " -mesg \"Nothing has been changed...\""
-                continue
-            }
-
-            hkeys[hkey] = []string{newCommand, description}
-            go updateHkeysJson()
-
-            menuMessage = " -mesg \"Command changed from '" + command + "' to '" + newCommand + "'\""
-            command = newCommand
-        case "Description":
-            menuMessagePrefix := "Current Description: " + description
-            newDescription := getDescription(menuMessagePrefix)
-            if newDescription == "q" {
-                return " -mesg \"Aborted...\""
-            } else if newDescription == description {
-                menuMessage = " -mesg \"Nothing has been changed...\""
-                continue
-            }
-
-            hkeys[hkey] = []string{command, newDescription}
-            go updateHkeysJson()
-
-            menuMessage = " -mesg \"Description changed from '" + description + "' to '" + newDescription + "'\""
-            description = newDescription
-        case "Quit\n": // Bug (a func do menu já retira \n)
-            return " -mesg \"Exited edition mode\""
-        }
-    }
-}
-
-func hkeySearch(prompt string) string {
-    menuMessage := ""
-    hkeySearchLoop:for {
-        dmenu := createHkeysList()
-        userInput := rofiCustomDmenu(prompt, dmenu, menuMessage, true)
-
-        if userInput == "q" {
-            return "q"
-        }
-
-        for i := range rkeys {
-            rkey := rkeys[i][0]
-            if userInput == rkey {
-                description := rkeys[i][1]
-                menuMessage = " -mesg \"'" + rkey + "' is a reserved key used to: " + description + "\""
-                continue hkeySearchLoop
-            }
-        }
-
-        return userInput
-    }
-}
-
-func nameHkey(menuMessagePrefix string) string {
-    menuMessage := " -mesg \"" + menuMessagePrefix + "[If you'll run the command with an input (e.g.: google 'input') make sure the hkey has a space at the end, otherwise don't leave a space]\""
-
-    nameHkeyLoop:for {
-        newHkey := rofiSimplePrompt("Enter the New Hkey", menuMessage)
-
-        if newHkey == "q" || newHkey == "" {
-            return "q"
-        }  
-
-        for hkey := range hkeys {
-            if newHkey == hkey {
-                command := hkeys[newHkey][0]
-                menuMessage = " -mesg \"'" + newHkey + "' already exists for the following command: '" + command + "'\""
-                continue nameHkeyLoop
-            }
-        }
-
-        for i := range rkeys {
-            rkey := rkeys[i][0]
-            if newHkey == rkey {
-                description := rkeys[i][1]
-                menuMessage = " -mesg \"'" + rkey + "' is a reserved key used to: " + description + "\""
-                continue nameHkeyLoop
-            }
-        }
-
-        return newHkey
-    }
-}
-
-func getCommand(menuMessagePrefix string) string {
-    var menuMessage string
-    if menuMessagePrefix != "" {
-        menuMessage = " -mesg \"" + menuMessagePrefix + "\""
-    } else {
-        menuMessage = ""
-    }
-    newCommand := rofiSimplePrompt("Enter the full command to link to the Hkey", menuMessage)
-
-    if newCommand == "q" || newCommand == "" {
-        return "q"
-    }
-
-    return newCommand
-}
-
-func getDescription(menuMessagePrefix string) string {
-    var menuMessage string
-    if menuMessagePrefix != "" {
-        menuMessage = " -mesg \"" + menuMessagePrefix + "\""
-    } else {
-        menuMessage = ""
-    }
-    for {
-        newDescription := rofiSimplePrompt("Enter a description of the command", menuMessage)
-
-        if newDescription == "q" || newDescription == "" {
-            return "q"
-        } else if len(newDescription) > 60 {
-            menuMessage = " -mesg \"Description is too long...\""
-            continue
-        }
-
-        newDescriptionArray := strings.Split(strings.TrimSpace(newDescription), " ")
-        newDescription = ""
-        // Faço desta forma pq podem haver siglas (com todas as letras maiúsculas)
-        // Melhorar isto
-        for i, word := range newDescriptionArray {
-            word = strings.ToUpper(word[:1]) + word[1:]
-            newDescription += word
-            if i < len(newDescriptionArray) - 1 {
-                newDescription += " "
-            }
-        }
-
-        return strings.TrimSuffix(newDescription, " ")
-    }
-}
-
-func confirmation(mode string, hkey string, command string, description string) bool{
-    prompt := mode + " this entry?"
-    menuMessage := " -mesg \"Hkey: " + hkey + "\nCommand: " + command + "\nDescription: " + description + "\""
-    dmenu := []string {"Yes", "No"}
-
-    confirmation := rofiCustomDmenu(prompt, dmenu, menuMessage, false)
-    if confirmation == "Yes" {
-        return true
-    } else {
-        return false
-    }
-}
-
-func updateHkeysJson() {
-    file, err := json.MarshalIndent(hkeys, "", "    ")
- 
-	err = ioutil.WriteFile(hkeysPath, file, 0644)
-    if err != nil {
-        fmt.Println(err)
-        os.Exit(1)
-    }
-}
-
-func createHkeysList() []string {
+func createHkeysArray() []string {
     // Organizar as keys alfabeticamente
     hkeysArray := make([]string, 0, len(hkeys))
     for hkey := range hkeys {
