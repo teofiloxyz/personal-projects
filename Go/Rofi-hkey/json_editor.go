@@ -140,10 +140,10 @@ func hkeySearch(prompt string) string {
             return "q"
         }
 
-        for i := range rkeys {
-            rkey := rkeys[i][0]
+        for _, rkeyEntry := range rkeys {
+            rkey := rkeyEntry[0]
             if userInput == rkey {
-                description := rkeys[i][1]
+                description := rkeyEntry[1]
                 rofi.MenuMessage = " -mesg \"'" + rkey + "' is a reserved key used to: " + description + "\""
                 continue hkeySearchLoop
             }
@@ -171,10 +171,10 @@ func nameHkey(menuMessagePrefix string) string {
             }
         }
 
-        for i := range rkeys {
-            rkey := rkeys[i][0]
+        for _, rkeyEntry := range rkeys {
+            rkey := rkeyEntry[0]
             if newHkey == rkey {
-                description := rkeys[i][1]
+                description := rkeyEntry[1]
                 rofi.MenuMessage = " -mesg \"'" + rkey + "' is a reserved key used to: " + description + "\""
                 continue nameHkeyLoop
             }

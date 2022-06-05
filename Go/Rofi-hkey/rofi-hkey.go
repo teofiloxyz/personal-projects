@@ -24,19 +24,16 @@ import (
 var hkeysPath string 
 var historyPath string 
 var hkeys map[string][]string
-var rkeys map[int][]string
+var rkeys = [][]string{{"ls", "Search for hkeys"},
+                       {"ad", "Add entry to hotkeys list"},
+                       {"rm", "Remove entry from hotkeys list"},
+                       {"ed", "Edit entry from hotkeys list"},
+                       {"h", "Show help dialog"},
+                       {"q", "Quit"}}
 
 func main() {
     getInfoFromConfig()
     go getHkeysFromJson()
-    // Fiz assim apenas para ficar nesta ordem específica quando é mostrado o 'help dialog'
-    // Talvez haja uma forma mais simples
-    rkeys = map[int][]string{0: {"ls", "Search for hkeys"},
-                             1: {"ad", "Add entry to hotkeys list"},
-                             2: {"rm", "Remove entry from hotkeys list"},
-                             3: {"ed", "Edit entry from hotkeys list"},
-                             4: {"h", "Show help dialog"},
-                             5: {"q", "Quit"}}
 
     hkeyLoop:for {
         userInput := rofi.SimplePrompt("Enter Hkey")
@@ -182,9 +179,9 @@ func historyAppend(fullUserInput string) {
 func showHelpDialog() {
     message := "General options: \n"
 
-    for i := 0; i < len(rkeys); i++ {
-        rkey := rkeys[i][0]
-        description := rkeys[i][1]
+    for i, rkeyEntry := range rkeys {
+        rkey := rkeyEntry[0]
+        description := rkeyEntry[1]
         message += "'" + rkey + "': " + description
         if i < len(rkeys) - 1 {
             message += "\n"
@@ -204,9 +201,9 @@ func createHkeysArray() []string {
     sort.Strings(hkeysArray)
 
     // Pôr rkeys no final da lista
-    for i := 0; i < len(rkeys); i++ {
-        rkey := rkeys[i][0]
-        description := rkeys[i][1]
+    for _, rkeyEntry := range rkeys {
+        rkey := rkeyEntry[0]
+        description := rkeyEntry[1]
         hkeysArray = append(hkeysArray, "'" + rkey + "': " + description)
     }
 
