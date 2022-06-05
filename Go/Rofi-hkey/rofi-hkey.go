@@ -24,6 +24,7 @@ import (
 var hkeysPath string 
 var historyPath string 
 var hkeys map[string][]string
+// Not a map bc order matters
 var rkeys = [][]string{{"ls", "Search for hkeys"},
                        {"ad", "Add entry to hotkeys list"},
                        {"rm", "Remove entry from hotkeys list"},
@@ -144,32 +145,26 @@ func launchHkey(command string) {
 }
 
 func historyAppend(fullUserInput string) {
-    // Melhorar esta func
-
-    // Se não existir history.csv, escreve o header do csv
-    var header string
-    _, err := os.Stat(historyPath)
-    if err != nil {
-        header = "date,entry\n"
-    }
-
-    hs, err := os.OpenFile(historyPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+    hs, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
         fmt.Println(err)
         os.Exit(1)
     }
     defer hs.Close()
 
-    _, err = hs.WriteString(header)
-    if err != nil {
-        fmt.Println(err)
-        os.Exit(1)
+    // Se history.csv estiver vazio, escreve o header do csv
+    fInfo, _ := os.Stat(historyPath)
+    if fInfo.Size() == 0 {
+        _, err = hs.WriteString("date,entry\n")
+        if err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
     }
 
-    fullUserInput = strings.ReplaceAll(fullUserInput, ",", "")
     now := time.Now().Format("2006-01-02 15:04:05")
-    entry := now + "," + fullUserInput + "\n"
-    _, err = hs.WriteString(entry)
+    fullUserInput = strings.ReplaceAll(fullUserInput, ",", "")
+    _, err = hs.WriteString(now + "," + fullUserInput + "\n")
     if err != nil {
         fmt.Println(err)
         os.Exit(1)
