@@ -37,16 +37,15 @@ func main() {
                              3: {"ed", "Edit entry from hotkeys list"},
                              4: {"h", "Show help dialog"},
                              5: {"q", "Quit"}}
-    var menuMessage string
 
     hkeyLoop:for {
-        userInput := rofi.SimplePrompt("Enter Hkey", menuMessage)
+        userInput := rofi.SimplePrompt("Enter Hkey")
 
         // Search/filter mode das hkeys, com dropdown menu
         if userInput == "ls" {
             dmenu := createHkeysArray()
-            menuMessage = ""
-            userInput = rofi.CustomDmenu("Search Hkey", dmenu, menuMessage, true)
+            rofi.MenuMessage = ""
+            userInput = rofi.CustomDmenu("Search Hkey", dmenu, true)
         }
 
         fullUserInput := userInput
@@ -69,9 +68,9 @@ func main() {
             if hkey == userInput {
 
                 if needsInput {
-                    commandInput = rofi.SimplePrompt(hkeys[hkey][1], menuMessage)
+                    commandInput = rofi.SimplePrompt(hkeys[hkey][1])
                     if commandInput == "" || commandInput == "q" {
-                        menuMessage = ""
+                        rofi.MenuMessage = ""
                         continue hkeyLoop
                     }
                 }
@@ -88,18 +87,18 @@ func main() {
         // Rkeys e respetivas funções
         switch(userInput) {
         case "ad":
-            menuMessage = addHkey()
+            addHkey()
         case "rm":
-            menuMessage = removeHkey()
+            removeHkey()
         case "ed":
-            menuMessage = editHkey()
+            editHkey()
         case "h":
             showHelpDialog()
-            menuMessage = ""
+            rofi.MenuMessage = ""
         case "q":
             os.Exit(0)
         default:
-            menuMessage = " -mesg \"Invalid key... \nEnter 'h' for help\""
+            rofi.MenuMessage = " -mesg \"Invalid key... \nEnter 'h' for help\""
             continue
         }
     }

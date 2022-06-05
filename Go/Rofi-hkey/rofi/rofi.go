@@ -8,8 +8,10 @@ import (
     "strings"
 )
 
-func SimplePrompt(prompt string, message string) string {
-    cmd := "rofi -dmenu -p '" + prompt + "' -l 0 -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; } listview { border: 0; }'" + message
+var MenuMessage string
+
+func SimplePrompt(prompt string) string {
+    cmd := "rofi -dmenu -p '" + prompt + "' -l 0 -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; } listview { border: 0; }'" + MenuMessage
     output, err := exec.Command("bash", "-c", cmd).Output()
     if err != nil {
         log.Fatal(err)
@@ -18,7 +20,7 @@ func SimplePrompt(prompt string, message string) string {
     return strings.TrimSuffix(string(output), "\n")
 }
 
-func CustomDmenu(prompt string, dmenu []string, message string, isHkeyList bool) string {
+func CustomDmenu(prompt string, dmenu []string, isHkeyList bool) string {
     inputFile := "/tmp/rofi_hkey.dmenulist"
     rl, _ := os.OpenFile(inputFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
     defer rl.Close()
@@ -34,7 +36,7 @@ func CustomDmenu(prompt string, dmenu []string, message string, isHkeyList bool)
         dmenuLines = "15"
     }
 
-    cmd := "rofi -dmenu -i -input " + inputFile + " -p '" + prompt + "' -l " + dmenuLines + " -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; }'" + message + "; rm " + inputFile
+    cmd := "rofi -dmenu -i -input " + inputFile + " -p '" + prompt + "' -l " + dmenuLines + " -theme-str 'entry { placeholder: \"\"; } inputbar { children: [prompt, textbox-prompt-colon, entry]; }'" + MenuMessage + "; rm " + inputFile
     output, err := exec.Command("bash", "-c", cmd).Output()
     if err != nil {
         log.Fatal(err)
