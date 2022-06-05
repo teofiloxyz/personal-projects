@@ -10,8 +10,6 @@ import (
 )
 
 func addHkey() {
-    rofi.MenuMessage = " -mesg \"Aborted...\""
-
     newHkey := nameHkey("")
     if newHkey == "q" {
         return
@@ -37,8 +35,6 @@ func addHkey() {
 }
 
 func removeHkey() {
-    rofi.MenuMessage = " -mesg \"Aborted...\""
-
     hkey := hkeySearch("Search Hkey to Remove")
     if hkey == "q" {
         return
@@ -160,13 +156,14 @@ func nameHkey(menuMessagePrefix string) string {
         newHkey := rofi.SimplePrompt("Enter the New Hkey")
 
         if newHkey == "q" || newHkey == "" {
+            rofi.MenuMessage = " -mesg \"Aborted...\""
             return "q"
         }
 
         for hkey := range hkeys {
             if newHkey == hkey {
-                command := hkeys[newHkey][0]
-                rofi.MenuMessage = " -mesg \"'" + newHkey + "' already exists for the following command: '" + command + "'\""
+                description := hkeys[newHkey][1]
+                rofi.MenuMessage = " -mesg \"'" + newHkey + "' already exists to: '" + description + "'\""
                 continue nameHkeyLoop
             }
         }
@@ -193,6 +190,7 @@ func getCommand(menuMessagePrefix string) string {
     newCommand := rofi.SimplePrompt("Enter the full command to link to the Hkey")
 
     if newCommand == "q" || newCommand == "" {
+        rofi.MenuMessage = " -mesg \"Aborted...\""
         return "q"
     }
 
@@ -209,6 +207,7 @@ func getDescription(menuMessagePrefix string) string {
         newDescription := rofi.SimplePrompt("Enter a description of the command")
 
         if newDescription == "q" || newDescription == "" {
+            rofi.MenuMessage = " -mesg \"Aborted...\""
             return "q"
         } else if len(newDescription) > 60 {
             rofi.MenuMessage = " -mesg \"Description is too long...\""
@@ -240,6 +239,7 @@ func confirmation(mode string, hkey string, command string, description string) 
     if confirmation == "Yes" {
         return true
     } else {
+        rofi.MenuMessage = " -mesg \"Aborted...\""
         return false
     }
 }
