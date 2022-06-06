@@ -102,9 +102,8 @@ func main() {
 
 func getInfoFromConfig() {
     config, err := ini.Load("config.ini")
-     if err != nil {
-        fmt.Println(err)
-        os.Exit(1)
+    if err != nil {
+        log.Fatal(err)
     }
 
     hkeysPath = config.Section("GENERAL").Key("hkeysPath").String()
@@ -118,24 +117,19 @@ func getHkeysFromJson() {
         updateHkeysJson()
     }
     defer hkeysJson.Close()
-
     hkeysContent, _ := ioutil.ReadAll(hkeysJson)
     json.Unmarshal(hkeysContent, &hkeys)
 }
 
 func launchHkey(command string) {
-    // Melhorar a forma como o processo começa
+    // setsid para iniciar cmd noutra shell
     command = "setsid " + strings.TrimSpace(command)
     commandArray := strings.Fields(command)
     cmd := exec.Command(commandArray[0], commandArray[1:]...)
-
-    // Aqui tenho que dar um delay para o programa não fechar antes do comando ser executado
-    // É estranho...
-    defer time.Sleep(time.Second / 10)
+    defer os.Exit(0)
     err := cmd.Start()
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 }
 
