@@ -39,7 +39,6 @@ func removeHkey() {
     if hkey == "q" {
         return
     }
-
     command := hkeys[hkey][0]
     description := hkeys[hkey][1]
 
@@ -49,79 +48,57 @@ func removeHkey() {
 
     delete(hkeys, hkey)
     go updateHkeysJson()
-
     rofi.MenuMessage = " -mesg \"'" + hkey + "' Removed!\""
 }
 
-func editHkey() string {
+func editHkey() {
     hkey := hkeySearch("Search Hkey to Edit")
     if hkey == "q" {
-        return " -mesg \"Aborted...\""
+        return
     }
-
     command := hkeys[hkey][0]
     description := hkeys[hkey][1]
-
     rofi.MenuMessage = ""
+
+    var section string
+    sectionEdit := func(sectionOld *string, sectionFunc func(string) string) {
+        menuMessagePrefix := "Current " + section + ": " + *sectionOld + "\n"
+        sectionNew := sectionFunc(menuMessagePrefix)
+        if sectionNew == "q" {
+            return
+        } else if sectionNew == *sectionOld {
+            rofi.MenuMessage = " -mesg \"Nothing has been changed...\""
+            return
+        }
+
+        if section == "Hkey" {
+            delete(hkeys, *sectionOld)
+        }
+
+        rofi.MenuMessage = " -mesg \"" + section + " changed from '" + *sectionOld + "' to '" + sectionNew + "'\""
+        *sectionOld = sectionNew
+        hkeys[hkey] = []string{command, description}
+        go updateHkeysJson()
+    }
+
     for {
         prompt := "Edit what?"
         dmenu := []string {"Hkey: " + hkey, "Command: " + command, "Description: " + description, "Quit"}
-
-        section := rofi.CustomDmenu(prompt, dmenu, false)
+        section = rofi.CustomDmenu(prompt, dmenu, false)
         if strings.Contains(section, ":") {
             section = strings.Split(section, ":")[0]
         }
 
-        // Optimizar isto... (talvez com uma nested func)
         switch(section) {
         case "Hkey":
-            menuMessagePrefix := "Current Hkey: " + hkey + "\n"
-            newHkey := nameHkey(menuMessagePrefix)
-            if newHkey == "q" {
-                return " -mesg \"Aborted...\""
-            } else if newHkey == hkey {
-                rofi.MenuMessage = " -mesg \"Nothing has been changed...\""
-                continue
-            }
-
-            delete(hkeys, hkey)
-            hkeys[newHkey] = []string{command, description}
-            go updateHkeysJson()
-
-            rofi.MenuMessage = " -mesg \"Hkey changed from '" + hkey + "' to '" + newHkey + "'\""
-            hkey = newHkey
+            sectionEdit(&hkey, nameHkey)
         case "Command":
-            menuMessagePrefix := "Current Command: " + command
-            newCommand := getCommand(menuMessagePrefix)
-            if newCommand == "q" {
-                return " -mesg \"Aborted...\""
-            } else if newCommand == command {
-                rofi.MenuMessage = " -mesg \"Nothing has been changed...\""
-                continue
-            }
-
-            hkeys[hkey] = []string{newCommand, description}
-            go updateHkeysJson()
-
-            rofi.MenuMessage = " -mesg \"Command changed from '" + command + "' to '" + newCommand + "'\""
-            command = newCommand
+            sectionEdit(&command, getCommand)
         case "Description":
-            menuMessagePrefix := "Current Description: " + description
-            newDescription := getDescription(menuMessagePrefix)
-            if newDescription == "q" {
-                return " -mesg \"Aborted...\""
-            } else if newDescription == description {
-                rofi.MenuMessage = " -mesg \"Nothing has been changed...\""
-                continue
-            }
-
-            hkeys[hkey] = []string{command, newDescription}
-            go updateHkeysJson()
-
-            rofi.MenuMessage = " -mesg \"Description changed from '" + description + "' to '" + newDescription + "'\""
-            description = newDescription
-        case "Quit\n": // Bug (a func do menu já retira \n)
-            return " -mesg \"Exited edition mode\""
+            sectionEdit(&description, getDescription)
+        case "Quit":
+            rofi.MenuMessage = " -mesg \"Exited edition mode\""
+            return
         }
     }
 }
