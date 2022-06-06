@@ -3,8 +3,6 @@
 // Além das hkeys, existem as rkeys (ou reserved keys) que executam uma função
 // específica deste programa.
 
-// Há muito para melhorar aqui
-
 package main
 
 import (
@@ -24,7 +22,7 @@ import (
 var hkeysPath string 
 var historyPath string 
 var hkeys map[string][]string
-// Not a map bc order matters
+// Not a map bc the order matters
 var rkeys = [][]string{{"ls", "Search for hkeys"},
                        {"ad", "Add entry to hotkeys list"},
                        {"rm", "Remove entry from hotkeys list"},
@@ -103,8 +101,7 @@ func main() {
 }
 
 func getInfoFromConfig() {
-    configPath := "config.ini"
-    config, err := ini.Load(configPath)
+    config, err := ini.Load("config.ini")
      if err != nil {
         fmt.Println(err)
         os.Exit(1)
@@ -118,26 +115,24 @@ func getHkeysFromJson() {
     hkeysJson, err := os.Open(hkeysPath)
     if err != nil {
         fmt.Println("No hkeys.json file found...\nCreating one...")
-        go updateHkeysJson()
+        updateHkeysJson()
     }
     defer hkeysJson.Close()
 
     hkeysContent, _ := ioutil.ReadAll(hkeysJson)
-
     json.Unmarshal(hkeysContent, &hkeys)
 }
 
 func launchHkey(command string) {
     // Melhorar a forma como o processo começa
     command = "setsid " + strings.TrimSpace(command)
-
     commandArray := strings.Fields(command)
     cmd := exec.Command(commandArray[0], commandArray[1:]...)
 
     // Aqui tenho que dar um delay para o programa não fechar antes do comando ser executado
     // É estranho...
+    defer time.Sleep(time.Second / 10)
     err := cmd.Start()
-    time.Sleep(time.Second / 10)
     if err != nil {
         log.Fatal(err)
         os.Exit(1)
@@ -148,7 +143,6 @@ func historyAppend(fullUserInput string) {
     hs, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
         fmt.Println(err)
-        os.Exit(1)
     }
     defer hs.Close()
 
@@ -158,7 +152,6 @@ func historyAppend(fullUserInput string) {
         _, err = hs.WriteString("date,entry\n")
         if err != nil {
             fmt.Println(err)
-            os.Exit(1)
         }
     }
 
@@ -167,7 +160,6 @@ func historyAppend(fullUserInput string) {
     _, err = hs.WriteString(now + "," + fullUserInput + "\n")
     if err != nil {
         fmt.Println(err)
-        os.Exit(1)
     }
 }
 
@@ -183,7 +175,7 @@ func showHelpDialog() {
         }
     }
 
-    rofi.Message(message)
+    rofi.MessageBox(message)
 }
 
 func createHkeysArray() []string {

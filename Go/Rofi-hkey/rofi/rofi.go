@@ -22,7 +22,7 @@ func SimplePrompt(prompt string) string {
 
 func CustomDmenu(prompt string, dmenu []string, isHkeyList bool) string {
     inputFile := "/tmp/rofi_hkey.dmenulist"
-    rl, _ := os.OpenFile(inputFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+    rl, _ := os.OpenFile(inputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     defer rl.Close()
 
     for _, entry := range dmenu {
@@ -51,7 +51,7 @@ func CustomDmenu(prompt string, dmenu []string, isHkeyList bool) string {
     }
 }
 
-func Message(message string) {
+func MessageBox(message string) {
     cmd := exec.Command("rofi", "-e", message)
     err := cmd.Run()
     if err != nil {
