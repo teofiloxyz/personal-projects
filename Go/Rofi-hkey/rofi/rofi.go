@@ -40,7 +40,6 @@ func CustomDmenu(prompt string, dmenu []string, isHkeyList bool) string {
     output, err := exec.Command("bash", "-c", cmd).Output()
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 
     if isHkeyList {
@@ -56,6 +55,5 @@ func MessageBox(message string) {
     err := cmd.Run()
     if err != nil {
         log.Fatal(err)
-        os.Exit(1)
     }
 }

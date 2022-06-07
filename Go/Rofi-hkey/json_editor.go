@@ -110,6 +110,7 @@ func hkeySearch(prompt string) string {
         userInput := rofi.CustomDmenu(prompt, dmenu, true)
 
         if userInput == "q" {
+            rofi.MenuMessage = " -mesg \"Aborted...\""
             return "q"
         }
 
