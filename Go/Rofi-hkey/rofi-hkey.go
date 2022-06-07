@@ -3,6 +3,8 @@
 // Além das hkeys, existem as rkeys (ou reserved keys) que executam uma função
 // específica deste programa.
 
+// Needs a bit of tweaking and testing
+
 package main
 
 import (
@@ -29,79 +31,34 @@ var rkeys = [][]string{{"ls", "Search for hkeys"},
                        {"ed", "Edit entry from hotkeys list"},
                        {"h", "Show help dialog"},
                        {"q", "Quit"}}
+var userInput string
+var commandInput string
+var command string
+var lsMode bool = false
 
 func main() {
     getInfoFromConfig()
     go getHkeysFromJson()
 
-    hkeyLoop:for {
-        userInput := rofi.SimplePrompt("Enter Hkey")
-
-        // Search/filter mode das hkeys, com dropdown menu
-        if userInput == "ls" {
-            dmenu := createHkeysArray()
-            rofi.MenuMessage = ""
-            userInput = rofi.CustomDmenu("Search Hkey", dmenu, true)
+    for {
+        if !lsMode {
+            userInput = rofi.SimplePrompt("Enter Hkey")
         }
 
-        fullUserInput := userInput
-
-        // Caso tenha input (e.g.: s <search entry>)
-        var commandInput string
-        var needsInput bool
-        if strings.Contains(userInput, " ") {
-            userInput = strings.SplitAfter(fullUserInput, " ")[0]
-            commandInput = strings.TrimPrefix(fullUserInput, userInput)
-
-            // Ver se o input não é nulo
-            if strings.ReplaceAll(commandInput, " ", "") == "" {
-                needsInput = true
-            }
-        }
-
-        // Reconhecimento e launch da hkey
-        for hkey := range hkeys {
-            if hkey == userInput {
-
-                if needsInput {
-                    commandInput = rofi.SimplePrompt(hkeys[hkey][1])
-                    if commandInput == "" || commandInput == "q" {
-                        rofi.MenuMessage = ""
-                        continue hkeyLoop
-                    }
-                }
-
-                command := hkeys[hkey][0] + " " + commandInput
-
-                go historyAppend(fullUserInput)
-
-                launchHkey(command)
-                os.Exit(0)
-            }
-        }
-        
-        // Rkeys e respetivas funções
-        switch(userInput) {
-        case "ad":
-            addHkey()
-        case "rm":
-            removeHkey()
-        case "ed":
-            editHkey()
-        case "h":
-            showHelpDialog()
-            rofi.MenuMessage = ""
-        case "q":
-            os.Exit(0)
-        default:
-            rofi.MenuMessage = " -mesg \"Invalid key... \nEnter 'h' for help\""
-            continue
+        option := checkIfIsHkey()
+        if option == "launch" {
+            go historyAppend(userInput + commandInput)
+            launchHkey(command)
+        } else if option == "back" {
+            lsMode = false
+        } else {
+            checkIfIsRkey()
         }
     }
 }
 
 func getInfoFromConfig() {
-    config, err := ini.Load("config.ini")
+    config, err := ini.Load("/home/tm/.config/hkey/hkey.ini")
     if err != nil {
         log.Fatal(err)
     }
@@ -121,16 +78,31 @@ func getHkeysFromJson() {
     json.Unmarshal(hkeysContent, &hkeys)
 }
 
-func launchHkey(command string) {
-    // setsid para iniciar cmd noutra shell
-    command = "setsid " + strings.TrimSpace(command)
-    commandArray := strings.Fields(command)
-    cmd := exec.Command(commandArray[0], commandArray[1:]...)
-    defer os.Exit(0)
-    err := cmd.Start()
-    if err != nil {
-        log.Fatal(err)
+func checkIfIsHkey() string {
+    // Separar, e ver se o input não é nulo, caso seja uma hkey que necessite de input (e.g.: s <search entry>)
+    var hkeyNeedsInput bool
+    if strings.Contains(userInput, " ") {
+        commandInput = userInput[strings.Index(userInput, " ") + 1:]
+        userInput = strings.SplitAfter(userInput, " ")[0]
+        if strings.ReplaceAll(commandInput, " ", "") == "" {
+            hkeyNeedsInput = true
+        }
     }
+
+    for hkey := range hkeys {
+        if hkey == userInput {
+            if hkeyNeedsInput {
+                commandInput = rofi.SimplePrompt(hkeys[hkey][1])
+                if commandInput == "" || commandInput == "q" {
+                    rofi.MenuMessage = " -mesg \"Aborted...\""
+                    return "back"
+                }
+            }
+            command = hkeys[hkey][0] + " " + commandInput
+            return "launch"
+        }
+    }
+    return "notHkey"
 }
 
 func historyAppend(fullUserInput string) {
@@ -157,19 +129,46 @@ func historyAppend(fullUserInput string) {
     }
 }
 
-func showHelpDialog() {
-    message := "General options: \n"
-
-    for i, rkeyEntry := range rkeys {
-        rkey := rkeyEntry[0]
-        description := rkeyEntry[1]
-        message += "'" + rkey + "': " + description
-        if i < len(rkeys) - 1 {
-            message += "\n"
-        }
+func launchHkey(command string) {
+    // setsid para iniciar cmd noutra shell
+    command = "setsid " + strings.TrimSpace(command)
+    commandArray := strings.Fields(command)
+    cmd := exec.Command(commandArray[0], commandArray[1:]...)
+    defer os.Exit(0)
+    err := cmd.Start()
+    if err != nil {
+        log.Fatal(err)
     }
+}
 
-    rofi.MessageBox(message)
+func checkIfIsRkey() {
+    switch(userInput) {
+    case "ls":
+        if lsMode {
+            rofi.MenuMessage = " -mesg \"You are already using ls...\""
+        } else {
+            rofi.MenuMessage = ""
+        }
+        // Search/filter mode das hkeys, com dropdown menu
+        dmenu := createHkeysArray()
+        userInput = rofi.CustomDmenu("Search Hkey", dmenu, true)
+        lsMode = true
+        return
+    case "ad":
+        addHkey()
+    case "rm":
+        removeHkey()
+    case "ed":
+        editHkey()
+    case "h":
+        showHelpDialog()
+        rofi.MenuMessage = ""
+    case "q":
+        os.Exit(0)
+    default:
+        rofi.MenuMessage = " -mesg \"Invalid key... \nEnter 'h' for help\""
+    }
+    lsMode = false
 }
 
 func createHkeysArray() []string {
@@ -189,4 +188,19 @@ func createHkeysArray() []string {
     }
 
     return hkeysArray
+}
+
+func showHelpDialog() {
+    message := "General options: \n"
+
+    for i, rkeyEntry := range rkeys {
+        rkey := rkeyEntry[0]
+        description := rkeyEntry[1]
+        message += "'" + rkey + "': " + description
+        if i < len(rkeys) - 1 {
+            message += "\n"
+        }
+    }
+
+    rofi.MessageBox(message)
 }
