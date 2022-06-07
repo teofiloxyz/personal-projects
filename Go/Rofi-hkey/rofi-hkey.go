@@ -58,7 +58,8 @@ func main() {
 }
 
 func getInfoFromConfig() {
-    config, err := ini.Load("/home/tm/.config/hkey/hkey.ini")
+    home, _ := os.UserHomeDir()
+    config, err := ini.Load(home + "/.config/hkey/hkey.ini")
     if err != nil {
         log.Fatal(err)
     }
