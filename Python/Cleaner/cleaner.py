@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 '''Manages Cache(user;root;var), History(user;root),
 Logs(var(contains journal)); Cleans broken symlinks(except on /run, /proc),
-wrothless files/folders and orphaned packages; Run this as root'''
+worthless files/folders and orphaned packages; Run this as root'''
 
 import os
 import shutil
