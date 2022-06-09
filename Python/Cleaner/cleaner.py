@@ -30,6 +30,16 @@ class Cleaner:
         shutil.move(file_or_folder, destination)
 
     @staticmethod
+    def copy_file_or_folder(file_or_folder, destination):
+        if os.path.isdir(file_or_folder):
+            shutil.copytree(file_or_folder, destination, dirs_exist_ok=True)
+        else:
+            if os.path.isdir(destination):
+                destination = os.path.join(destination,
+                                           os.path.basename(file_or_folder))
+            shutil.copyfile(file_or_folder, destination)
+
+    @staticmethod
     def remove_file(file):
         os.remove(file)
 
@@ -121,6 +131,7 @@ class Cleaner:
         self.remove_folder(tmp_dir)
 
     def mng_logs(self):
+        # Log files get copied and truncated
         var_logs = '/var/log'
 
         tmp_dir = f'/tmp/logs_management_{self.today}'
@@ -128,9 +139,12 @@ class Cleaner:
         self.create_folder(tmp_var)
 
         if os.listdir(var_logs) != 0:
-            [self.move_file_or_folder(os.path.join(var_logs, file_dir),
+            [self.copy_file_or_folder(os.path.join(var_logs, file_dir),
                                       tmp_var)
                 for file_dir in os.listdir(var_logs)]
+            [os.truncate(os.path.join(root_dirs_files[0], file), 0)
+             for root_dirs_files in os.walk(var_logs)
+             for file in root_dirs_files[2]]
 
         arc_dst = os.path.join(self.arcs_dir, f'Logs/{self.today}.tar.xz')
         self.create_archive(tmp_dir, arc_dst)
