@@ -3,6 +3,7 @@
 // Além das hkeys, existem as rkeys (ou reserved keys) que executam uma função
 // específica deste programa.
 
+// Might change the rofi front-end to gioui in the future
 // Needs a bit of tweaking and testing
 
 package main
@@ -132,9 +133,18 @@ func historyAppend(fullUserInput string) {
 
 func launchHkey(command string) {
     // setsid para iniciar cmd noutra shell
-    command = "setsid " + strings.TrimSpace(command)
-    commandArray := strings.Fields(command)
-    cmd := exec.Command(commandArray[0], commandArray[1:]...)
+    var cmd *exec.Cmd
+    if strings.HasPrefix(command, "bash -c") {
+        command = strings.TrimSpace(strings.TrimPrefix(command, "bash -c"))
+        // trimming/stripping '' or "" of the command
+        command = command[1:len(command) - 1]
+        cmd = exec.Command("setsid", "bash", "-c", command)
+    } else {
+        command = "setsid " + strings.TrimSpace(command)
+        commandArray := strings.Fields(command)
+        cmd = exec.Command(commandArray[0], commandArray[1:]...)
+    }
+
     defer os.Exit(0)
     err := cmd.Start()
     if err != nil {
