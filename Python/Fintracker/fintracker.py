@@ -2,6 +2,8 @@
 ''' Fintracker (ou personal finances tracker) é um menu simples,
 onde se registam todas as transações efetuadas.'''
 
+import os
+import subprocess
 import sqlite3
 import pandas as pd
 from datetime import datetime
@@ -10,10 +12,12 @@ from Tfuncs import gmenu
 
 class Fintracker:
     def __init__(self):
-        self.database_path = 'fintracker.db'
+        self.db_path = 'fintracker.db'
         self.db_table = 'transactions'
         self.now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.now_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
+        if not os.path.isfile(self.db_path):
+            self.setup_database()
 
     @staticmethod
     def generic_connection(func):
@@ -23,6 +27,18 @@ class Fintracker:
             func(self, *args, **kwargs)
             self.db_con.close()
         return process
+
+    def setup_database(self):
+        subprocess.run(['touch', self.db_path])
+        self.db_con = sqlite3.connect(self.db_path)
+        self.cursor = self.db_con.cursor()
+        self.cursor.execute(f'CREATE TABLE {self.db_table}(transaction_id '
+                            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL '
+                            'UNIQUE, time TEXT NOT NULL, trn_type TEXT '
+                            'NOT NULL, amount REAL NOT NULL, category TEXT '
+                            'NOT NULL, note TEXT)')
+        self.db_con.commit()
+        self.db_con.close()
 
     @generic_connection
     def show_transactions(self):
@@ -81,5 +97,7 @@ title = 'Fintracker-Menu'
 keys = {'ls': (ft.show_transactions,
                "show past 30 days transactions"),
         'ad': (ft.add_transaction,
-               "add transaction to database")}
+               "add transaction to database"),
+        'rm': (ft.remove_transaction,
+               "remove transaction from database")}
 gmenu(title, keys)
