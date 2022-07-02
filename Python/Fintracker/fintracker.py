@@ -66,6 +66,15 @@ class Fintracker:
         else:
             print('Database error! Entry not saved!')
 
+    @generic_connection
+    def remove_transaction(self):
+        self.df = pd.read_sql(f'SELECT * FROM {self.db_table}', self.db_con)
+        print(self.df.to_string())
+        rowid = int(input('\nEnter the row number to remove: ')) + 1
+        self.cursor.execute(f'DELETE FROM {self.db_table} WHERE '
+                            f'rowid = {rowid}')
+        self.db_con.commit()
+
 
 ft = Fintracker()
 title = 'Fintracker-Menu'
