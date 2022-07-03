@@ -7,7 +7,7 @@ import subprocess
 import sqlite3
 import pandas as pd
 from datetime import datetime
-from Tfuncs import gmenu
+from Tfuncs import gmenu, oupt
 
 
 class Fintracker:
@@ -121,6 +121,23 @@ class Fintracker:
             print(f"Database error! Transaction with id '{trn_id}' was not "
                   "removed!")
 
+    @generic_connection
+    def export_to_csv(self):
+        self.df = pd.read_sql(f'SELECT * FROM {self.db_table}', self.db_con)
+
+        csv_out = oupt.files(question='Enter the path to save the csv file: ',
+                             extension='csv', output_name=self.db_table)
+        if csv_out == 'q':
+            print('Aborted...')
+            return
+
+        self.df.to_csv(str(csv_out), encoding='utf-8', index=False)
+
+        if os.path.exists(csv_out):
+            print(f"Export done successfuly\nOutput at '{csv_out}'")
+        else:
+            print('Error, something went wrong exporting to CSV')
+
 
 ft = Fintracker()
 title = 'Fintracker-Menu'
@@ -129,5 +146,7 @@ keys = {'ls': (ft.show_transactions,
         'ad': (ft.add_transaction,
                "add transaction to database"),
         'rm': (ft.remove_transaction,
-               "remove transaction from database")}
+               "remove transaction from database"),
+        'ex': (ft.export_to_csv,
+               "export database table to CSV file")}
 gmenu(title, keys)
