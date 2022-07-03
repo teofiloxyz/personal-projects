@@ -92,11 +92,34 @@ class Fintracker:
     @generic_connection
     def remove_transaction(self):
         self.df = pd.read_sql(f'SELECT * FROM {self.db_table}', self.db_con)
-        print(self.df.to_string())
-        rowid = int(input('\nEnter the row number to remove: ')) + 1
+        print(self.df.to_string(index=False))
+        while True:
+            try:
+                trn_id = int(input('\nEnter the transaction_id to remove: '))
+            except ValueError:
+                print('Must enter an integer...')
+                continue
+            self.cursor.execute(f'SELECT * FROM {self.db_table} WHERE '
+                                f'transaction_id = {trn_id}')
+            trn_id_fetch = self.cursor.fetchone()
+            if trn_id_fetch is None:
+                print(f"Transaction with id '{trn_id}' not found on database!")
+                continue
+            break
+
         self.cursor.execute(f'DELETE FROM {self.db_table} WHERE '
-                            f'rowid = {rowid}')
+                            f'transaction_id = {trn_id}')
         self.db_con.commit()
+
+        self.cursor.execute(f'SELECT * FROM {self.db_table} WHERE '
+                            f'transaction_id = {trn_id}')
+        trn_id_fetch = self.cursor.fetchone()
+        if trn_id_fetch is None:
+            print(f"Transaction with id '{trn_id}' successfuly removed "
+                  "from database!")
+        else:
+            print(f"Database error! Transaction with id '{trn_id}' was not "
+                  "removed!")
 
 
 ft = Fintracker()
