@@ -12,12 +12,32 @@ from Tfuncs import gmenu, oupt
 
 class Fintracker:
     def __init__(self):
-        self.db_path = 'fintracker.db'
-        self.db_table = 'transactions'
         self.now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.now_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
+        self.ow_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
+
+        self.db_path = 'fintracker.db'
+
         if not os.path.isfile(self.db_path):
             self.setup_database()
+
+    def setup_database(self):
+        subprocess.run(['touch', self.db_path])
+
+        self.db_con = sqlite3.connect(self.db_path)
+        self.cursor = self.db_con.cursor()
+
+        self.cursor.execute('CREATE TABLE transactions(transaction_id '
+                            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL '
+                            'UNIQUE, time TEXT NOT NULL, trn_type TEXT '
+                            'NOT NULL, amount REAL NOT NULL, note TEXT)')
+        # Eu sei que podia ficar tudo numa tabela com category NULL
+        self.cursor.execute('CREATE TABLE expenses(transaction_id '
+                            'INTEGER, category TEXT NOT NULL, '
+                            'FOREIGN KEY(transaction_id) '
+                            'REFERENCES transactions(transaction_id))')
+        self.db_con.commit()
+
+        self.db_con.close()
 
     @staticmethod
     def generic_connection(func):
@@ -28,34 +48,25 @@ class Fintracker:
             self.db_con.close()
         return process
 
-    def setup_database(self):
-        subprocess.run(['touch', self.db_path])
-        self.db_con = sqlite3.connect(self.db_path)
-        self.cursor = self.db_con.cursor()
-        self.cursor.execute(f'CREATE TABLE {self.db_table}(transaction_id '
-                            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL '
-                            'UNIQUE, time TEXT NOT NULL, trn_type TEXT '
-                            'NOT NULL, amount REAL NOT NULL, category TEXT '
-                            'NOT NULL, note TEXT)')
-        self.db_con.commit()
-        self.db_con.close()
-
     @generic_connection
     def show_transactions(self):
-        self.df = pd.read_sql(f'SELECT * FROM {self.db_table}', self.db_con)
-        print(self.df.to_string())
+        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
+                              'USING(transaction_id)',
+                              self.db_con)
+        print(self.df.to_string(index=False))
 
     @generic_connection
     def add_transaction(self):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # now_strp = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')
 
         while True:
-            amount = input('Enter amount of the cost (e.g.: 100.55 or '
+            amount = input('Enter amount of the expense (e.g.: 100.55 or '
                            '+100.55 if revenue): ')
             if amount == 'q':
                 print('Aborting...')
                 return
+            if amount.startswith('-'):
+                continue
             # Most of the transactions will be expenses
             trn_type = 'Revenue' if amount.startswith('+') else 'Expense'
             try:
@@ -65,41 +76,54 @@ class Fintracker:
                 continue
             break
 
-        # In the future, add option: select between categories of enter custom
-        category = input('Enter category: ')
-        if category == 'q':
-            print('Aborting...')
-            return
+        if trn_type == 'Expense':
+            # Select between categories of enter custom
+            category = input('Enter category: ')
+            if category == 'q':
+                print('Aborting...')
+                return
 
         note = input('Enter a note (leave empty for none): ')
         if note == 'q':
             print('Aborting...')
             return
 
-        entry = now, trn_type, amount, category, note
-        self.cursor.execute(f'INSERT INTO {self.db_table} (time, trn_type, '
-                            f'amount, category, note) VALUES {entry}')
+        entry = now, trn_type, amount, note
+        self.cursor.execute('INSERT INTO transactions (time, trn_type, '
+                            f'amount, note) VALUES {entry}')
         self.db_con.commit()
 
-        self.cursor.execute(f'SELECT * FROM {self.db_table} ORDER BY '
+        self.cursor.execute('SELECT * FROM transactions ORDER BY '
                             'transaction_id DESC LIMIT 1')
-        last = self.cursor.fetchone()[1:]
-        if last == entry:
+        last = self.cursor.fetchone()
+        if last[1:] == entry:
             print('Transaction successfuly saved on database!')
         else:
             print('Database error! Transaction not saved!')
 
+        if trn_type == 'Expense':
+            trn_id = last[0]
+            self.cursor.execute('INSERT INTO expenses (transaction_id, '
+                                f'category) VALUES {trn_id, category}')
+            self.db_con.commit()
+
     @generic_connection
     def remove_transaction(self):
-        self.df = pd.read_sql(f'SELECT * FROM {self.db_table}', self.db_con)
+        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
+                              'USING(transaction_id)',
+                              self.db_con)
         print(self.df.to_string(index=False))
         while True:
+            trn_id = input('\nEnter the transaction_id to remove: ')
+            if trn_id == 'q':
+                print('Aborting...')
+                return
             try:
-                trn_id = int(input('\nEnter the transaction_id to remove: '))
+                trn_id = int(trn_id)
             except ValueError:
                 print('Must enter an integer...')
                 continue
-            self.cursor.execute(f'SELECT * FROM {self.db_table} WHERE '
+            self.cursor.execute('SELECT * FROM transactions WHERE '
                                 f'transaction_id = {trn_id}')
             trn_id_fetch = self.cursor.fetchone()
             if trn_id_fetch is None:
@@ -107,11 +131,14 @@ class Fintracker:
                 continue
             break
 
-        self.cursor.execute(f'DELETE FROM {self.db_table} WHERE '
+        self.cursor.execute('DELETE FROM transactions WHERE '
                             f'transaction_id = {trn_id}')
+        if trn_id_fetch[2] == 'Expense':
+            self.cursor.execute('DELETE FROM expenses WHERE '
+                                f'transaction_id = {trn_id}')
         self.db_con.commit()
 
-        self.cursor.execute(f'SELECT * FROM {self.db_table} WHERE '
+        self.cursor.execute('SELECT * FROM transactions WHERE '
                             f'transaction_id = {trn_id}')
         trn_id_fetch = self.cursor.fetchone()
         if trn_id_fetch is None:
@@ -123,10 +150,12 @@ class Fintracker:
 
     @generic_connection
     def export_to_csv(self):
-        self.df = pd.read_sql(f'SELECT * FROM {self.db_table}', self.db_con)
+        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
+                              'USING(transaction_id)',
+                              self.db_con)
 
         csv_out = oupt.files(question='Enter the path to save the csv file: ',
-                             extension='csv', output_name=self.db_table)
+                             extension='csv', output_name='fintracker_table')
         if csv_out == 'q':
             print('Aborted...')
             return
@@ -148,5 +177,5 @@ keys = {'ls': (ft.show_transactions,
         'rm': (ft.remove_transaction,
                "remove transaction from database"),
         'ex': (ft.export_to_csv,
-               "export database table to CSV file")}
+               "export database tables to CSV file")}
 gmenu(title, keys)
