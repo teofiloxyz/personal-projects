@@ -47,18 +47,25 @@ class Fintracker:
 
     @generic_connection
     def add_transaction(self):
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # now_strp = datetime.strptime(now, '%Y-%m-%d %H:%M:%S')
+
         while True:
-            amount = input('Enter amount of transaction (e.g.: 100.5): ')
+            amount = input('Enter amount of the cost (e.g.: 100.55 or '
+                           '+100.55 if revenue): ')
             if amount == 'q':
                 print('Aborting...')
                 return
+            # Most of the transactions will be expenses
+            trn_type = 'Revenue' if amount.startswith('+') else 'Expense'
             try:
-                amount = float(amount)
+                amount = round(float(amount), 2)
             except ValueError:
                 print('Value error, try again: ')
                 continue
             break
 
+        # In the future, add option: select between categories of enter custom
         category = input('Enter category: ')
         if category == 'q':
             print('Aborting...')
@@ -69,18 +76,18 @@ class Fintracker:
             print('Aborting...')
             return
 
-        entry = self.now, amount, category, note
-        self.cursor.execute(f'INSERT INTO {self.db_table} (time, amount, '
-                            f'category, note) VALUES {entry}')
+        entry = now, trn_type, amount, category, note
+        self.cursor.execute(f'INSERT INTO {self.db_table} (time, trn_type, '
+                            f'amount, category, note) VALUES {entry}')
         self.db_con.commit()
 
         self.cursor.execute(f'SELECT * FROM {self.db_table} ORDER BY '
-                            'rowid DESC LIMIT 1')
-        last = self.cursor.fetchall()
-        if last == [entry]:
-            print('Entry successfuly saved on database!')
+                            'transaction_id DESC LIMIT 1')
+        last = self.cursor.fetchone()[1:]
+        if last == entry:
+            print('Transaction successfuly saved on database!')
         else:
-            print('Database error! Entry not saved!')
+            print('Database error! Transaction not saved!')
 
     @generic_connection
     def remove_transaction(self):
