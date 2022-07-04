@@ -49,10 +49,20 @@ class Fintracker:
         return process
 
     @generic_connection
-    def show_transactions(self):
-        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
-                              'USING(transaction_id)',
-                              self.db_con)
+    def show_transactions(self, option='all'):
+        if option == 'all':
+            self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
+                                  'expenses USING(transaction_id)',
+                                  self.db_con)
+        elif option == 'expenses':
+            self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
+                                  'expenses USING(transaction_id) WHERE '
+                                  'trn_type = "Expense"',
+                                  self.db_con)
+        elif option == 'revenue':
+            self.df = pd.read_sql('SELECT * FROM transactions WHERE '
+                                  'trn_type = "Revenue"',
+                                  self.db_con)
         print(self.df.to_string(index=False))
 
     @generic_connection
@@ -181,8 +191,12 @@ class Fintracker:
 
 ft = Fintracker()
 title = 'Fintracker-Menu'
-keys = {'ls': (ft.show_transactions,
+keys = {'ls': (lambda: ft.show_transactions('all'),
                "show past 30 days transactions"),
+        'lse': (lambda: ft.show_transactions('expenses'),
+                "show past 30 days expenses"),
+        'lsr': (lambda: ft.show_transactions('revenue'),
+                "show past 30 days revenue"),
         'ad': (ft.add_transaction,
                "add transaction to database"),
         'rm': (ft.remove_transaction,
