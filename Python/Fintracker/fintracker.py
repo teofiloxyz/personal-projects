@@ -6,7 +6,7 @@ import os
 import subprocess
 import sqlite3
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from Tfuncs import gmenu, oupt
 
 
@@ -49,7 +49,7 @@ class Fintracker:
         return process
 
     @generic_connection
-    def show_transactions(self, option='all'):
+    def show_transactions(self, option, timespan):
         if option == 'all':
             self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
                                   'expenses USING(transaction_id)',
@@ -63,7 +63,19 @@ class Fintracker:
             self.df = pd.read_sql('SELECT * FROM transactions WHERE '
                                   'trn_type = "Revenue"',
                                   self.db_con)
-        print(self.df.to_string(index=False))
+
+        if type(timespan) != 'int':
+            try:
+                timespan = int(timespan)
+            except ValueError:
+                print('Must enter an integer...')
+                return
+
+        date_limit = datetime.strftime(self.now_strp
+                                       - timedelta(days=timespan),
+                                       '%Y-%m-%d %H:%M:%S')
+        df = self.df.loc[self.df['time'] > date_limit]
+        print(df.to_string(index=False))
 
     @generic_connection
     def add_transaction(self):
@@ -191,12 +203,12 @@ class Fintracker:
 
 ft = Fintracker()
 title = 'Fintracker-Menu'
-keys = {'ls': (lambda: ft.show_transactions('all'),
-               "show past 30 days transactions"),
-        'lse': (lambda: ft.show_transactions('expenses'),
-                "show past 30 days expenses"),
-        'lsr': (lambda: ft.show_transactions('revenue'),
-                "show past 30 days revenue"),
+keys = {'ls': (lambda timespan=30: ft.show_transactions('all', timespan),
+               "show past # (default 30) days transactions"),
+        'lse': (lambda timespan=30: ft.show_transactions('expenses', timespan),
+                "show past # (default 30) days expenses"),
+        'lsr': (lambda timespan=30: ft.show_transactions('revenue', timespan),
+                "show past # (default 30) days revenue"),
         'ad': (ft.add_transaction,
                "add transaction to database"),
         'rm': (ft.remove_transaction,
