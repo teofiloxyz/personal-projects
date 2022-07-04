@@ -13,7 +13,7 @@ from Tfuncs import gmenu, oupt
 class Fintracker:
     def __init__(self):
         self.now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.ow_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
+        self.now_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
 
         self.db_path = 'fintracker.db'
 
@@ -109,44 +109,55 @@ class Fintracker:
 
     @generic_connection
     def remove_transaction(self):
-        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
-                              'USING(transaction_id)',
-                              self.db_con)
-        print(self.df.to_string(index=False))
-        while True:
-            trn_id = input('\nEnter the transaction_id to remove: ')
-            if trn_id == 'q':
-                print('Aborting...')
-                return
+        def remove(trn_id):
             try:
                 trn_id = int(trn_id)
             except ValueError:
                 print('Must enter an integer...')
-                continue
+                return False
+
             self.cursor.execute('SELECT * FROM transactions WHERE '
                                 f'transaction_id = {trn_id}')
             trn_id_fetch = self.cursor.fetchone()
             if trn_id_fetch is None:
                 print(f"Transaction with id '{trn_id}' not found on database!")
-                continue
-            break
+                return False
 
-        self.cursor.execute('DELETE FROM transactions WHERE '
-                            f'transaction_id = {trn_id}')
-        if trn_id_fetch[2] == 'Expense':
-            self.cursor.execute('DELETE FROM expenses WHERE '
+            self.cursor.execute('DELETE FROM transactions WHERE '
                                 f'transaction_id = {trn_id}')
-        self.db_con.commit()
+            if trn_id_fetch[2] == 'Expense':
+                self.cursor.execute('DELETE FROM expenses WHERE '
+                                    f'transaction_id = {trn_id}')
+            self.db_con.commit()
 
-        self.cursor.execute('SELECT * FROM transactions WHERE '
-                            f'transaction_id = {trn_id}')
-        trn_id_fetch = self.cursor.fetchone()
-        if trn_id_fetch is None:
-            print(f"Transaction with id '{trn_id}' successfuly removed "
-                  "from database!")
-        else:
-            print(f"Database error! Transaction with id '{trn_id}' was not "
-                  "removed!")
+            self.cursor.execute('SELECT * FROM transactions WHERE '
+                                f'transaction_id = {trn_id}')
+            trn_id_fetch = self.cursor.fetchone()
+            if trn_id_fetch is None:
+                print(f"Transaction with id '{trn_id}' successfuly removed "
+                      "from database!")
+            else:
+                print(f"Database error! Transaction with id '{trn_id}' was "
+                      "not removed!")
+            return True
+
+        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
+                              'USING(transaction_id)',
+                              self.db_con)
+        print(self.df.to_string(index=False))
+        while True:
+            selected_id = input('\nEnter the transaction_id to remove or '
+                                'several (e.g.: 30+4+43): ')
+            if selected_id == 'q':
+                print('Aborting...')
+                return
+            elif '+' in selected_id:
+                selected_id = selected_id.split('+')
+                no_errors = [remove(trn_id) for trn_id in selected_id]
+            else:
+                no_errors = remove(selected_id)
+            if no_errors:
+                break
 
     @generic_connection
     def export_to_csv(self):
