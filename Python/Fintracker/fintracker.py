@@ -78,6 +78,40 @@ class Fintracker:
         print(df.to_string(index=False))
 
     @generic_connection
+    def summary(self):
+        df = pd.read_sql('SELECT * FROM transactions', self.db_con)
+        date_24h = datetime.strftime(self.now_strp - timedelta(days=1),
+                                     '%Y-%m-%d %H:%M:%S')
+        date_7d = datetime.strftime(self.now_strp - timedelta(days=7),
+                                    '%Y-%m-%d %H:%M:%S')
+        date_30d = datetime.strftime(self.now_strp - timedelta(days=30),
+                                     '%Y-%m-%d %H:%M:%S')
+
+        revenue_24h = df[(df['time'] > date_24h)
+                         & (df['trn_type'] == 'Revenue')].sum().amount
+        expenses_24h = df[(df['time'] > date_24h)
+                          & (df['trn_type'] == 'Expense')].sum().amount
+        balance_24h = revenue_24h - expenses_24h
+
+        revenue_7d = df[(df['time'] > date_7d)
+                        & (df['trn_type'] == 'Revenue')].sum().amount
+        expenses_7d = df[(df['time'] > date_7d)
+                         & (df['trn_type'] == 'Expense')].sum().amount
+        balance_7d = revenue_7d - expenses_7d
+
+        revenue_30d = df[(df['time'] > date_30d)
+                         & (df['trn_type'] == 'Revenue')].sum().amount
+        expenses_30d = df[(df['time'] > date_30d)
+                          & (df['trn_type'] == 'Expense')].sum().amount
+        balance_30d = revenue_30d - expenses_30d
+
+        values = {'Revenue': [revenue_24h, revenue_7d, revenue_30d],
+                  'Expenses': [expenses_24h, expenses_7d, expenses_30d],
+                  'Balance': [balance_24h, balance_7d, balance_30d]}
+        timespan = ['last 24 hours', 'last 7 days', 'last 30 days']
+        print(pd.DataFrame(data=values, index=timespan))
+
+    @generic_connection
     def add_transaction(self):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -209,10 +243,13 @@ keys = {'ls': (lambda timespan=30: ft.show_transactions('all', timespan),
                 "show past # (default 30) days expenses"),
         'lsr': (lambda timespan=30: ft.show_transactions('revenue', timespan),
                 "show past # (default 30) days revenue"),
+        'lt': (ft.summary,
+               "show summary"),
         'ad': (ft.add_transaction,
                "add transaction to database"),
         'rm': (ft.remove_transaction,
                "remove transaction from database"),
         'ex': (ft.export_to_csv,
                "export database tables to CSV file")}
-gmenu(title, keys)
+extra_func = ft.summary
+gmenu(title, keys, extra_func)
