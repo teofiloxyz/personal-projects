@@ -1,0 +1,13 @@
+{
+  "db_path": "fintracker.db",
+  "incomes": {
+    "salary": {
+      "expected_day": 25,
+      "expected_amount": 1000
+    },
+    "side_hustle": {
+      "expected_day": 28,
+      "expected_amount": 200
+    }
+  }
+}

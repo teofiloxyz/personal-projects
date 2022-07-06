@@ -4,6 +4,7 @@ onde se registam todas as transações efetuadas.'''
 
 import os
 import subprocess
+import json
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
@@ -15,7 +16,10 @@ class Fintracker:
         self.now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.now_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
 
-        self.db_path = 'fintracker.db'
+        with open('config.json', 'r') as cf:
+            self.json_info = json.load(cf)
+
+        self.db_path = self.json_info['db_path']
 
         if not os.path.isfile(self.db_path):
             self.setup_database()
