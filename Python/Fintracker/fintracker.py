@@ -8,13 +8,15 @@ import json
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
-from Tfuncs import gmenu, oupt
+from dateutil.relativedelta import relativedelta
+from Tfuncs import gmenu, oupt, fcol, ffmt
 
 
 class Fintracker:
     def __init__(self):
         self.now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.now_strp = datetime.strptime(self.now, '%Y-%m-%d %H:%M:%S')
+        self.message = list()
 
         with open('config.json', 'r') as cf:
             self.json_info = json.load(cf)
@@ -23,6 +25,15 @@ class Fintracker:
 
         if not os.path.isfile(self.db_path):
             self.setup_database()
+
+        self.auto_transactions()
+
+    def opening_message(self):
+        if len(self.message) != 0:
+            print(f"{fcol.red}{ffmt.bold}New Message:{ffmt.reset}")
+            print("\n".join(self.message))
+            print()
+        self.summary()
 
     def setup_database(self):
         subprocess.run(['touch', self.db_path])
@@ -43,6 +54,10 @@ class Fintracker:
 
         self.db_con.close()
 
+    def save_json(self):
+        with open('config.json', 'w') as cf:
+            json.dump(self.json_info, cf)
+
     @staticmethod
     def generic_connection(func):
         def process(self, *args, **kwargs):
@@ -53,20 +68,43 @@ class Fintracker:
         return process
 
     @generic_connection
+    def auto_transactions(self):
+        # Posso adicionar expenses também
+        for n, income in enumerate(self.json_info['incomes'].values(), 1):
+            date = income['expected_date']
+            date_strp = datetime.strptime(date, '%Y-%m-%d')
+            amount = income['expected_amount']
+            income_title = income['title']
+            if self.now_strp >= date_strp:
+                entry = self.now, 'Revenue', amount, income_title
+                self.cursor.execute('INSERT INTO transactions (time, '
+                                    f'trn_type, amount, note) VALUES {entry}')
+                self.db_con.commit()
+
+                if income['recurrence'] == 'monthly':
+                    delta = relativedelta(months=1)
+                else:
+                    delta = timedelta(days=7)
+                new_date = datetime.strftime(date_strp + delta, '%Y-%m-%d')
+                self.json_info['incomes'][str(n)]['expected_date'] = new_date
+                self.save_json()
+
+                amount_eur = "€ {:,.2f}".format(amount)
+                self.message.append(f"{amount_eur} from {income_title} "
+                                    "was added!")
+
+    @generic_connection
     def show_transactions(self, option, timespan):
         if option == 'all':
-            self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
-                                  'expenses USING(transaction_id)',
-                                  self.db_con)
+            df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
+                             'expenses USING(transaction_id)', self.db_con)
         elif option == 'expenses':
-            self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
-                                  'expenses USING(transaction_id) WHERE '
-                                  'trn_type = "Expense"',
-                                  self.db_con)
+            df = pd.read_sql('SELECT * FROM transactions LEFT JOIN '
+                             'expenses USING(transaction_id) WHERE '
+                             'trn_type = "Expense"', self.db_con)
         elif option == 'revenue':
-            self.df = pd.read_sql('SELECT * FROM transactions WHERE '
-                                  'trn_type = "Revenue"',
-                                  self.db_con)
+            df = pd.read_sql('SELECT * FROM transactions WHERE '
+                             'trn_type = "Revenue"', self.db_con)
 
         if type(timespan) != 'int':
             try:
@@ -78,7 +116,7 @@ class Fintracker:
         date_limit = datetime.strftime(self.now_strp
                                        - timedelta(days=timespan),
                                        '%Y-%m-%d %H:%M:%S')
-        df = self.df.loc[self.df['time'] > date_limit]
+        df = df.loc[df['time'] > date_limit]
         print(df.to_string(index=False))
 
     @generic_connection
@@ -201,10 +239,9 @@ class Fintracker:
                       "not removed!")
             return True
 
-        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
-                              'USING(transaction_id)',
-                              self.db_con)
-        print(self.df.to_string(index=False))
+        df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
+                         'USING(transaction_id)', self.db_con)
+        print(df.to_string(index=False))
         while True:
             selected_id = input('\nEnter the transaction_id to remove or '
                                 'several (e.g.: 30+4+43): ')
@@ -221,9 +258,8 @@ class Fintracker:
 
     @generic_connection
     def export_to_csv(self):
-        self.df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
-                              'USING(transaction_id)',
-                              self.db_con)
+        df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
+                         'USING(transaction_id)', self.db_con)
 
         csv_out = oupt.files(question='Enter the path to save the csv file: ',
                              extension='csv', output_name='fintracker_table')
@@ -231,7 +267,7 @@ class Fintracker:
             print('Aborted...')
             return
 
-        self.df.to_csv(str(csv_out), encoding='utf-8', index=False)
+        df.to_csv(str(csv_out), encoding='utf-8', index=False)
 
         if os.path.exists(csv_out):
             print(f"Export done successfuly\nOutput at '{csv_out}'")
@@ -255,5 +291,5 @@ keys = {'ls': (lambda timespan=30: ft.show_transactions('all', timespan),
                "remove transaction from database"),
         'ex': (ft.export_to_csv,
                "export database tables to CSV file")}
-extra_func = ft.summary
+extra_func = ft.opening_message
 gmenu(title, keys, extra_func)
