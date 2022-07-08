@@ -9,9 +9,19 @@
     },
     "2": {
       "title": "side hustle",
-      "expected_date": "2022-06-25",
+      "expected_date": "2022-07-09",
       "recurrence": "weekly",
       "expected_amount": 150
     }
-  }
+  },
+  "expenses_categories": [
+    "Housing",
+    "Transportation",
+    "Food",
+    "Healthcare",
+    "Leasure",
+    "Insurance",
+    "Taxes",
+    "Miscellaneous"
+  ]
 }

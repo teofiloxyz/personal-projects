@@ -175,11 +175,27 @@ class Fintracker:
             break
 
         if trn_type == 'Expense':
-            # Select between categories of enter custom
-            category = input('Enter category: ')
-            if category == 'q':
-                print('Aborting...')
-                return
+            categories = self.json_info['expenses_categories']
+            [print(f"[{n}] {category}")
+             for n, category in enumerate(categories, 1)]
+            while True:
+                category = input('\nEnter category # (or enter '
+                                 'custom name): ').capitalize()
+                if category in ('Q', ''):
+                    print('Aborting...')
+                    return
+                elif category in categories:
+                    print('Category already in list...')
+                else:
+                    try:
+                        category = categories[int(category) - 1]
+                        break
+                    except IndexError:
+                        print('Index outside the list...')
+                    except ValueError:
+                        self.json_info['expenses_categories'].append(category)
+                        self.save_json()
+                        break
 
         note = input('Enter a note (leave empty for none): ')
         if note == 'q':
