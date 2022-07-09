@@ -23,5 +23,18 @@
     "Insurance",
     "Taxes",
     "Miscellaneous"
-  ]
+  ],
+  "assets": {
+    "house": 175000,
+    "car": 18000,
+    "stocks": 20500,
+    "savings": 10000,
+    "cash": 350
+  },
+  "liabilities": {
+    "mortgage": 120000,
+    "car_loan": 14000,
+    "credit_card1": 800,
+    "credit_card2": 500
+  }
 }
