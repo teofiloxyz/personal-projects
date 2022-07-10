@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 ''' Fintracker (ou personal finances tracker) é um menu simples,
-onde se registam todas as transações efetuadas.'''
+onde se registam todas as transações efetuadas.
+Também guarda o balanço, e é possível editá-lo.'''
 
 import os
 import subprocess
@@ -118,6 +119,27 @@ class Fintracker:
                                        '%Y-%m-%d %H:%M:%S')
         df = df.loc[df['time'] > date_limit]
         print(df.to_string(index=False))
+
+    @generic_connection
+    def show_balance(self):
+        assets = self.json_info['assets']
+        assets_sum = sum(assets.values())
+        liabilities = self.json_info['liabilities']
+        liabilities_sum = sum(liabilities.values())
+        balance = assets_sum - liabilities_sum
+
+        print(f"{ffmt.bold}{fcol.green}Assets:{ffmt.reset} "
+              f"{'€ {:,.2f}'.format(assets_sum)}")
+        [print(f"{asset.capitalize()}: {'€ {:,.2f}'.format(amount)}")
+         for asset, amount in assets.items()]
+
+        print(f"\n{ffmt.bold}{fcol.red}Liabilities:{ffmt.reset} "
+              f"{'€ {:,.2f}'.format(liabilities_sum)}")
+        [print(f"{liability.capitalize()}: {'€ {:,.2f}'.format(amount)}")
+         for liability, amount in liabilities.items()]
+
+        print(f"\n{ffmt.bold}{fcol.yellow}Balance:{ffmt.reset} "
+              f"{'€ {:,.2f}'.format(balance)}")
 
     @generic_connection
     def summary(self):
@@ -299,7 +321,9 @@ keys = {'ls': (lambda timespan=30: ft.show_transactions('all', timespan),
                 "show past # (default 30) days expenses"),
         'lsr': (lambda timespan=30: ft.show_transactions('revenue', timespan),
                 "show past # (default 30) days revenue"),
-        'lt': (ft.summary,
+        'lsb': (ft.show_balance,
+                "show balance statement"),
+        'sm': (ft.summary,
                "show summary"),
         'ad': (ft.add_transaction,
                "add transaction to database"),
