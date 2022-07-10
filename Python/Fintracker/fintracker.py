@@ -34,6 +34,9 @@ class Fintracker:
             print(f"{fcol.red}{ffmt.bold}New Message:{ffmt.reset}")
             print("\n".join(self.message))
             print()
+        if self.json_info['assets']['cash'] < 0:
+            print(f'{ffmt.bold}{fcol.red}You got negative cash, please edit '
+                  f'the balance statement!{ffmt.reset}\n')
         self.summary()
 
     def setup_database(self):
@@ -88,6 +91,8 @@ class Fintracker:
                     delta = timedelta(days=7)
                 new_date = datetime.strftime(date_strp + delta, '%Y-%m-%d')
                 self.json_info['incomes'][str(n)]['expected_date'] = new_date
+                # O dinheiro ganho aumenta a rúbrica cash do balanço
+                self.json_info['assets']['cash'] += amount
                 self.save_json()
 
                 amount_eur = "€ {:,.2f}".format(amount)
@@ -224,6 +229,12 @@ class Fintracker:
             print('Aborting...')
             return
 
+        if trn_type == "Expense":
+            self.json_info['assets']['cash'] -= amount
+        else:
+            self.json_info['assets']['cash'] += amount
+        self.save_json()
+
         entry = now, trn_type, amount, note
         self.cursor.execute('INSERT INTO transactions (time, trn_type, '
                             f'amount, note) VALUES {entry}')
@@ -243,6 +254,10 @@ class Fintracker:
                                 f'category) VALUES {trn_id, category}')
             self.db_con.commit()
 
+        if self.json_info['assets']['cash'] < 0:
+            print(f'{ffmt.bold}{fcol.red}You got negative cash, please edit '
+                  f'the balance statement!{ffmt.reset}')
+
     @generic_connection
     def remove_transaction(self):
         def remove(trn_id):
@@ -259,6 +274,8 @@ class Fintracker:
                 print(f"Transaction with id '{trn_id}' not found on database!")
                 return False
 
+            trn_type, amount = trn_id_fetch[2], trn_id_fetch[3]
+
             self.cursor.execute('DELETE FROM transactions WHERE '
                                 f'transaction_id = {trn_id}')
             if trn_id_fetch[2] == 'Expense':
@@ -272,6 +289,12 @@ class Fintracker:
             if trn_id_fetch is None:
                 print(f"Transaction with id '{trn_id}' successfuly removed "
                       "from database!")
+                # Correct the balance statement cash
+                if trn_type == 'Expense':
+                    self.json_info['assets']['cash'] += amount
+                else:
+                    self.json_info['assets']['cash'] -= amount
+                self.save_json()
             else:
                 print(f"Database error! Transaction with id '{trn_id}' was "
                       "not removed!")
@@ -293,6 +316,10 @@ class Fintracker:
                 no_errors = remove(selected_id)
             if no_errors:
                 break
+
+        if self.json_info['assets']['cash'] < 0:
+            print(f'{ffmt.bold}{fcol.red}You got negative cash, please edit '
+                  f'the balance statement!{ffmt.reset}')
 
     @generic_connection
     def export_to_csv(self):
