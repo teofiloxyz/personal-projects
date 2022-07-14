@@ -8,6 +8,8 @@ import subprocess
 import json
 import sqlite3
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from Tfuncs import gmenu, oupt, fcol, ffmt
@@ -177,7 +179,7 @@ class Fintracker:
         values = {'Revenue': [revenue_24h, revenue_7d, revenue_30d],
                   'Expenses': [expenses_24h, expenses_7d, expenses_30d],
                   'Balance': [balance_24h, balance_7d, balance_30d]}
-        timespan = ['last 24 hours', 'last 7 days', 'last 30 days']
+        timespan = ['Last 24 hours', 'Last 7 days', 'Last 30 days']
         print(pd.DataFrame(data=values, index=timespan))
 
     @generic_connection
@@ -472,6 +474,60 @@ class Fintracker:
         self.save_json()
 
     @generic_connection
+    def show_charts(self):
+        def time_chart_by_trn_type(trn_type):
+            print(f'Showing {trn_type} chart...')
+            df = pd.read_sql('SELECT SUBSTR(time, 1, 10) as date, amount FROM '
+                             f'transactions WHERE trn_type = "{trn_type}"',
+                             self.db_con)
+            date_limit = datetime.strftime(self.now_strp - timedelta(days=30),
+                                           '%Y-%m-%d')
+            df = df.loc[df['date']
+                        > date_limit].groupby('date')['amount'].sum()
+
+            df.plot(x='date', y='amount', kind='line')
+            plt.legend(title=trn_type)
+            plt.show()
+
+        def pie_chart_expenses_cat():
+            df = pd.read_sql('SELECT SUBSTR(time, 1, 10) as date, amount, '
+                             'category FROM transactions LEFT JOIN expenses '
+                             'USING(transaction_id) WHERE '
+                             'trn_type = "Expense"', self.db_con)
+            date_limit = datetime.strftime(self.now_strp - timedelta(days=30),
+                                           '%Y-%m-%d')
+            df = df.loc[df['date'] > date_limit]
+            categories_list = df['category'].unique().tolist()
+            amounts_list = list()
+            for category in categories_list:
+                amount = df.loc[df['category'] == category]['amount'].sum()
+                amounts_list.append(amount)
+
+            plt.pie(np.array(amounts_list),
+                    labels=categories_list,
+                    autopct='%1.1f%%')
+            plt.show()
+
+        plt.style.use('dark_background')
+        options = {'1': ('Revenue of last 30 days',
+                         lambda: time_chart_by_trn_type('Revenue')),
+                   '2': ('Expenses of last 30 days',
+                         lambda: time_chart_by_trn_type('Expense')),
+                   '3': ('Category percentage of expenses of last 30 days',
+                         pie_chart_expenses_cat)}
+        while True:
+            [print(f"[{n}] {option[0]}") for n, option in options.items()]
+            selection = input("\nEnter the chart option: ")
+            if selection == 'q':
+                print('Aborting...')
+                return
+            try:
+                options[selection][1]()
+                break
+            except KeyError:
+                continue
+
+    @generic_connection
     def export_to_csv(self):
         df = pd.read_sql('SELECT * FROM transactions LEFT JOIN expenses '
                          'USING(transaction_id)', self.db_con)
@@ -508,6 +564,8 @@ keys = {'ls': (lambda timespan=30: ft.show_transactions('all', timespan),
                "remove transaction from database"),
         'ed': (ft.edit_balance,
                "edit balance statement"),
+        'ch': (ft.show_charts,
+               "select and show charts"),
         'ex': (ft.export_to_csv,
                "export database tables to CSV file")}
 extra_func = ft.opening_message
