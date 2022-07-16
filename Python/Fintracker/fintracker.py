@@ -37,9 +37,22 @@ class Fintracker:
             print(f"{fcol.red}{ffmt.bold}New Message:{ffmt.reset}")
             print("\n".join(self.message))
             print()
-        if self.json_info['assets']['cash'] < 0:
-            print(f'{ffmt.bold}{fcol.red}You got negative cash, please edit '
-                  f'the balance statement!{ffmt.reset}\n')
+
+        need_to_edit_balance = False
+        # Ñ dou merge aos dicionários pq podem ter items com o mesmo nome
+        balance = self.json_info['assets'].items(), \
+            self.json_info['liabilities'].items()
+        for items in balance:
+            for item, amount in items:
+                if amount < 0:
+                    need_to_edit_balance = True
+                    print(f'{ffmt.bold}{fcol.red}{item.capitalize()} '
+                          f'is negative!{ffmt.reset}')
+
+        if need_to_edit_balance:
+            print(f'{ffmt.bold}{fcol.red}Please edit the balance '
+                  f'statement!{ffmt.reset}\n')
+
         self.summary()
 
     def setup_database(self):
