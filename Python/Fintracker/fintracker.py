@@ -7,6 +7,7 @@ import os
 import subprocess
 import json
 import sqlite3
+import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -276,7 +277,8 @@ class Fintracker:
                 print(f"Transaction with id '{trn_id}' not found on database!")
                 return False
 
-            trn_type, amount = trn_id_fetch[2], trn_id_fetch[3]
+            trn_type, amount, note = \
+                trn_id_fetch[2], trn_id_fetch[3], trn_id_fetch[4]
 
             self.cursor.execute('DELETE FROM transactions WHERE '
                                 f'transaction_id = {trn_id}')
@@ -291,8 +293,31 @@ class Fintracker:
             if trn_id_fetch is None:
                 print(f"Transaction with id '{trn_id}' successfuly removed "
                       "from database!")
-                # Correct the balance statement cash
-                if trn_type == 'Expense':
+                # Correct the balance statement
+                if trn_type == 'Balance':
+                    def change_balance_item(entry):
+                        category = 'assets' if entry[1] == 'a' \
+                            else 'liabilities'
+                        item = entry[3:]
+                        operation = entry[0]
+
+                        item_val = self.json_info[category][item] if item \
+                            in self.json_info[category].keys() else 0
+                        if operation == '+':
+                            # Reversed bc removed transaction
+                            self.json_info[category][item] = item_val - amount
+                        else:
+                            self.json_info[category][item] = item_val + amount
+
+                    note_1 = re.sub(' [-+][la]:.*$', "", note)
+                    note_2 = note.replace(note_1, "").strip()
+
+                    change_balance_item(note_1)
+                    # if not isolated balance change to be reversed
+                    if note_2 != '':
+                        change_balance_item(note_2)
+
+                elif trn_type == 'Expense':
                     self.json_info['assets']['cash'] += amount
                 else:
                     self.json_info['assets']['cash'] -= amount
@@ -319,9 +344,20 @@ class Fintracker:
             if no_errors:
                 break
 
-        if self.json_info['assets']['cash'] < 0:
-            print(f'{ffmt.bold}{fcol.red}You got negative cash, please edit '
-                  f'the balance statement!{ffmt.reset}')
+        need_to_edit_balance = False
+        # Ñ dou merge aos dicionários pq podem ter items com o mesmo nome
+        balance = self.json_info['assets'].items(), \
+            self.json_info['liabilities'].items()
+        for items in balance:
+            for item, amount in items:
+                if amount < 0:
+                    need_to_edit_balance = True
+                    print(f'{ffmt.bold}{fcol.red}{item.capitalize()} '
+                          f'is negative!{ffmt.reset}')
+
+        if need_to_edit_balance:
+            print(f'{ffmt.bold}{fcol.red}Please edit the balance '
+                  f'statement!{ffmt.reset}')
 
     # Needs refactoring
     @generic_connection
