@@ -4,7 +4,7 @@
 import os
 import sys
 import pickle
-from datetime import datetime
+from datetime import datetime, timedelta
 from configparser import ConfigParser
 from Tfuncs import gmenu, ffmt, fcol, qst, rofi
 
@@ -58,10 +58,12 @@ class History:
 
 class Scheduled:
     def __init__(self):
+        self.now = datetime.now().strftime('%Y-%m-%d')
+        self.now_strp = datetime.strptime(self.now, '%Y-%m-%d')
+
         self.config = ConfigParser()
         self.config.read('config.ini')
         self.scheduled_path = self.config['ALARMS']['scheduled_path']
-
         if os.path.exists(self.scheduled_path):
             with open(self.scheduled_path, 'rb') as sa:
                 self.calendar_alarms_last_update, self.alarms_list = \
@@ -70,18 +72,28 @@ class Scheduled:
         else:
             self.scheduled_alarms_exist = False
 
-    def show_scheduled_alarms(self, index=False):
+    def show_scheduled_alarms(self, days=366, index=False):
         if not self.scheduled_alarms_exist:
             print('Cannot find the file!')
             return
 
-            # reversed não muda a variável
+        if type(days) != 'int':
+            try:
+                days = int(days)
+            except ValueError:
+                print('Must enter an integer...')
+                return
+
+        date_limit = self.now_strp + timedelta(days=days)
+
+        # reversed não muda a variável
         for alarm in reversed(self.alarms_list):
-            if index is False:
-                print(f"{alarm['date']} - {alarm['msg']}")
-            else:
-                print(f"[{self.alarms_list.index(alarm) + 1}] {alarm['date']} "
-                      f"- {alarm['msg']}")
+            if datetime.strptime(alarm['date'], '%Y-%m-%d %H:%M') < date_limit:
+                if index is False:
+                    print(f"{alarm['date']} - {alarm['msg']}")
+                else:
+                    print(f"[{self.alarms_list.index(alarm) + 1}] "
+                          f"{alarm['date']} - {alarm['msg']}")
 
     def get_date(self, date=None, use_rofi=False):
         question = 'Enter the date for the alarm (e.g.: 12-1-21; 27 = ' \
@@ -214,16 +226,16 @@ if __name__ == "__main__":
         hist = History()
         schd = Scheduled()
         title = 'Notifications-Menu'
-        keys = {'ls': (hist.show_all,
-                       "show all past notifications"),
+        keys = {'ls': (lambda days=30: schd.show_scheduled_alarms(days=days),
+                       "show scheduled alarms for next # (default 30) days"),
+                'lsh': (hist.show_all,
+                        "show all past notifications"),
                 'lsl': (lambda: hist.show_filter_urg('low'),
                         "show all low urgency past notifications"),
                 'lsn': (lambda: hist.show_filter_urg('normal'),
                         "show all normal urgency past notifications"),
                 'lsc': (lambda: hist.show_filter_urg('critical'),
                         "show all critical urgency past notifications"),
-                'lsa': (schd.show_scheduled_alarms,
-                        "show all scheduled alarms for the next year"),
                 'ad': (schd.create_alarm,
                        "create a notification alarm"),
                 'rm': (schd.remove_alarm,
