@@ -1,16 +1,46 @@
 #!/usr/bin/python3
 # MusicPlaylist menu com diversas funções, versão alternativa
 
+import os
+import subprocess
 import sqlite3
 from Tfuncs import gmenu
+from configparser import ConfigParser
 
 
 class MusicPlaylist:
     def __init__(self):
-        pass
+        self.config = ConfigParser()
+        self.config.read('config.ini')
+        self.db_path = self.config['GENERAL']['db_path']
+        self.music_path = self.config['GENERAL']['music_path']
+        self.playlist_txt_path = self.config['GENERAL']['playlist_txt_path']
+        self.search_utils_path = self.config['GENERAL']['search_utils_path']
+        self.downloads_path = self.config['GENERAL']['downloads_path']
+
+        if not os.path.isfile(self.db_path):
+            self.setup_database()
 
     def setup_database(self):
-        pass
+        subprocess.run(['touch', self.db_path])
+
+        self.db_con = sqlite3.connect(self.db_path)
+        self.cursor = self.db_con.cursor()
+
+        self.cursor.execute('CREATE TABLE active(music_id '
+                            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL '
+                            'UNIQUE, date_added TEXT NOT NULL, title TEXT '
+                            'NOT NULL UNIQUE, ytb_code TEXT NOT NULL UNIQUE, '
+                            'genre TEXT NOT NULL)')
+        self.cursor.execute('CREATE TABLE archive(music_id '
+                            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL '
+                            'UNIQUE, date_added TEXT NOT NULL, title TEXT '
+                            'NOT NULL UNIQUE, ytb_code TEXT NOT NULL UNIQUE, '
+                            'genre TEXT NOT NULL)')
+        self.cursor.execute('CREATE TABLE genres(genre TEXT NOT NULL UNIQUE)')
+        self.db_con.commit()
+
+        self.db_con.close()
 
     @staticmethod
     def generic_connection(func):
