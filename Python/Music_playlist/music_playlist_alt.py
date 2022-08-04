@@ -4,6 +4,7 @@
 import os
 import subprocess
 import sqlite3
+import pandas as pd
 from Tfuncs import gmenu
 from configparser import ConfigParser
 
@@ -69,8 +70,18 @@ class MusicPlaylist:
     def edit(self):
         pass
 
-    def show(self):
-        pass
+    @generic_connection
+    def show(self, playlist, mode):
+        table = 'active' if playlist == 'playlist' else 'archive'
+        selection = '*' if mode == 'all' else 'music_id, title'
+
+        df = pd.read_sql(f'SELECT {selection} FROM {table} ORDER BY music_id',
+                         self.db_con)
+        if len(df) == 0:
+            print(f'{playlist.capitalize()} is empty...')
+            return
+
+        print(df.to_string(index=False))
 
     def youtube_search(self):
         pass
