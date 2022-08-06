@@ -308,8 +308,86 @@ class MusicPlaylist:
         self.db_con.commit()
         print(f'"{title}" added to the {playlist}!')
 
-    def remove(self):
-        pass
+    @generic_connection
+    def remove(self, playlist, ytb_code=None):
+        table = 'active' if playlist == 'playlist' else 'archive'
+        if ytb_code is None:
+            while True:
+                print(f'\nls: Show {playlist} titles\n'
+                      's: Search by title\n#: Choose music with # ID')
+                option = input('Pick one of the options above: ')
+
+                if option == 'q':
+                    print('Aborted...')
+                    return
+
+                elif option == 'ls':
+                    self.show(playlist, 'titles')
+                    # need to connect db again, bc show func closes database
+                    self.db_con = sqlite3.connect(self.db_path)
+                    self.cursor = self.db_con.cursor()
+
+                elif option == 's':
+                    table = 'active' if playlist == 'playlist' else 'archive'
+                    custom_list = self.search(table)
+                    if custom_list == 'q':
+                        return
+                    elif len(custom_list) > 1:
+                        [print(f'[{n}] {title}')
+                         for n, title in enumerate(custom_list, 1)]
+                        selected_title = input('Enter the title number'
+                                               '(e.g: 2): ')
+                        try:
+                            selected_title = (custom_list
+                                              [int(selected_title) - 1])
+                        except (ValueError, IndexError):
+                            print('Aborted...')
+                            return
+                    else:
+                        selected_title = custom_list[0]
+
+                    self.cursor.execute(f'SELECT ytb_code FROM {table} '
+                                        f'WHERE title="{selected_title}"')
+                    ytb_code = self.cursor.fetchone()[0]
+                    break
+
+                else:
+                    try:
+                        music_id = int(option)
+                    except ValueError:
+                        continue
+
+                    self.cursor.execute(f'SELECT ytb_code FROM {table} '
+                                        f'WHERE music_id={music_id}')
+                    ytb_code = self.cursor.fetchone()
+                    if ytb_code is None:
+                        print(f"Entry not found with ID {music_id}")
+                        continue
+                    else:
+                        ytb_code = ytb_code[0]
+                    break
+
+        self.cursor.execute(f'SELECT * FROM {table} '
+                            f'WHERE ytb_code="{ytb_code}"')
+        entry = self.cursor.fetchone()[1:]
+        self.cursor.execute(f'DELETE FROM {table} WHERE ytb_code="{ytb_code}"')
+        self.db_con.commit()
+        print(f'"{entry[1]}" removed from the {playlist}!')
+
+        if playlist == 'playlist':
+            # fiz assim por causa da extensão ñ estar no título; melhorar
+            music_file = None
+            for file in os.listdir(self.music_path):
+                if file.startswith(entry[1]):
+                    music_file = os.path.join(self.music_path, file)
+                    break
+            if music_file is not None:
+                os.remove(music_file)
+            else:
+                print("WARNING! Didn't find associated music file... "
+                      "Assuming it's already removed")
+
+            self.add('archive', entry=entry)
 
     def recover_arc(self):
         pass
