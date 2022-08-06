@@ -5,6 +5,7 @@ import os
 import subprocess
 import sqlite3
 import pandas as pd
+from datetime import datetime
 from Tfuncs import gmenu
 from configparser import ConfigParser
 
@@ -209,8 +210,103 @@ class MusicPlaylist:
         subprocess.run(cmd, shell=True)
         pass
 
-    def add(self):
-        pass
+    @generic_connection
+    def add(self, playlist, entry=None):
+        table = 'active' if playlist == 'playlist' else 'archive'
+        if entry is None:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+            ytb_code = input('Enter the youtube link or video code: ')
+            if ytb_code == 'q':
+                print('Aborted...')
+                return
+            elif '/' in ytb_code:
+                ytb_code = ytb_code.split('/')[-1]
+            self.cursor.execute(f'SELECT * FROM {table} '
+                                f'WHERE ytb_code="{ytb_code}"')
+            if self.cursor.fetchone() is not None:
+                print(f'Already have that youtube code on the {playlist}')
+                return
+            ytb_link = 'https://youtu.be/' + ytb_code
+
+            print("Getting title...")
+            cmd = f'yt-dlp --get-title {ytb_link}'.split()
+            title = subprocess.run(cmd, capture_output=True) \
+                .stdout.decode('utf-8')[:-1]
+            if title.startswith('ERROR:') or title == '':
+                print("Problem getting title...\nAborting...")
+                return
+            custom_title = input('Enter custom title (artist - song) '
+                                 f'or leave empty for "{title}": ')
+            if custom_title == 'q':
+                print('Aborted...')
+                return
+            elif custom_title != '':
+                title = custom_title
+            title = title.replace('"', "'")
+            title = title.replace('/', "|")
+            self.cursor.execute(f'SELECT title FROM {table}')
+            titles = tuple([f'{title[0]}' for title
+                            in self.cursor.fetchall()])
+            while title in titles:
+                print(f'Title: "{title}" already exists!')
+                title = input('Enter custom title (artist - song): ')
+                if title == 'q':
+                    print('Aborted...')
+                    return
+                title = title.replace('"', "'")
+                title = title.replace('/', "|")
+
+            self.cursor.execute('SELECT genre FROM genres')
+            genres = tuple([genre[0] for genre in self.cursor.fetchall()])
+            if len(genres) == 0:
+                qst = 'Enter the genre(s) (e.g.: Rock; Pop+Rock): '
+            else:
+                [print(f'[{n}] {genre}') for n, genre in enumerate(genres, 1)]
+                qst = 'Enter the genre(s) number(s) (e.g.: 2; 4+2+3)\nOr ' \
+                    'enter a custom genre(s) (e.g.: Rock; Pop+Rock; 3+Pop+1): '
+            ans = input(qst)
+            if ans == 'q':
+                print('Aborted...')
+                return
+            ans_list = ans.split('+')
+            genre = []
+            for ans in ans_list:
+                try:
+                    genre.append(genres[int(ans) - 1])
+                except (ValueError, IndexError):
+                    # Custom genre
+                    genre.append(ans.capitalize())
+                    self.cursor.execute('INSERT INTO genres (genre) '
+                                        f'VALUES ({genre})')
+                    self.db_con.commit()
+
+            genre = '|'.join(genre)
+
+            entry = now, title, ytb_code, genre
+        else:
+            title, ytb_code = entry[1], entry[2]
+            self.cursor.execute(f'SELECT * FROM {table} '
+                                f'WHERE ytb_code="{ytb_code}"')
+            if self.cursor.fetchone() is not None:
+                print(f'Already have that youtube code on the {playlist}')
+                return
+
+        if playlist == 'playlist':
+            ytb_link = 'https://youtu.be/' + ytb_code
+            print("Downloading...")
+            cmd = 'yt-dlp -f "bestaudio" --continue --no-overwrites ' \
+                '--ignore-errors --extract-audio ' \
+                f'-o "{self.music_path}/{title}.%(ext)s" {ytb_link}'
+            err = subprocess.call(cmd, shell=True, stdout=subprocess.DEVNULL)
+            if err != 0:
+                print('Error downloading...\nAborting...')
+                return
+
+        self.cursor.execute(f'INSERT INTO {table} (date_added, title, '
+                            f'ytb_code, genre) VALUES {entry}')
+        self.db_con.commit()
+        print(f'"{title}" added to the {playlist}!')
 
     def remove(self):
         pass
