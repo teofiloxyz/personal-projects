@@ -389,8 +389,62 @@ class MusicPlaylist:
 
             self.add('archive', entry=entry)
 
+    @generic_connection
     def recover_arc(self):
-        pass
+        while True:
+            print('\nls: Show archive titles\n'
+                  's: Search by title\n#: Choose music with # ID')
+            option = input('Pick one of the options above: ')
+
+            if option == 'q':
+                print('Aborted...')
+                return
+
+            elif option == 'ls':
+                self.show('archive', 'titles')
+                # need to connect db again, bc show func closes database
+                self.db_con = sqlite3.connect(self.db_path)
+                self.cursor = self.db_con.cursor()
+
+            elif option == 's':
+                custom_list = self.search('archive')
+                if custom_list == 'q':
+                    return
+                elif len(custom_list) > 1:
+                    [print(f'[{n}] {title}')
+                     for n, title in enumerate(custom_list, 1)]
+                    selected_title = input('Enter the title number'
+                                           '(e.g: 2): ')
+                    try:
+                        selected_title = (custom_list
+                                          [int(selected_title) - 1])
+                    except (ValueError, IndexError):
+                        print('Aborted...')
+                        return
+                else:
+                    selected_title = custom_list[0]
+
+                self.cursor.execute('SELECT * FROM archive '
+                                    f'WHERE title="{selected_title}"')
+                entry = self.cursor.fetchone()[1:]
+                break
+
+            else:
+                try:
+                    music_id = int(option)
+                except ValueError:
+                    continue
+
+                self.cursor.execute(f'SELECT * FROM archive '
+                                    f'WHERE music_id={music_id}')
+                entry = self.cursor.fetchone()[1:]
+                if entry is None:
+                    print(f"Entry not found with ID {music_id}")
+                    continue
+                break
+
+        self.remove('archive', entry[2])
+        self.add('playlist', entry)
 
     def edit(self):
         pass
