@@ -6,7 +6,7 @@ import subprocess
 
 class Rofi:
     @staticmethod
-    def simple_prompt(prompt: str, message=""):
+    def simple_prompt(prompt: str, message="") -> str:
         if message != "":
             message = f" -mesg \"{message}\""
 
@@ -19,7 +19,7 @@ class Rofi:
         return user_input.strip("\n")
 
     @staticmethod
-    def custom_dmenu(prompt: str, dmenu: list, message=""):
+    def custom_dmenu(prompt: str, dmenu: list, message="") -> str:
         if message != "":
             message = f" -mesg \"{message}\""
 
