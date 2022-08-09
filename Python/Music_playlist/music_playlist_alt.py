@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # MusicPlaylist menu com diversas funções, versão alternativa
+# NEEDS LOTS OF REFACTORING
 
 import os
 import subprocess
@@ -446,8 +447,124 @@ class MusicPlaylist:
         self.remove('archive', entry[2])
         self.add('playlist', entry)
 
-    def edit(self):
-        pass
+    @generic_connection
+    def edit(self, playlist):
+        table = 'active' if playlist == 'playlist' else 'archive'
+        while True:
+            print(f'\nls: Show {playlist} titles\n'
+                  's: Search by title\n#: Choose music with # ID')
+            option = input('Pick one of the options above: ')
+            if option == 'q':
+                print('Aborted...')
+                return
+            elif option == 'ls':
+                self.show(playlist, 'titles')
+                # need to connect db again, bc show func closes database
+                self.db_con = sqlite3.connect(self.db_path)
+                self.cursor = self.db_con.cursor()
+            elif option == 's':
+                custom_list = self.search(table)
+                if custom_list == 'q':
+                    return
+                elif len(custom_list) > 1:
+                    [print(f'[{n}] {title}')
+                     for n, title in enumerate(custom_list, 1)]
+                    selected_title = input('Enter the title number'
+                                           '(e.g: 2): ')
+                    try:
+                        selected_title = (custom_list
+                                          [int(selected_title) - 1])
+                    except (ValueError, IndexError):
+                        print('Aborted...')
+                        return
+                else:
+                    selected_title = custom_list[0]
+                self.cursor.execute(f'SELECT ytb_code FROM {table} '
+                                    f'WHERE title="{selected_title}"')
+                ytb_code = self.cursor.fetchone()[0]
+                break
+            else:
+                try:
+                    music_id = int(option)
+                except ValueError:
+                    continue
+                self.cursor.execute(f'SELECT ytb_code FROM {table} '
+                                    f'WHERE music_id={music_id}')
+                ytb_code = self.cursor.fetchone()
+                if ytb_code is None:
+                    print(f"Entry not found with ID {music_id}")
+                    continue
+                else:
+                    ytb_code = ytb_code[0]
+                break
+
+        option = input('Edit [t]itle or [g]enre? ')
+        if option.lower() == 't':
+            self.cursor.execute(f'SELECT title FROM {table} '
+                                f'WHERE ytb_code="{ytb_code}"')
+            title = self.cursor.fetchone()[0]
+            print(f"Current title: {title}")
+
+            new_title = input("Enter the new title: ")
+            if new_title == 'q':
+                print('Aborted...')
+                return
+            new_title = new_title.replace('"', "'")
+            new_title = new_title.replace(',', " ")
+            new_title = new_title.replace('/', "|")
+            self.cursor.execute(f'UPDATE {table} SET title="{new_title}"'
+                                f'WHERE ytb_code="{ytb_code}"')
+            self.db_con.commit()
+            if playlist == 'playlist':
+                tracks = os.listdir(self.music_path)
+                for track in tracks:
+                    if track.startswith(title):
+                        extension = os.path.splitext(track)[-1]
+                        break
+                os.rename(self.music_path + '/' + title + extension,
+                          self.music_path + '/' + new_title + extension)
+            print(f'Title changed from "{title}" to "{new_title}"')
+
+        elif option.lower() == 'g':
+            self.cursor.execute(f'SELECT genre FROM {table} '
+                                f'WHERE ytb_code="{ytb_code}"')
+            genre = self.cursor.fetchone()[0]
+            print(f"Current genre: {genre}")
+
+            self.cursor.execute('SELECT genre FROM genres')
+            genres = tuple([genre[0] for genre in self.cursor.fetchall()])
+            if len(genres) == 0:
+                qst = 'Enter the genre(s) (e.g.: Rock; Pop+Rock): '
+            else:
+                [print(f'[{n}] {genre}')
+                 for n, genre in enumerate(genres, 1)]
+                qst = 'Enter the genre(s) number(s) (e.g.: 2; 4+2+3)\n' \
+                    'Or enter a custom genre(s) (e.g.: Rock; Pop+Rock; ' \
+                    '3+Pop+1): '
+            ans = input(qst)
+            if ans == 'q':
+                print('Aborted...')
+                return
+            ans_list = ans.split('+')
+            new_genre = []
+            for ans in ans_list:
+                try:
+                    new_genre.append(genres[int(ans) - 1])
+                except (ValueError, IndexError):
+                    # Custom genre
+                    new_genre.append(ans.capitalize())
+                    self.cursor.execute('INSERT INTO genres (genre) '
+                                        f'VALUES ({new_genre})')
+                    self.db_con.commit()
+
+            new_genre = '|'.join(new_genre)
+            self.cursor.execute(f'UPDATE {table} SET genre="{new_genre}"'
+                                f'WHERE ytb_code="{ytb_code}"')
+            self.db_con.commit()
+            print(f'Genre changed from "{genre}" to "{new_genre}"')
+
+        else:
+            print('Aborted...')
 
     @generic_connection
     def show(self, playlist, mode):
