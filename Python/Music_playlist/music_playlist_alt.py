@@ -3,6 +3,7 @@
 # NEEDS LOTS OF REFACTORING
 
 import os
+import sys
 import subprocess
 import sqlite3
 import pandas as pd
@@ -580,7 +581,14 @@ class MusicPlaylist:
         print(df.to_string(index=False))
 
     def youtube_search(self):
-        pass
+        sys.path.insert(0, self.search_utils_path)
+        from youtube import Youtube
+
+        entry = input('Enter the title to search on youtube: ')
+        if entry == 'q':
+            print('Aborted...')
+            return
+        Youtube().main(entry)
 
     def download(self):
         pass
