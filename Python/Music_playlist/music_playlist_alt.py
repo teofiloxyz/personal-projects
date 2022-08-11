@@ -591,7 +591,49 @@ class MusicPlaylist:
         Youtube().main(entry)
 
     def download(self):
-        pass
+        def download(link, mp3):
+            cmd = 'yt-dlp -f "bestaudio" --continue --no-overwrites ' \
+                  '--ignore-errors --extract-audio ' \
+                  f'-o "{output_path}%(title)s.%(ext)s" {link}'
+            if mp3:
+                cmd += " --audio-format mp3"
+            subprocess.run(cmd, shell=True)
+
+        def check_if_link(entry):
+            if '/' not in entry:
+                return False
+            code = str(entry).split('/')[-1]  # str é devido ao IDE
+            if len(code) == 11 and ' ' not in code:
+                return 'https://youtu.be/' + code
+            else:
+                return False
+
+        def get_link(title):
+            search = YoutubeSearch(str(title), max_results=1).to_dict()
+            return f'https://youtu.be/{search[0]["id"]}'
+
+        from youtube_search import YoutubeSearch
+        txt = inpt.files(question='Enter the txt file full path: ',
+                         extensions='txt')
+        output_path = self.downloads_path
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
+
+        if input(":: Want output format to be mp3? [y/N] ").lower() == 'y':
+            mp3 = True
+        else:
+            mp3 = False
+
+        with open(str(txt), 'r') as tx:
+            entries = tx.readlines()
+        for entry in entries:
+            entry = entry.strip('\n')
+            if entry.strip(' ') == '':
+                continue
+            link = check_if_link(entry)
+            if link is False:
+                link = get_link(entry)
+            download(link, mp3)
 
     def export_csv(self):
         pass
