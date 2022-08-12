@@ -8,7 +8,7 @@ import subprocess
 import sqlite3
 import pandas as pd
 from datetime import datetime
-from Tfuncs import gmenu
+from Tfuncs import gmenu, inpt, oupt
 from configparser import ConfigParser
 
 
@@ -635,8 +635,31 @@ class MusicPlaylist:
                 link = get_link(entry)
             download(link, mp3)
 
+    @generic_connection
     def export_csv(self):
-        pass
+        playlist = input('Choose [p]laylist or [a]rchive to export: ')
+        if playlist == 'p':
+            table = 'active'
+        elif playlist == 'a':
+            table = 'archive'
+        else:
+            print('Aborted...')
+            return
+
+        csv_output = oupt.files('Enter csv output path: ', extension='csv',
+                                output_name=f'music_playlist_{table}')
+        if csv_output == 'q':
+            print('Aborted...')
+            return
+
+        df = pd.read_sql('SELECT date_added, title, ytb_code, genre '
+                         f'FROM {table}', self.db_con)
+        df.to_csv(str(csv_output), encoding='utf-8', index=False)
+
+        if os.path.isfile(csv_output):
+            print(f"Export done successfuly\nOutput at '{csv_output}'")
+        else:
+            print('Error, something went wrong exporting to CSV')
 
     def import_csv(self):
         pass
