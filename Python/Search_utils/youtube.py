@@ -12,6 +12,7 @@ class Youtube:
         self.config = ConfigParser()
         self.config.read('config.ini')
         self.music_playlist = self.config['YOUTUBE']['music_playlist']
+        self.download_path = self.config['YOUTUBE']['download_path']
         self.max_results = 15
 
     def main(self, entry):
@@ -84,8 +85,19 @@ class Youtube:
         if menu_ans == 'a':
             MusicPlaylist().add('playlist', link=self.link)
             time.sleep(2)
+
         elif menu_ans == 'd':
-            MusicPlaylist().download('youtube', link=self.link)
+            cmd = 'yt-dlp -f "bestaudio" --continue --no-overwrites ' \
+                '--ignore-errors --extract-audio ' \
+                f'-o "{self.download_path}/%(title)s.%(ext)s" {self.link}'
+            err = subprocess.call(cmd, shell=True, stdout=subprocess.DEVNULL)
+            if err != 0:
+                print('Error downloading...\nAborting...')
+                return
+            else:
+                print(f"Download at {self.download_path}")
+            time.sleep(2)
+
         elif menu_ans == '':
             self.search()
         else:
