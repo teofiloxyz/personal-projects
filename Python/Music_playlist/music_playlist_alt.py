@@ -213,12 +213,13 @@ class MusicPlaylist:
         pass
 
     @generic_connection
-    def add(self, playlist, entry=None):
+    def add(self, playlist, entry=None, ytb_code=None):
         table = 'active' if playlist == 'playlist' else 'archive'
         if entry is None:
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-            ytb_code = input('Enter the youtube link or video code: ')
+            if ytb_code is None:
+                ytb_code = input('Enter the youtube link or video code: ')
             if ytb_code == 'q':
                 print('Aborted...')
                 return
@@ -246,6 +247,7 @@ class MusicPlaylist:
             elif custom_title != '':
                 title = custom_title
             title = title.replace('"', "'")
+            title = title.replace(',', " ")
             title = title.replace('/', "|")
             self.cursor.execute(f'SELECT title FROM {table}')
             titles = tuple([f'{title[0]}' for title
@@ -257,6 +259,7 @@ class MusicPlaylist:
                     print('Aborted...')
                     return
                 title = title.replace('"', "'")
+                title = title.replace(',', " ")
                 title = title.replace('/', "|")
 
             self.cursor.execute('SELECT genre FROM genres')
