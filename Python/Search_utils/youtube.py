@@ -64,9 +64,6 @@ class Youtube:
                 return
 
     def menu(self):
-        sys.path.insert(0, self.music_playlist)
-        from music_playlist import MusicPlaylist
-
         print('\nMenu mode')
         while True:
             mode = input(':: Sound or video? [S/v] ')
@@ -83,7 +80,9 @@ class Youtube:
         menu_ans = input('\nEnter another search\nOr press <enter> for same\n'
                          'Or [a]dd to playlist\nOr [d]ownload: ')
         if menu_ans == 'a':
-            MusicPlaylist().add('playlist', link=self.link)
+            sys.path.insert(0, self.music_playlist)
+            from music_playlist import MusicPlaylist
+            MusicPlaylist().add('playlist', ytb_code=self.link)
             time.sleep(2)
 
         elif menu_ans == 'd':
