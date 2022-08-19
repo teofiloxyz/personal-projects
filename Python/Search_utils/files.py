@@ -33,7 +33,7 @@ class Files:
         dmenu = self.results
         self.choice = rofi.custom_dmenu(prompt, dmenu)
         if not os.path.isdir(self.choice):
-            self.choice = os.path.dirname(self.choice)
+            self.choice = "--selectfile=" + self.choice
 
     def open_choice(self):
         cmd = f'alacritty -e ranger "{self.choice}"'
