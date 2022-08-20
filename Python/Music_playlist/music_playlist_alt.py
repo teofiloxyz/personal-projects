@@ -665,8 +665,51 @@ class MusicPlaylist:
             print('Error, something went wrong exporting to CSV')
 
     def import_csv(self):
-        pass
+        playlist = input('Choose [p]laylist or [a]rchive to export: ')
+        if playlist == 'p':
+            playlist, table = 'playlist', 'active'
+        elif playlist == 'a':
+            playlist, table = 'archive', 'archive'
+        else:
+            print('Aborted...')
+            return
 
+        csv_input = inpt.files('Enter csv input path: ', extensions='csv')
+        if csv_input == 'q':
+            print('Aborted...')
+            return
+
+        with open(csv_input, 'r') as cs:
+            lines = cs.readlines()
+
+        header = 'date_added,title,ytb_code,genre'
+        header2 = 'title,ytb_code,genre'
+        if lines[0].strip('\n') not in (header, header2):
+            print(f'Csv header must be: {header} or {header2}')
+            return
+
+        self.cursor.execute(f'DROP TABLE {table}')
+        self.db_con.commit()
+        self.cursor.execute(f'CREATE TABLE {table}(music_id '
+                            'INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL '
+                            'UNIQUE, date_added TEXT NOT NULL, title TEXT '
+                            'NOT NULL UNIQUE, ytb_code TEXT NOT NULL UNIQUE, '
+                            'genre TEXT NOT NULL)')
+        self.db_con.commit()
+        lines = lines[1:]
+        if lines[0].strip('\n') == header2:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+            for line in lines:
+                line = line.strip('\n').split(',')
+                entry = now, line[0], line[1], line[2]
+                self.add(playlist, entry)
+        else:
+            for line in lines:
+                line = line.strip('\n').split(',')
+                entry = line[0], line[1], line[2], line[3]
+                self.add(playlist, entry)
+
+        print('Import done!')
 
 if __name__ == "__main__":
     pl = MusicPlaylist()
