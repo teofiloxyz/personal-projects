@@ -1,18 +1,12 @@
 #!/usr/bin/python3
+# Media menu, usado para imagens, videos e audios
 
 import os
-import sys
 import subprocess
-from configparser import ConfigParser
 from Tfuncs import gmenu, inpt, oupt
 
 
-class Images:
-    def __init__(self):
-        self.config = ConfigParser()
-        self.config.read('config.ini')
-        self.pdfs_path = self.config['GENERAL']['PDFs_path']
-
+class Media:
     @staticmethod
     def compress():
         img_in = inpt.files(question="Enter de img input full path: ",
@@ -111,22 +105,10 @@ class Images:
             cmd = f'nvim {txt_out}.txt'
             subprocess.run(cmd, shell=True)
 
-    def img_to_pdf(self):
-        sys.path.append(self.pdfs_path)
-        from PDFs import PDFs
-        PDFs().convert_img()
 
-    def pdf_to_img(self):
-        sys.path.append(self.pdfs_path)
-        from PDFs import PDFs
-        PDFs().convert_pdf_to_img()
-
-
-img = Images()
-title = 'Images-Menu'
-keys = {'c': (img.compress, "compress image"),
-        'f': (img.change_format, "convert image format"),
-        'o': (img.ocr, "read image with an OCR"),
-        'ip': (img.img_to_pdf, "convert images into PDF"),
-        'pi': (img.pdf_to_img, "convert PDF into images")}
+med = Media()
+title = 'Media-Menu'
+keys = {'c': (med.compress, "compress image"),
+        'f': (med.change_format, "convert image format"),
+        'o': (med.ocr, "read image with an OCR")}
 gmenu(title, keys)
