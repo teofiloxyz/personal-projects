@@ -7,27 +7,53 @@ from Tfuncs import gmenu, inpt, oupt
 
 
 class Media:
-    @staticmethod
-    def compress():
-        img_in = inpt.files(question="Enter de img input full path: ",
-                            extensions=('jpg', 'png'))
-        if img_in == 'q':
+    def __init__(self):
+        self.img_exts = 'jpg', 'png'
+
+    def compress_img(self):
+        def compress_img(img_in, quality, special_opts, img_out):
+            cmd = f"convert \"{img_in}\" {special_opts} -sampling-factor " \
+                  f"4:2:0 -strip -quality {quality} -interlace Plane " \
+                  f"\"{img_out}\""
+            err = subprocess.call(cmd, shell=True)
+            if err != 0:
+                print(f"Error compressing {img_in}")
+            
+        img_in = input("Enter the input img or folder: ")
+        if os.path.isdir(img_in):
+            img_in_dir = img_in
+            img_in = [os.path.join(img_in, img) for img in os.listdir(img_in)
+                      if img.endswith(self.img_exts)]
+        elif os.path.isfile(img_in):
+            img_in = inpt.files(question="Enter de img input full path: ",
+                                extensions=self.img_exts,
+                                file_input=img_in)
+            if img_in == 'q':
+                print('Aborted...')
+                return
+        else:
             print('Aborted...')
             return
 
-        img_out = oupt.files(question="Enter the img output full path, "
-                             "or just the name for same input dir, "
-                             "or leave empty for <input>_output.jpg: ",
-                             extension='jpg', file_input=img_in)
-        if img_out == 'q':
-            print('Aborted...')
-            return
+        if type(img_in) is not list:
+            img_out = oupt.files(question="Enter the img output full path, "
+                                 "or just the name for same input dir, "
+                                 "or leave empty for <input>_output.jpg: ",
+                                 extension='jpg', file_input=img_in)
+            if img_out == 'q':
+                print('Aborted...')
+                return
 
         while True:
-            quality = input("Enter the quality of the output image (1-100): ")
+            quality = input("Enter the quality of the output image (1-100) "
+                            "\n(85-70 recommended, don't go below 50) "
+                            "or leave empty for 70: ")
             if quality == 'q':
                 print('Aborted...')
                 return
+            elif quality == '':
+                quality = '70'
+                break
 
             try:
                 if int(quality) not in range(1, 101):
@@ -39,28 +65,34 @@ class Media:
                 continue
 
         special_opts = ''
-        if input("Want to apply any special option, that might decrease size "
-                 "a bit more? (y/N): ") == 'y':
+        #if input("Want to apply any special option, that might decrease size "
+        #         "a bit more, but change the image? (y/N): ") == 'y':
 
-            ''' Alterar o número de blur (0.05) altera apenas o blur,
-            mantendo o tamanho de armazenamento'''
-            if input("Want to apply a little blur? (y/N): ") == 'y':
-                special_opts += '-gaussian-blur 0.05'
-            else:
-                special_opts = ' '
+        #    ''' Alterar o número de blur (0.05) altera apenas o blur,
+        #    mantendo o tamanho de armazenamento'''
+        #    if input("Want to apply a little blur? (y/N): ") == 'y':
+        #        special_opts += '-gaussian-blur 0.05'
 
-            if input("Want to apply colorspace RGB (img might become darker)? "
-                     "(y/N): ") == 'y':
-                special_opts += ' -colorspace RGB'
-            else:
-                special_opts = ''
+        #    if input("Want to apply colorspace RGB (img might become darker)? "
+        #             "(y/N): ") == 'y':
+        #        special_opts += ' -colorspace RGB'
 
-        cmd = f"convert {img_in} {special_opts} -sampling-factor 4:2:0 " \
-              f"-strip -quality {quality} -interlace Plane {img_out}"
-        subprocess.run(cmd, shell=True)
+        if type(img_in) is list:
+            output_dir = os.path.join(img_in_dir, f'Compressed_{quality}%_quality')
+            if os.path.isdir(output_dir):
+                print("Output folder already exists\nAborting...")
+                return
+            os.mkdir(output_dir)
+            for img in img_in:
+                img_basename = os.path.basename(img)
+                img_basename_out = os.path.splitext(img_basename)[0] + '.jpg'
+                img_out = os.path.join(output_dir, img_basename_out)
+                compress_img(img, quality, special_opts, img_out)
+        else:
+            compress_img(img_in, quality, special_opts, img_out)
 
     @staticmethod
-    def change_format():
+    def change_img_format():
         img_in = inpt.files(question="Enter de img input full path: ",
                             extensions=('jpg', 'png'))
         if img_in == 'q':
@@ -108,7 +140,7 @@ class Media:
 
 med = Media()
 title = 'Media-Menu'
-keys = {'c': (med.compress, "compress image"),
-        'f': (med.change_format, "convert image format"),
-        'o': (med.ocr, "read image with an OCR")}
+keys = {'ic': (med.compress_img, "compress image or folder of images"),
+        'if': (med.change_img_format, "convert image format"),
+        'ocr': (med.ocr, "read image with an OCR")}
 gmenu(title, keys)
