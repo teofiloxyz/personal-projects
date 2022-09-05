@@ -55,9 +55,10 @@ class MusicPlaylist:
             self.db_con.close()
         return process
 
-    def search(self, table):
+    def search(self, table, query=None):
         while True:
-            query = input('Enter music title to search: ')
+            if query is None:
+                query = input('Enter music title to search: ')
             if query == 'q':
                 print('Aborted...')
                 return 'q'
@@ -69,6 +70,7 @@ class MusicPlaylist:
             if len(result) == 0:
                 print(f"Nothing was found with '{query}' "
                       "on the title")
+                query = None
                 continue
             else:
                 return result
@@ -77,9 +79,10 @@ class MusicPlaylist:
     def play(self, playlist):
         while True:
             print(f'\nls: Show {playlist} titles\ng: Search by genre\n'
-                  's: Search by title\n#: Play music with # ID')
+                  '#: Play music with # ID\n')
             option = input('Pick one of the options above '
-                           f'or leave empty to play the whole {playlist}: ')
+                           f'or leave empty to play the whole {playlist}\n'
+                           'Anything else will do a search: ')
 
             if option == 'q':
                 print('Aborted...')
@@ -131,42 +134,6 @@ class MusicPlaylist:
                     break
                 break
 
-            elif option == 's':
-                table = 'active' if playlist == 'playlist' else 'archive'
-                custom_list = self.search(table)
-                if custom_list == 'q':
-                    return
-                elif len(custom_list) != 1:
-                    [print(f'[{n}] {title}')
-                     for n, title in enumerate(custom_list, 1)]
-                    selected_titles = input('Enter the title number or combo '
-                                            '(e.g: 2; 4+2+3) or leave empty '
-                                            'for all: ')
-                    if selected_titles != '':
-                        selected_titles_list = []
-                        for title in selected_titles.split('+'):
-                            try:
-                                selected_titles_list.append(custom_list
-                                                            [int(title) - 1])
-                            except (ValueError, IndexError):
-                                print('Aborted...')
-                                return
-                        custom_list = tuple(selected_titles_list)
-
-                if playlist == 'playlist':
-                    custom_list = tuple([f'"{title}"*' for title
-                                         in custom_list])
-                else:
-                    code_list = list()
-                    for title in custom_list:
-                        self.cursor.execute('SELECT ytb_code FROM archive '
-                                            f'WHERE title={title}')
-                        code_list.append('https://youtu.be/'
-                                         f'{self.cursor.fetchall()[0]}')
-                    custom_list = tuple(code_list)
-
-                break
-
             elif option == '':
                 if playlist == 'playlist':
                     self.cursor.execute('SELECT title FROM active')
@@ -182,7 +149,40 @@ class MusicPlaylist:
                 try:
                     music_id = int(option)
                 except ValueError:
-                    continue
+                    table = 'active' if playlist == 'playlist' else 'archive'
+                    custom_list = self.search(table, query=option)
+                    if custom_list == 'q':
+                        return
+                    elif len(custom_list) != 1:
+                        [print(f'[{n}] {title}')
+                         for n, title in enumerate(custom_list, 1)]
+                        selected_titles = input('Enter the title number or combo '
+                                                '(e.g: 2; 4+2+3) or leave empty '
+                                                'for all: ')
+                        if selected_titles != '':
+                            selected_titles_list = []
+                            for title in selected_titles.split('+'):
+                                try:
+                                    selected_titles_list.append(custom_list
+                                                                [int(title) - 1])
+                                except (ValueError, IndexError):
+                                    print('Aborted...')
+                                    return
+                            custom_list = tuple(selected_titles_list)
+
+                    if playlist == 'playlist':
+                        custom_list = tuple([f'"{title}"*' for title
+                                             in custom_list])
+                    else:
+                        code_list = list()
+                        for title in custom_list:
+                            self.cursor.execute('SELECT ytb_code FROM archive '
+                                                f'WHERE title="{title}"')
+                            code_list.append('https://youtu.be/'
+                                             f'{self.cursor.fetchall()[0][0]}')
+                        custom_list = tuple(code_list)
+
+                    break
 
                 if playlist == 'playlist':
                     self.cursor.execute('SELECT title FROM active '
@@ -210,7 +210,6 @@ class MusicPlaylist:
                 cmd += '--shuffle '
         cmd += ' '.join(custom_list)
         subprocess.run(cmd, shell=True)
-        pass
 
     @generic_connection
     def add(self, playlist, entry=None, ytb_code=None):
