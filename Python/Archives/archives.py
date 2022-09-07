@@ -228,9 +228,9 @@ class Archives:
                         f"--stdout > {self.output}.xz",
                     ),
                     "3": (
-                        "gz",
-                        "gz",
-                        f"gzip {self.input} --stdout > {self.output}.gz",
+                        "zip",
+                        "zip",
+                        f"zip --junk-paths {self.output}.zip {self.input}",
                     ),
                     "4": (
                         "7zip",
@@ -270,11 +270,7 @@ class Archives:
                         f"tar cvf {self.output}.tar.xz "
                         f"--use-compress-program='xz -6T0' {self.input}",
                     ),
-                    "3": (
-                        "tar.gz",
-                        "tar.gz",
-                        f"tar cvzf {self.output}.tar.gz {self.input}",
-                    ),
+                    "3": ("zip", "zip", f"zip {self.output}.zip {self.input}"),
                     "4": (
                         "7zip",
                         "7z",
