@@ -13,10 +13,10 @@ Main Projects
 -------------
 
 ### My favorite project so far
-* `Go/Rofi-hkey`
+* `./Go/Rofi-hkey`
 
 ### Some good scripts
-* `Python/Fintracker`
-* `Python/Music_playlist`
-* `Python/Mounting`
-* `Python/Notifications`
+* `./Python/Fintracker`
+* `./Python/Music_playlist`
+* `./Python/Mounting`
+* `./Python/Notifications`
