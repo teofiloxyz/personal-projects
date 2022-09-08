@@ -1,9 +1,9 @@
 Personal Projects
 =================
 
-This repo has some of my personal projects that I use on a daily basis.
-These projects are just for showcase. Don't expect them to work on your machine.
-All the code was writen by me.
+This repo contains some of my personal projects that I use on a regular basis
+Its projects are merely for display, don't expect them to work on your machine.
+All the code was written by me.
 
 It's mostly Python scripts.
 There's just a few (Bash) shell scripts here, which are a bit old.
