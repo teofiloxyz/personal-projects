@@ -53,3 +53,54 @@ class Database:
             )
             self.db.disconnect()
             return df
+
+        def get_title_with_search(
+            self, playlist: str, column: str, search: str
+        ) -> tuple:
+            self.cursor.execute(
+                f'SELECT title FROM {playlist} WHERE {column} like "%{search}%"'
+            )
+            result = tuple([title[0] for title in self.cursor.fetchall()])
+            self.db.disconnect()
+            return result
+
+        def get_selection_with_title(
+            self, playlist: str, selection: str, title: str
+        ) -> tuple:
+            self.cursor.execute(
+                f'SELECT {selection} FROM {playlist} WHERE title="{title}"'
+            )
+            result = self.cursor.fetchone()
+            self.db.disconnect()
+            return result
+
+        def get_all_titles(self, playlist: str) -> tuple:
+            self.cursor.execute(f"SELECT title FROM {playlist}")
+            result = tuple([title[0] for title in self.cursor.fetchall()])
+            self.db.disconnect()
+            return result
+
+        def get_all_genres(self) -> tuple:
+            self.cursor.execute("SELECT genre FROM genres")
+            genres = tuple([genre[0] for genre in self.cursor.fetchall()])
+            self.db.disconnect()
+            return genres
+
+        def get_title_with_id(self, playlist: str, music_id: int) -> str:
+            self.cursor.execute(
+                f"SELECT title FROM {playlist} WHERE music_id={music_id}"
+            )
+            result = self.cursor.fetchone()
+            self.db.disconnect()
+            return result
+
+        def check_if_link_exists(self, playlist: str, ytb_code: str) -> bool:
+            self.cursor.execute(
+                f'SELECT * FROM {playlist} WHERE ytb_code="{ytb_code}"'
+            )
+            result = self.cursor.fetchone()
+            self.db.disconnect()
+            if result is None:
+                return False
+            print(f"Already have that youtube code on the {playlist}")
+            return True
