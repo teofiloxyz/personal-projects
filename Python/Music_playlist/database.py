@@ -32,6 +32,13 @@ class Database:
         )
         self.db_con.commit()
 
+    def reset_table(self, playlist: str) -> None:
+        self.connect()
+        self.cursor.execute(f"DROP TABLE {playlist}")
+        self.db_con.commit()
+        self.create_table(playlist)
+        self.disconnect()
+
     def setup_database(self) -> None:
         subprocess.run(["touch", self.db_path])
         self.connect()
@@ -104,3 +111,41 @@ class Database:
                 return False
             print(f"Already have that youtube code on the {playlist}")
             return True
+
+    class Edit:
+        def __init__(self) -> None:
+            self.db = Database()
+            self.db_con, self.cursor = self.db.connect()
+
+        def add(self, playlist: str, entry: tuple, title: str) -> None:
+            self.cursor.execute(
+                f"INSERT INTO {playlist} (date_added, title, "
+                f"ytb_code, genre) VALUES {entry}"
+            )
+            self.db_con.commit()
+            print(f'"{title}" added to the {playlist}!')
+            self.db.disconnect()
+
+        def add_genre(self, genre: str) -> None:
+            self.cursor.execute(
+                f'INSERT INTO genres (genre) VALUES ("{genre}")'
+            )
+            self.db_con.commit()
+            print(f'"{genre}" saved to genres!')
+            self.db.disconnect()
+
+        def remove(self, playlist: str, title: str) -> None:
+            self.cursor.execute(f'DELETE FROM {playlist} WHERE title="{title}"')
+            self.db_con.commit()
+            print(f'"{title}" removed from the {playlist}!')
+            self.db.disconnect()
+
+        def update(
+            self, playlist: str, column: str, new_name: str, title: str
+        ) -> None:
+            self.cursor.execute(
+                f'UPDATE {playlist} SET {column}="{new_name}"'
+                f'WHERE title="{title}"'
+            )
+            self.db_con.commit()
+            self.db.disconnect()

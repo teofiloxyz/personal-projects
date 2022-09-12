@@ -1,8 +1,10 @@
 import os
 import subprocess
+from datetime import datetime
 from configparser import ConfigParser
 
 from database import Database
+from youtube import Youtube
 
 
 class Playlist:
@@ -55,6 +57,45 @@ class Playlist:
             print(f"\nPlaying: {title}")
         cmd += " ".join(selection)
         subprocess.run(cmd, shell=True)
+
+    def add(
+        self, entry: (tuple | None) = None, ytb_code: (str | None) = None
+    ) -> None:
+        if entry is None:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+            if ytb_code is None:
+                ytb_code = input("Enter the youtube link or video code: ")
+                if ytb_code == "q":
+                    print("Aborted...")
+                    return
+            if "/" in ytb_code:
+                ytb_code = ytb_code.split("/")[-1]
+            if Database().Query().check_if_link_exists(self.playlist, ytb_code):
+                return
+
+            title = self.Utils().pick_title(
+                self.playlist, Youtube().get_title(ytb_code)
+            )
+            if title == "q":
+                return
+
+            genre = self.Utils().pick_genre()
+            if genre == "q":
+                return
+
+            entry = now, title, ytb_code, genre
+        else:
+            title, ytb_code = entry[1], entry[2]
+            if Database().Query().check_if_link_exists(self.playlist, ytb_code):
+                return
+
+        if self.playlist == "playlist":
+            err = Youtube().download(ytb_code, self.music_path, title)
+            if err is not None:
+                return
+
+        Database().Edit().add(self.playlist, entry, title)
 
     class SelectMusic:
         def __init__(self, playlist: str) -> None:
@@ -174,3 +215,54 @@ class Playlist:
                     f"Found {len(result)} tracks with genre: {selected_genres}"
                 )
             return result
+
+    class Utils:
+        @staticmethod
+        def pick_title(playlist: str, title: str) -> str:
+            def prompt_for_title(title: str) -> str:
+                custom_title = input(
+                    "Enter custom title (artist - song) "
+                    f'or leave empty for "{title}": '
+                )
+                if custom_title == "q":
+                    print("Aborted...")
+                    return "q"
+                elif custom_title != "":
+                    title = custom_title
+                title = (
+                    title.replace('"', "'").replace(",", " ").replace("/", "|")
+                )
+                return title
+
+            titles = Database().Query().get_all_titles(playlist)
+            title = prompt_for_title(title)
+            while title in titles:
+                print(f"{title} is already on {playlist}")
+                title = prompt_for_title(title)
+            return title
+
+        @staticmethod
+        def pick_genre() -> str:
+            genres = Database().Query().get_all_genres()
+            if len(genres) == 0:
+                qst = "Enter the genre(s) (e.g.: Rock; Pop+Rock): "
+            else:
+                [print(f"[{n}] {genre}") for n, genre in enumerate(genres, 1)]
+                qst = (
+                    "Enter the genre(s) number(s) (e.g.: 2; 4+2+3)\nOr "
+                    "enter a custom genre(s) (e.g.: Rock; Pop+Rock; 3+Pop+1): "
+                )
+            ans = input(qst)
+            if ans in ("q", ""):
+                print("Aborted...")
+                return "q"
+            ans_list = ans.split("+")
+            ans_genres = []
+            for genre in ans_list:
+                try:
+                    ans_genres.append(genres[int(genre) - 1])
+                except (ValueError, IndexError):
+                    # Custom genre
+                    ans_genres.append(genre.capitalize())
+                    Database().Edit().add_genre(genre.capitalize())
+            return "|".join(ans_genres)

@@ -9,9 +9,11 @@ from playlist import Playlist
 
 
 def main() -> None:
-    playlist, play = cmd()
+    playlist, play, add = cmd()
     if play is not None:
         Playlist(playlist).play(query=" ".join(play))
+    elif add is not None:
+        Playlist(playlist).add(ytb_code=add)
     else:
         open_menu()
 
@@ -25,14 +27,17 @@ def cmd() -> tuple:
         choices=("playlist", "archive"),
         default="playlist",
     )
+    # Either play or add
     ex_args = parser.add_mutually_exclusive_group()
     ex_args.add_argument(
         "-p",
         "--play",
         help="play music from playlist",
+        nargs=argparse.REMAINDER,
     )
+    ex_args.add_argument("-a", "--add", help="add music to playlist")
     args = parser.parse_args()
-    return args.playlist, args.play
+    return args.playlist, args.play, args.add
 
 
 def open_menu() -> None:
@@ -41,6 +46,8 @@ def open_menu() -> None:
     keys = {
         "p": (lambda: pl("playlist").play(), "Play music from playlist"),
         "pa": (lambda: pl("archive").play(), "Play music from archive"),
+        "ad": (lambda: pl("playlist").add(), "Add music to playlist"),
+        "ada": (lambda: pl("archive").add(), "Add music to archive"),
         "ls": (lambda: pl("playlist").show("titles"), "Show playlist titles"),
         "la": (
             lambda: pl("playlist").show("all"),
