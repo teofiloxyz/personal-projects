@@ -97,6 +97,37 @@ class Playlist:
 
         Database().Edit().add(self.playlist, entry, title)
 
+    def remove(self, entry: (tuple | None) = None) -> None:
+        if entry is None:
+            title = self.SelectMusic(self.playlist).show_options()
+            if title == "q":
+                return
+            entry = (
+                Database()
+                .Query()
+                .get_selection_with_title(self.playlist, "*", title)[1:]
+            )
+        else:
+            title = entry[1]
+
+        Database().Edit().remove(self.playlist, title)
+
+        if self.playlist == "playlist":
+            music_file_removed = False
+            for music_file in os.listdir(self.music_path):
+                basename, _ = os.path.splitext(music_file)
+                if basename == title:
+                    os.remove(self.music_path + "/" + music_file)
+                    music_file_removed = True
+                    break
+            if not music_file_removed:
+                print(
+                    "WARNING! Didn't find associated music file... "
+                    "Assuming it's already removed"
+                )
+            self.playlist = "archive"
+            self.add(entry)
+
     class SelectMusic:
         def __init__(self, playlist: str) -> None:
             self.playlist = playlist

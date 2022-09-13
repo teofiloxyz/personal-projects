@@ -47,7 +47,12 @@ def open_menu() -> None:
         "p": (lambda: pl("playlist").play(), "Play music from playlist"),
         "pa": (lambda: pl("archive").play(), "Play music from archive"),
         "ad": (lambda: pl("playlist").add(), "Add music to playlist"),
+        "rm": (
+            lambda: pl("playlist").remove(),
+            "Remove music from playlist that goes to archive",
+        ),
         "ada": (lambda: pl("archive").add(), "Add music to archive"),
+        "rma": (lambda: pl("archive").remove(), "Remove music from archive"),
         "ls": (lambda: pl("playlist").show("titles"), "Show playlist titles"),
         "la": (
             lambda: pl("playlist").show("all"),
