@@ -57,6 +57,14 @@ def open_menu() -> None:
             lambda: pl("archive").recover_arc(),
             "Recover music from archive",
         ),
+        "ed": (
+            lambda: pl("playlist").edit_entry(),
+            "Edit title or genre of a music from playlist",
+        ),
+        "eda": (
+            lambda: pl("archive").edit_entry(),
+            "Edit title or genre of a music from archive",
+        ),
         "ls": (lambda: pl("playlist").show("titles"), "Show playlist titles"),
         "la": (
             lambda: pl("playlist").show("all"),

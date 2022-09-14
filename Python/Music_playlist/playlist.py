@@ -141,6 +141,39 @@ class Playlist:
         self.playlist = "playlist"
         self.add(entry)
 
+    def edit_entry(self) -> None:
+        title = self.SelectMusic(self.playlist).show_options()
+        if title == "q":
+            return
+
+        option = input(f'Edit "{title}" [t]itle or [g]enre? ')
+        if option.lower() == "t":
+            new_title = self.Utils().pick_title(self.playlist, title)
+            if self.playlist == "playlist":
+                for music_file in os.listdir(self.music_path):
+                    basename, extension = os.path.splitext(music_file)
+                    if basename == title:
+                        os.rename(
+                            self.music_path + "/" + basename + extension,
+                            self.music_path + "/" + new_title + extension,
+                        )
+                        break
+            Database().Edit().update(self.playlist, "title", new_title, title)
+            print(f'Title changed from "{title}" to "{new_title}"')
+        elif option.lower() == "g":
+            genre = (
+                Database()
+                .Query()
+                .get_selection_with_title(self.playlist, "genre", title)[0]
+            )
+            print(f"Current genre: {genre}")
+            new_genre = self.Utils().pick_genre()
+            Database().Edit().update(self.playlist, "genre", new_genre, title)
+            print(f'Genre changed from "{genre}" to "{new_genre}"')
+        else:
+            print("Aborted...")
+            return
+
     class SelectMusic:
         def __init__(self, playlist: str) -> None:
             self.playlist = playlist
