@@ -53,6 +53,10 @@ def open_menu() -> None:
         ),
         "ada": (lambda: pl("archive").add(), "Add music to archive"),
         "rma": (lambda: pl("archive").remove(), "Remove music from archive"),
+        "rc": (
+            lambda: pl("archive").recover_arc(),
+            "Recover music from archive",
+        ),
         "ls": (lambda: pl("playlist").show("titles"), "Show playlist titles"),
         "la": (
             lambda: pl("playlist").show("all"),

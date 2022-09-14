@@ -128,6 +128,19 @@ class Playlist:
             self.playlist = "archive"
             self.add(entry)
 
+    def recover_arc(self) -> None:
+        title = self.SelectMusic(self.playlist).show_options()
+        if title == "q":
+            return
+        entry = (
+            Database()
+            .Query()
+            .get_selection_with_title(self.playlist, "*", title)[1:]
+        )
+        self.remove(entry)
+        self.playlist = "playlist"
+        self.add(entry)
+
     class SelectMusic:
         def __init__(self, playlist: str) -> None:
             self.playlist = playlist
