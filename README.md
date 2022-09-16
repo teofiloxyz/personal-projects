@@ -3,7 +3,7 @@ Personal Projects
 
 This repo contains some of my personal projects that I use on a regular basis.
 These projects are merely for display, so don't expect them to work on your machine.
-All the code was written by me.
+All the code was completely written by me.
 
 It's mostly Python scripts.
 There's just a few (Bash) shell scripts here, which are a bit old.
