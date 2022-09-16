@@ -1,3 +1,8 @@
+from Tfuncs import inpt
+from youtube_search import YoutubeSearch
+from configparser import ConfigParser
+
+import os
 import subprocess
 
 
@@ -37,3 +42,38 @@ class Youtube:
         if err != 0:
             print("Error downloading...\nAborting...")
             return err
+
+    def download_from_txt(self) -> None:
+        def get_ytb_code(entry: str) -> str:
+            if "youtu" in entry and "/" in entry:
+                ytb_code = entry.split("/")[-1]
+            else:
+                ytb_code = entry
+            if len(ytb_code) != 11 or " " in ytb_code:
+                search = YoutubeSearch(entry, max_results=1).to_dict()
+                ytb_code = search[0]["id"]
+            return ytb_code
+
+        txt = inpt.files(
+            question="Enter the txt file full path: ", extensions="txt"
+        )
+        config = ConfigParser()
+        config.read("config.ini")
+        output_dir = config["GENERAL"]["downloads_path"]
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+        custom_title = None
+        mp3_output = (
+            True
+            if input(":: Want output format to be mp3? [y/N] ").lower() == "y"
+            else False
+        )
+
+        with open(str(txt), "r") as tx:
+            entries = tx.readlines()
+        for entry in entries:
+            entry = entry.strip("\n")
+            if entry.strip(" ") == "":
+                continue
+            ytb_code = get_ytb_code(entry)
+            self.download(ytb_code, output_dir, custom_title, mp3_output)

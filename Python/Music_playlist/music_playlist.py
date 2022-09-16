@@ -6,6 +6,7 @@ from Tfuncs import gmenu
 import argparse
 
 from playlist import Playlist
+from youtube import Youtube
 
 
 def main() -> None:
@@ -74,6 +75,10 @@ def open_menu() -> None:
         "laa": (
             lambda: pl("archive").show("all"),
             "Show all columns from archive",
+        ),
+        "d": (
+            lambda: Youtube().download_from_txt(),
+            "Download from txt file with titles and/or links",
         ),
     }
     gmenu(title, keys)
