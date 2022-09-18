@@ -7,6 +7,7 @@ import argparse
 
 from playlist import Playlist
 from youtube import Youtube
+from csvfile import CSVFile
 
 
 def main() -> None:
@@ -79,6 +80,10 @@ def open_menu() -> None:
         "d": (
             lambda: Youtube().download_from_txt(),
             "Download from txt file with titles and/or links",
+        ),
+        "ic": (
+            lambda: CSVFile().import_csv(),
+            "Import playlist (or archive) from CSV",
         ),
     }
     gmenu(title, keys)
