@@ -34,3 +34,19 @@ class CSVFile:
             entry = tuple(line.strip("\n").split(","))
             Playlist(self.playlist).add(entry)
         print("Import complete!")
+
+    def export_csv(self) -> None:
+        self.choose_playlist(operation="export")
+        csv_output = oupt.files(
+            question="Enter csv output path: ",
+            extension="csv",
+            output_name=f"music_{self.playlist}",
+        )
+        if csv_output == "q":
+            print("Aborted...")
+            return
+
+        df_cols = "date_added, title, ytb_code, genre"
+        df = Database().Query().create_df(self.playlist, selection=df_cols)
+        df.to_csv(str(csv_output), encoding="utf-8", index=False)
+        print(f"Export done\nOutput at '{csv_output}'")

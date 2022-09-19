@@ -81,6 +81,10 @@ def open_menu() -> None:
             lambda: Youtube().download_from_txt(),
             "Download from txt file with titles and/or links",
         ),
+        "xc": (
+            lambda: CSVFile().export_csv(),
+            "Export playlist (or archive) to CSV",
+        ),
         "ic": (
             lambda: CSVFile().import_csv(),
             "Import playlist (or archive) from CSV",
