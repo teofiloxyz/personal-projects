@@ -1,7 +1,6 @@
 import os
 import subprocess
 from datetime import datetime
-from configparser import ConfigParser
 
 from database import Database
 from youtube import Youtube
@@ -9,9 +8,7 @@ from youtube import Youtube
 
 class Playlist:
     def __init__(self, playlist: str) -> None:
-        self.config = ConfigParser()
-        self.config.read("config.ini")
-        self.music_path = self.config["GENERAL"]["music_path"]
+        self.music_path = "path/to/music_dir"
         self.playlist = playlist
 
     def show(self, mode: str) -> None:

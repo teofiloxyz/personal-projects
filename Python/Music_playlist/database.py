@@ -3,14 +3,11 @@ import pandas as pd
 import os
 import subprocess
 import sqlite3
-from configparser import ConfigParser
 
 
 class Database:
     def __init__(self) -> None:
-        self.config = ConfigParser()
-        self.config.read("config.ini")
-        self.db_path = self.config["GENERAL"]["db_path"]
+        self.db_path = "path/to/db"
         if not os.path.isfile(self.db_path):
             self.setup_database()
 

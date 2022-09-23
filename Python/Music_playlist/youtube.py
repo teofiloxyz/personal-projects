@@ -1,6 +1,5 @@
 from Tfuncs import inpt
 from youtube_search import YoutubeSearch
-from configparser import ConfigParser
 
 import os
 import subprocess
@@ -57,9 +56,7 @@ class Youtube:
         txt = inpt.files(
             question="Enter the txt file full path: ", extensions="txt"
         )
-        config = ConfigParser()
-        config.read("config.ini")
-        output_dir = config["GENERAL"]["downloads_path"]
+        output_dir = "path/to/output_dir"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
         custom_title = None
