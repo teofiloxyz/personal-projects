@@ -47,6 +47,6 @@ class CSVFile:
             return
 
         df_cols = "date_added, title, ytb_code, genre"
-        df = Database().Query().create_df(self.playlist, selection=df_cols)
+        df = Database.Query().create_df(self.playlist, selection=df_cols)
         df.to_csv(str(csv_output), encoding="utf-8", index=False)
         print(f"Export done\nOutput at '{csv_output}'")

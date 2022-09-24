@@ -13,7 +13,7 @@ class Playlist:
 
     def show(self, mode: str) -> None:
         selection = "*" if mode == "all" else "music_id, title"
-        df = Database().Query().create_df(self.playlist, selection)
+        df = Database.Query().create_df(self.playlist, selection)
         if len(df) == 0:
             print(f"{self.playlist.capitalize()} is empty...")
             return
@@ -35,11 +35,9 @@ class Playlist:
             selection = tuple(
                 [
                     "https://youtu.be/"
-                    + Database()
-                    .Query()
-                    .get_selection_with_title(self.playlist, "ytb_code", title)[
-                        0
-                    ]
+                    + Database.Query().get_selection_with_title(
+                        self.playlist, "ytb_code", title
+                    )[0]
                     for title in selection
                 ]
             )
@@ -68,7 +66,7 @@ class Playlist:
                     return
             if "/" in ytb_code:
                 ytb_code = ytb_code.split("/")[-1]
-            if Database().Query().check_if_link_exists(self.playlist, ytb_code):
+            if Database.Query().check_if_link_exists(self.playlist, ytb_code):
                 return
 
             title = self.Utils().pick_title(
@@ -84,7 +82,7 @@ class Playlist:
             entry = now, title, ytb_code, genre
         else:
             title, ytb_code = entry[1], entry[2]
-            if Database().Query().check_if_link_exists(self.playlist, ytb_code):
+            if Database.Query().check_if_link_exists(self.playlist, ytb_code):
                 return
 
         if self.playlist == "playlist":
@@ -92,22 +90,20 @@ class Playlist:
             if err is not None:
                 return
 
-        Database().Edit().add(self.playlist, entry, title)
+        Database.Edit().add(self.playlist, entry, title)
 
     def remove(self, entry: (tuple | None) = None) -> None:
         if entry is None:
             title = self.SelectMusic(self.playlist).show_options()
             if title == "q":
                 return
-            entry = (
-                Database()
-                .Query()
-                .get_selection_with_title(self.playlist, "*", title)[1:]
-            )
+            entry = Database.Query().get_selection_with_title(
+                self.playlist, "*", title
+            )[1:]
         else:
             title = entry[1]
 
-        Database().Edit().remove(self.playlist, title)
+        Database.Edit().remove(self.playlist, title)
 
         if self.playlist == "playlist":
             music_file_removed = False
@@ -129,11 +125,9 @@ class Playlist:
         title = self.SelectMusic(self.playlist).show_options()
         if title == "q":
             return
-        entry = (
-            Database()
-            .Query()
-            .get_selection_with_title(self.playlist, "*", title)[1:]
-        )
+        entry = Database.Query().get_selection_with_title(
+            self.playlist, "*", title
+        )[1:]
         self.remove(entry)
         self.playlist = "playlist"
         self.add(entry)
@@ -155,17 +149,15 @@ class Playlist:
                             self.music_path + "/" + new_title + extension,
                         )
                         break
-            Database().Edit().update(self.playlist, "title", new_title, title)
+            Database.Edit().update(self.playlist, "title", new_title, title)
             print(f'Title changed from "{title}" to "{new_title}"')
         elif option.lower() == "g":
-            genre = (
-                Database()
-                .Query()
-                .get_selection_with_title(self.playlist, "genre", title)[0]
-            )
+            genre = Database.Query().get_selection_with_title(
+                self.playlist, "genre", title
+            )[0]
             print(f"Current genre: {genre}")
             new_genre = self.Utils().pick_genre()
-            Database().Edit().update(self.playlist, "genre", new_genre, title)
+            Database.Edit().update(self.playlist, "genre", new_genre, title)
             print(f'Genre changed from "{genre}" to "{new_genre}"')
         else:
             print("Aborted...")
@@ -192,7 +184,7 @@ class Playlist:
                     print("Aborted...")
                     return "q"
                 elif option == "":
-                    selection = Database().Query().get_all_titles(self.playlist)
+                    selection = Database.Query().get_all_titles(self.playlist)
                 elif option == "ls":
                     Playlist(self.playlist).show("titles")
                     continue
@@ -200,10 +192,8 @@ class Playlist:
                     selection = self.search_by_genre()
                 else:
                     try:
-                        selection = (
-                            Database()
-                            .Query()
-                            .get_title_with_id(self.playlist, int(option))
+                        selection = Database.Query().get_title_with_id(
+                            self.playlist, int(option)
                         )
                     except ValueError:
                         selection = self.search_by_title(query=option)
@@ -236,10 +226,8 @@ class Playlist:
                     print("Aborted...")
                     return "q"
 
-            result = (
-                Database()
-                .Query()
-                .get_title_with_search(self.playlist, "title", query)
+            result = Database.Query().get_title_with_search(
+                self.playlist, "title", query
             )
             if len(result) == 0:
                 print(f"Nothing was found with '{query}' on the title")
@@ -262,7 +250,7 @@ class Playlist:
             return result
 
         def search_by_genre(self) -> (tuple | str):
-            genres = Database().Query().get_all_genres()
+            genres = Database.Query().get_all_genres()
             [print(f"[{n}] {genre}") for n, genre in enumerate(genres, 1)]
             selected_genres = input(
                 "Enter the genre number or combo " "(e.g: 2; 4+2+3): "
@@ -276,10 +264,8 @@ class Playlist:
                     return "q"
 
             search = '%" or genre like "%'.join(selected_genres_list)
-            result = (
-                Database()
-                .Query()
-                .get_title_with_search(self.playlist, "genre", search)
+            result = Database.Query().get_title_with_search(
+                self.playlist, "genre", search
             )
             selected_genres = " or ".join(selected_genres_list)
             if len(result) == 0:
@@ -308,7 +294,7 @@ class Playlist:
                 )
                 return title
 
-            titles = Database().Query().get_all_titles(playlist)
+            titles = Database.Query().get_all_titles(playlist)
             title = prompt_for_title(title)
             while title in titles:
                 print(f"{title} is already on {playlist}")
@@ -317,7 +303,7 @@ class Playlist:
 
         @staticmethod
         def pick_genre() -> str:
-            genres = Database().Query().get_all_genres()
+            genres = Database.Query().get_all_genres()
             if len(genres) == 0:
                 qst = "Enter the genre(s) (e.g.: Rock; Pop+Rock): "
             else:
@@ -338,5 +324,5 @@ class Playlist:
                 except (ValueError, IndexError):
                     # Custom genre
                     ans_genres.append(genre.capitalize())
-                    Database().Edit().add_genre(genre.capitalize())
+                    Database.Edit().add_genre(genre.capitalize())
             return "|".join(ans_genres)
