@@ -13,7 +13,7 @@ def main() -> None:
     lang_funcs = {"english": EnDictionary, "portuguese": PtDictionary}
     language, entry = cmd()
     while True:
-        result = lang_funcs[language]().main(entry)
+        result = lang_funcs[language]().search(entry)
         prompt = "Enter another entry to search its definition, or [q]uit: "
         entry = rofi.simple_prompt(prompt, message=result)
         if entry == "q":

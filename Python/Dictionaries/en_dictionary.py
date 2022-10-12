@@ -1,33 +1,26 @@
+# Public-APIs: https://github.com/public-apis/public-apis
+
 import json
 import requests
 
 
 class EnDictionary:
-    # Public-APIs: https://github.com/public-apis/public-apis
-    def main(self, entry):
-        self.entry = entry
-        self.message = ""
-        if self.get_info():
-            self.select_info()
-            self.show_info()
-        return self.message
+    def __init__(self) -> None:
+        self.api = API()
 
-    def get_info(self):
-        url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{self.entry}"
-        info = requests.get(url).text
-        try:
-            self.info = json.loads(info)[0]
-            return True
-        except KeyError:
-            self.message = "Error..."
-            return False
+    def search(self, entry: str) -> str:
+        api_info = self.api.get_info(entry)
+        if api_info is None:
+            return "Error getting info..."
+        self.parse_info(api_info)
+        return self.create_message(entry)
 
-    def select_info(self):
-        meaning = self.info["meanings"]
-        self.part_of_speech = meaning[0]["partOfSpeech"]
+    def parse_info(self, api_info: dict) -> None:
+        meanings = api_info["meanings"][0]
+        self.part_of_speech = meanings["partOfSpeech"]
         self.definitions, self.synonyms, self.examples = [], [], []
 
-        for entry in meaning[0]["definitions"]:
+        for entry in meanings["definitions"]:
             self.definitions.append(entry["definition"])
             if len(entry["synonyms"]) != 0:
                 [self.synonyms.append(synonym) for synonym in entry["synonyms"]]
@@ -36,16 +29,29 @@ class EnDictionary:
             except KeyError:
                 continue
 
-    def show_info(self):
-        self.message = f"Definition of {self.entry}:"
+    def create_message(self, entry: str) -> str:
+        message = f"Definition of {entry}:\nType: {self.part_of_speech}\n"
+        message += "\n".join(self.definitions)
+        if len(self.examples) > 0:
+            message += "\n\nExamples:\n" + "\n".join(self.examples)
+        if len(self.synonyms) > 0:
+            message += "\n\nSynonyms:\n" + "\n".join(self.synonyms)
+        return message
 
-        self.message += f"\nType: {self.part_of_speech}\n"
-        self.message += "\n".join(self.definitions)
 
-        if len(self.examples) != 0:
-            self.message += "\n\nExamples:\n"
-            self.message += "\n".join(self.examples)
+class API:
+    def get_info(self, entry: str) -> (dict | None):
+        api_response = self.request_api(entry)
+        return self.load_api_response(api_response)
 
-        if len(self.synonyms) != 0:
-            self.message += "\n\nSynonyms:\n"
-            self.message += "\n".join(self.synonyms)
+    @staticmethod
+    def request_api(entry: str) -> requests.Response:
+        url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{entry}"
+        return requests.get(url)
+
+    @staticmethod
+    def load_api_response(api_response: requests.Response) -> (dict | None):
+        try:
+            return json.loads(api_response.text)[0]
+        except KeyError:
+            return None
