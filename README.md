@@ -9,6 +9,8 @@ It's mostly Python scripts.
 There's just a few (Bash) shell scripts here, which are a bit old.
 I've also been programing in Go (Golang).
 
+Currently I'm redesigning all python scripts
+
 Main Projects
 -------------
 
