@@ -2,67 +2,91 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.support import expected_conditions
 
 import os
 import re
 
 
 class PtDictionary:
-    def main(self, entry):
-        self.entry = entry
-        self.message = ""
-        if self.get_site_info():
-            self.select_info()
-            self.quit_driver()
-        return self.message
+    def __init__(self) -> None:
+        self.webdriver = WebDriver()
 
-    def get_site_info(self):
+    def search(self, entry: str) -> str:
+        webdriver_respose = self.webdriver.get_site_info(entry)
+        if type(webdriver_respose) is str:
+            return webdriver_respose
+        parsed_info = self.parse_info(webdriver_respose)  # Ignore err
+        return self.create_message(entry, parsed_info)
+
+    def get_info(self, entry: str) -> tuple | str:
+        return self.webdriver.get_site_info(entry)
+
+    def parse_info(self, webdriver_respose: tuple) -> tuple:
+        info_main, info_appendix = webdriver_respose
+        definitions, related_words = [], []
+
+        word_list = info_main.split('<span class="def">')
+        for entry in word_list:
+            word = entry.split(".</s")[0]
+            if word[0].isupper():
+                definitions.append(re.sub("<.*?>", "", word))
+
+        info_appendix = re.search('href="/(.*)</a>', info_appendix).group(1)
+        word_list2 = re.split("</a>", info_appendix)
+        for entry2 in word_list2:
+            related_words.append(re.search(">(.*)", entry2).group(1))
+
+        return definitions, related_words
+
+    def create_message(self, entry: str, parsed_info: tuple) -> str:
+        definitions, related_words = parsed_info
+
+        message = f"Definição de {entry}:\n"
+        for dfn in definitions:
+            message += f"{dfn};\n"
+
+        message += "\nPalavras relacionadas:\n"
+        for rw in related_words:
+            message += f"{rw};\n"
+
+        return message
+
+
+class WebDriver:
+    def __init__(self) -> None:
         options = Options()
         options.headless = True  # Browser invisível
         self.driver = webdriver.Firefox(options=options)
-        url = f"https://dicionario.priberam.org/{self.entry}"
+
+    def get_site_info(self, entry: str) -> tuple | str:
+        url = f"https://dicionario.priberam.org/{entry}"
         self.driver.get(url)
 
         # Esperar que a página carregue para copiar a informação
         WebDriverWait(self.driver, 10).until(
-            ec.presence_of_element_located((By.CLASS_NAME, "pb-main-content"))
+            expected_conditions.presence_of_element_located(
+                (By.CLASS_NAME, "pb-main-content")
+            )
         )
 
         # Encontrar os elementos relevantes da página
         try:
-            self.info = self.driver.find_element(
+            info_main = self.driver.find_element(
                 By.CLASS_NAME, "pb-main-content"
             ).find_element(By.ID, "resultados")
-            self.info2 = self.driver.find_element(
+            info_appendix = self.driver.find_element(
                 By.CLASS_NAME, "pb-main-content"
             ).find_element(By.CLASS_NAME, "pb-relacionadas-results")
-            return True
         except Exception as exc:
-            self.message = f"Error: {exc}"
             self.quit_driver()
-            return False
+            return f"Error: {exc}"
 
-    def select_info(self):
-        self.message = f"Definição de {self.entry}:\n"
+        info_main = info_main.get_attribute("innerHTML")
+        info_appendix = info_appendix.get_attribute("innerHTML")
+        self.quit_driver()
+        return info_main, info_appendix
 
-        # Processo de seleção e limpeza do string
-        info_html = self.info.get_attribute("innerHTML")
-        word_list = info_html.split('<span class="def">')
-        for entry in word_list:
-            word = entry.split(".</s")[0]
-            if word[0].isupper():
-                word = re.sub("<.*?>", "", word)
-                self.message += word + ";\n"
-
-        self.message += "\nPalavras relacionadas:\n"
-        info_html2 = self.info2.get_attribute("innerHTML")
-        info_html2 = re.search('href="/(.*)</a>', info_html2).group(1)
-        word_list2 = re.split("</a>", info_html2)
-        for entry2 in word_list2:
-            word2 = re.search(">(.*)", entry2).group(1)
-            self.message += word2 + ";\n"
-
-    def quit_driver(self):
+    def quit_driver(self) -> None:
         self.driver.quit()
         os.remove("geckodriver.log")
