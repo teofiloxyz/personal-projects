@@ -4,18 +4,23 @@
 class Questions:
     @staticmethod
     def get_date(
-        question: str, date_type="%Y-%m-%d", answer=None, use_rofi=False
-    ):
-        from datetime import datetime
+        question: str,
+        date_type: str = "%Y-%m-%d",
+        answer: str | None = None,
+        use_rofi: bool = False,
+    ) -> str:
         from Tfuncs import rofi
+
+        from datetime import datetime
 
         message = ""
         while True:
             if answer is None:
-                if use_rofi:
-                    date = rofi.simple_prompt(question, message)
-                else:
-                    date = input(question)
+                date = (
+                    rofi.simple_prompt(question, message)
+                    if use_rofi
+                    else input(question)
+                )
             else:
                 date = answer
 
