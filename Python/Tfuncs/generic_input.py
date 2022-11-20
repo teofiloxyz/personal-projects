@@ -92,62 +92,6 @@ class Questions:
         return hour.strftime(hour_type)
 
 
-class Inputs:
-    @staticmethod
-    def dirs(question: str, dir_input=None, multiple=False, use_rofi=False):
-        import os
-        from Tfuncs import rofi
-
-        def get_path(question, message):
-            if use_rofi:
-                dir_input = rofi.simple_prompt(question, message)
-            else:
-                dir_input = input(question)
-            if dir_input == "":
-                return False
-            return dir_input
-
-        def check_path(dir_input):
-            if not os.path.exists(dir_input):
-                message = "Invalid answer, directory does not exist"
-                print(message)
-                return False, message
-            return True, ""
-
-        if dir_input is not None:
-            if check_path(dir_input) is False:
-                return False
-            return True
-
-        message = ""
-        if multiple:
-            dirs_list = []
-            while True:
-                dir_input = get_path(question, message)
-                if dir_input == "q":
-                    return dir_input
-                elif dir_input is False:
-                    break
-                good_path, message = check_path(dir_input)
-                if not good_path:
-                    continue
-                dirs_list.append(dir_input)
-            return dirs_list
-        else:
-            while True:
-                dir_input = get_path(question, message)
-                if dir_input == "q":
-                    return dir_input
-                elif dir_input is False:
-                    message = "If you want to quit enter 'q'"
-                    print(message)
-                    continue
-                good_path, message = check_path(dir_input)
-                if not good_path:
-                    continue
-                return dir_input
-
-
 class Outputs:
     @staticmethod
     def files(
