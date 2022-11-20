@@ -94,58 +94,6 @@ class Questions:
 
 class Inputs:
     @staticmethod
-    def files(question: str, extensions=None, file_input=None, multiple=False):
-        import os
-
-        def get_path(question):
-            file_input = input(question)
-            if file_input == "":
-                return False
-            return file_input
-
-        def check_path(file_input, extensions):
-            if not os.path.isfile(file_input):
-                print("Invalid answer, file does not exist")
-                return False
-            if extensions is None:
-                return True
-            if file_input.split(".")[-1] not in extensions:
-                print("Invalid answer, file format is not valid for input")
-                return False
-            return True
-
-        if type(extensions) == str:
-            extensions = extensions
-
-        if file_input is not None:
-            if check_path(file_input, extensions):
-                return file_input
-
-        if multiple:
-            files_list = []
-            while True:
-                file_input = get_path(question)
-                if file_input == "q":
-                    return file_input
-                elif file_input is False:
-                    break
-                elif check_path(file_input, extensions) is False:
-                    continue
-                files_list.append(file_input)
-            return files_list
-        else:
-            while True:
-                file_input = get_path(question)
-                if file_input == "q":
-                    return file_input
-                elif file_input is False:
-                    print("If you want to abort enter 'q'")
-                    continue
-                elif check_path(file_input, extensions) is False:
-                    continue
-                return file_input
-
-    @staticmethod
     def dirs(question: str, dir_input=None, multiple=False, use_rofi=False):
         import os
         from Tfuncs import rofi
