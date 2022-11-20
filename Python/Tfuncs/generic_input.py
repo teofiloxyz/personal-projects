@@ -53,18 +53,23 @@ class Questions:
 
     @staticmethod
     def get_hour(
-        question: str, hour_type="%H:%M:%S", answer=None, use_rofi=False
-    ):
-        from datetime import datetime
+        question: str,
+        hour_type: str = "%H:%M:%S",
+        answer: str | None = None,
+        use_rofi: bool = False,
+    ) -> str:
         from Tfuncs import rofi
+
+        from datetime import datetime
 
         message = ""
         while True:
             if answer is None:
-                if use_rofi:
-                    hour = rofi.simple_prompt(question, message)
-                else:
-                    hour = input(question)
+                hour = (
+                    rofi.simple_prompt(question, message)
+                    if use_rofi
+                    else input(question)
+                )
             else:
                 hour = answer
 
