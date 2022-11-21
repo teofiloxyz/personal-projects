@@ -90,24 +90,3 @@ class Questions:
                 continue
             break
         return hour.strftime(hour_type)
-
-
-class Outputs:
-    @staticmethod
-    def dirs(question: str, dir_output=None):
-        import os
-
-        def check_path(dir_output):
-            if not os.path.exists(dir_output):
-                os.makedirs(dir_output, exist_ok=True)
-
-        if dir_output is not None:
-            check_path(dir_output)
-            return True
-
-        while True:
-            dir_output = input(question)
-            if dir_output in ("", "q"):
-                return dir_output
-            check_path(dir_output)
-            return dir_output
