@@ -10,13 +10,20 @@ from api import API
 
 def main() -> None:
     update = cmd()
-    if update is not None:
+    if update:
         API().update_cache()
     else:
         open_menu()
 
 
 def cmd() -> tuple:
+    parser = argparse.ArgumentParser(description="Weather")
+    parser.add_argument(
+        "-u",
+        "--update",
+        action="store_true",
+        help="updates cache",
+    )
     args = parser.parse_args()
     return args.update
 
