@@ -1,14 +1,17 @@
 #!/usr/bin/python3
 
 import subprocess
+import pickle
+
+from api import API
 
 
 class Weather:
-    def __init__(self):
+    def __init__(self) -> None:
         self.info_cache_path = "?"
         self.load_cache()
 
-    def load_cache(self):
+    def load_cache(self) -> None:
         with open(self.info_cache_path, "rb") as wc:
             (
                 self.current_weather_info,
@@ -16,8 +19,9 @@ class Weather:
                 self.weather_alerts,
             ) = pickle.load(wc)
 
-    def show(self, mode, show_alerts=False):
-        # Could use some refactoring
+    def show(self, mode: str, show_alerts: bool = False) -> None:
+        """Could use some refactoring"""
+
         cw, fw = self.current_weather_info, self.forecast_weather_info
         if mode == "essential":
             print("DAY\tMAX\tMIN\tRAIN%\tRAINº\tWIND\tCLD%\tUV")
@@ -59,12 +63,13 @@ class Weather:
         if show_alerts:
             self.show_weather_alerts()
 
-    def refresh(self):
-        Update_Cache().main()
+    def refresh(self) -> None:
+        api = API()
+        api.update_cache()
         self.load_cache()
         self.show("essential", show_alerts=True)
 
-    def show_weather_alerts(self):
+    def show_weather_alerts(self) -> None:
         self.load_cache()
 
         if len(self.weather_alerts) == 0:
@@ -73,19 +78,16 @@ class Weather:
 
         [print(alert) for alert in self.weather_alerts]
 
-    @staticmethod
-    def beachcam():
-        subprocess.Popen("wmctrl -s 1", shell=True)
+    def beachcam(self) -> None:
         url = '"https://beachcam.meo.pt/livecams/?"'
-        cmd = "firefox --new-tab --url " + url
-        subprocess.Popen(cmd, shell=True, start_new_session=True)
+        self.open_on_browser(url)
         exit()
 
-    @staticmethod
-    def ipma():
-        subprocess.Popen("wmctrl -s 1", shell=True)
-        url = '"https://www.ipma.pt/en/otempo/prev.localidade.hora/#'
-        place = '?"'
-        cmd = "firefox --new-tab --url " + url + place
-        subprocess.Popen(cmd, shell=True, start_new_session=True)
+    def ipma(self) -> None:
+        url = '"https://www.ipma.pt/en/otempo/prev.localidade.hora/#?'
+        self.open_on_browser(url)
         exit()
+
+    def open_on_browser(self, url: str) -> None:
+        cmd = "firefox --new-tab --url " + url
+        subprocess.Popen(cmd, shell=True, start_new_session=True)
