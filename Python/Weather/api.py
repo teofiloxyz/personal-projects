@@ -13,7 +13,7 @@ from datetime import datetime
 
 
 class API:
-    def __init__(self):
+    def __init__(self) -> None:
         self.weather_cache_path = "?"
         local_lat, local_lon = "?", "?"
         api_key = "?"
@@ -26,19 +26,19 @@ class API:
             f"/daily?lat={local_lat}&lon={local_lon}&key={api_key}"
         )
 
-    def update_cache(self):
+    def update_cache(self) -> None:
         self.get_info()
         self.select_info()
-        self.update_cache_file()
+        self.update_file()
 
-    def get_info(self):
+    def get_info(self) -> None:
         current_weather_data = requests.get(self.current_weather_url).text
         self.current_weather_data = json.loads(current_weather_data)["data"][0]
         self.weather_alerts = json.loads(current_weather_data)["alerts"]
         forecast_weather_data = requests.get(self.forecast_weather_url).text
         self.forecast_weather_data = json.loads(forecast_weather_data)["data"]
 
-    def select_info(self):
+    def select_info(self) -> None:
         self.current_weather_info, self.forecast_weather_info = {}, []
 
         self.current_weather_info["last_update"] = self.current_weather_data[
@@ -78,7 +78,7 @@ class API:
             )
             self.forecast_weather_info.append(entry)
 
-    def update_cache_file(self):
+    def update_file(self) -> None:
         with open(self.weather_cache_path, "wb") as wc:
             pickle.dump(
                 [
