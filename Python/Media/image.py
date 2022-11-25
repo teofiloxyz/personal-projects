@@ -2,6 +2,7 @@
 
 
 class Image:
+    # self.img_exts = "jpg", "png"
     def compress_img(self):
         def compress_img(img_in, quality, special_opts, img_out):
             cmd = (

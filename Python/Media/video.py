@@ -2,6 +2,7 @@
 
 
 class Video:
+    # self.vid_exts = "mp4", "avi", "m4v", "mov"
     def compress_vid(self):
         def compress_vid(vid_in, vid_out):
             # Comprime apenas vid, e mantém o som; qt maior -crf, maior compres

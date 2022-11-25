@@ -2,6 +2,7 @@
 
 
 class Audio:
+    # self.aud_exts = "mp3", "m4b", "opus", "wav"
     def compress_aud(self):
         def compress_aud(aud_in, aud_out, concatenate=False):
             # 32Kb de bitrate não é bom para música

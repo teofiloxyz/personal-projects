@@ -1,25 +1,29 @@
 #!/usr/bin/python3
 # Media menu, usado para imagens, videos e audios
 
-import os
-import subprocess
-from Tfuncs import gmenu, inpt, oupt
+from Tfuncs import gmenu
+
+from image import Image
+from audio import Audio
+from video import Video
 
 
-class Media:
-    def __init__(self):
-        self.img_exts = "jpg", "png"
-        self.vid_exts = "mp4", "avi", "m4v", "mov"
-        self.aud_exts = "mp3", "m4b", "opus", "wav"
+def main() -> None:
+    open_menu()
 
 
-med = Media()
-title = "Media-Menu"
-keys = {
-    "ic": (med.compress_img, "compress image or folder of images"),
-    "if": (med.change_img_format, "convert image format"),
-    "ocr": (med.ocr, "read image with an OCR"),
-    "vc": (med.compress_vid, "compress video or folder of videos"),
-    "ac": (med.compress_aud, "compress audio or folder of audios"),
-}
-gmenu(title, keys)
+def open_menu() -> None:
+    img, aud, vid = Image(), Audio(), Video()
+    title = "Media-Menu"
+    keys = {
+        "ic": (img.compress, "compress image or folder of images"),
+        "if": (img.change_format, "convert image format"),
+        "ocr": (img.ocr, "read image with an OCR"),
+        "ac": (aud.compress, "compress audio or folder of audios"),
+        "vc": (vid.compress, "compress video or folder of videos"),
+    }
+    gmenu(title, keys)
+
+
+if __name__ == "__main__":
+    main()
