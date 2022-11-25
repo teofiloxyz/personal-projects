@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+
+
+class Video:
+    def compress_vid(self):
+        def compress_vid(vid_in, vid_out):
+            # Comprime apenas vid, e mantém o som; qt maior -crf, maior compres
+            cmd = (
+                f'ffmpeg -i "{vid_in}" -vcodec libx265 -crf 28 -acodec '
+                f'copy "{vid_out}"'
+            )
+            err = subprocess.call(cmd, shell=True)
+            if err != 0:
+                print(f"Error compressing {vid_in}")
+
+        vid_in = input("Enter the input video or folder: ")
+        if os.path.isdir(vid_in):
+            vid_in_dir = vid_in
+            vid_in = [
+                os.path.join(vid_in, vid)
+                for vid in os.listdir(vid_in)
+                if vid.endswith(self.vid_exts)
+            ]
+        elif os.path.isfile(vid_in):
+            vid_in = inpt.files(
+                question="Enter de video input full path: ",
+                extensions=self.vid_exts,
+                file_input=vid_in,
+            )
+            if vid_in == "q":
+                print("Aborted...")
+                return
+        else:
+            print("Aborted...")
+            return
+
+        if type(vid_in) is not list:
+            vid_out = oupt.files(
+                question="Enter the video output full path, "
+                "or just the name for same input dir, "
+                "or leave empty for <input>_output.mp4: ",
+                extension="mp4",
+                file_input=vid_in,
+            )
+            if vid_out == "q":
+                print("Aborted...")
+                return
+
+            compress_vid(vid_in, vid_out)
+        else:
+            output_dir = os.path.join(vid_in_dir, "Compressed")
+            if os.path.isdir(output_dir):
+                print("Output folder already exists\nAborting...")
+                return
+            os.mkdir(output_dir)
+            for vid in vid_in:
+                vid_basename = os.path.basename(vid)
+                vid_basename_out = os.path.splitext(vid_basename)[0] + ".mp4"
+                vid_out = os.path.join(output_dir, vid_basename_out)
+                compress_vid(vid, vid_out)
