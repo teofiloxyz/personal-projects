@@ -1,10 +1,17 @@
 #!/usr/bin/python3
 
+import os
+import subprocess
+
 
 class Audio:
-    # self.aud_exts = "mp3", "m4b", "opus", "wav"
-    def compress_aud(self):
-        def compress_aud(aud_in, aud_out, concatenate=False):
+    def __init__(self) -> None:
+        self.aud_exts = "mp3", "m4b", "opus", "wav"
+
+    def compress_aud(self) -> None:
+        def compress_aud(
+            aud_in: str, aud_out: str, concatenate: bool = False
+        ) -> None:
             # 32Kb de bitrate não é bom para música
             if concatenate:
                 cmd = (
