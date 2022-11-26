@@ -1,11 +1,18 @@
 #!/usr/bin/python3
 
+import os
+import subprocess
+
 
 class Video:
-    # self.vid_exts = "mp4", "avi", "m4v", "mov"
-    def compress_vid(self):
-        def compress_vid(vid_in, vid_out):
-            # Comprime apenas vid, e mantém o som; qt maior -crf, maior compres
+    def __init__(self) -> None:
+        self.vid_exts = "mp4", "avi", "m4v", "mov"
+
+    def compress(self) -> None:
+        def compress_vid(vid_in: str, vid_out: str) -> None:
+            """Comprime apenas vid, e mantém o som;
+            qt maior -crf, maior compress"""
+
             cmd = (
                 f'ffmpeg -i "{vid_in}" -vcodec libx265 -crf 28 -acodec '
                 f'copy "{vid_out}"'
