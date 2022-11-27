@@ -1,10 +1,17 @@
 #!/usr/bin/python3
 
+import os
+import subprocess
+
 
 class Image:
-    # self.img_exts = "jpg", "png"
-    def compress_img(self):
-        def compress_img(img_in, quality, special_opts, img_out):
+    def __init__(self) -> None:
+        self.img_exts = "jpg", "png"
+
+    def compress_img(self) -> None:
+        def compress_img(
+            img_in: str, quality: str, special_opts: str, img_out: str
+        ) -> None:
             cmd = (
                 f'convert "{img_in}" {special_opts} -sampling-factor '
                 f"4:2:0 -strip -quality {quality} -interlace Plane "
@@ -99,7 +106,7 @@ class Image:
             compress_img(img_in, quality, special_opts, img_out)
 
     @staticmethod
-    def change_img_format():
+    def change_img_format() -> None:
         img_in = inpt.files(
             question="Enter de img input full path: ", extensions=("jpg", "png")
         )
@@ -125,7 +132,7 @@ class Image:
         subprocess.run(["convert", img_in, img_out])
 
     @staticmethod
-    def ocr():
+    def ocr() -> None:
         img_in = inpt.files(
             question="Enter the img input full path: ",
             extensions=("jpg", "png"),
