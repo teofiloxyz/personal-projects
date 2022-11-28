@@ -9,60 +9,63 @@ class Video:
         self.vid_exts = "mp4", "avi", "m4v", "mov"
 
     def compress(self) -> None:
-        def compress_vid(vid_in: str, vid_out: str) -> None:
-            """Comprime apenas vid, e mantém o som;
-            qt maior -crf, maior compress"""
-
-            cmd = (
-                f'ffmpeg -i "{vid_in}" -vcodec libx265 -crf 28 -acodec '
-                f'copy "{vid_out}"'
-            )
-            err = subprocess.call(cmd, shell=True)
-            if err != 0:
-                print(f"Error compressing {vid_in}")
-
-        vid_in = input("Enter the input video or folder: ")
-        if os.path.isdir(vid_in):
-            vid_in_dir = vid_in
-            vid_in = [
-                os.path.join(vid_in, vid)
-                for vid in os.listdir(vid_in)
-                if vid.endswith(self.vid_exts)
-            ]
-        elif os.path.isfile(vid_in):
-            vid_in = inpt.files(
-                question="Enter de video input full path: ",
-                extensions=self.vid_exts,
-                file_input=vid_in,
-            )
-            if vid_in == "q":
-                print("Aborted...")
-                return
-        else:
+        vid_in = self.get_input()
+        if len(vid_in) == 0:
             print("Aborted...")
             return
 
-        if type(vid_in) is not list:
-            vid_out = oupt.files(
-                question="Enter the video output full path, "
-                "or just the name for same input dir, "
-                "or leave empty for <input>_output.mp4: ",
-                extension="mp4",
-                file_input=vid_in,
-            )
-            if vid_out == "q":
-                print("Aborted...")
-                return
+        output_dir = self.create_output_dir(vid_in)
+        vid_in_out = self.get_input_output(vid_in, output_dir)
 
-            compress_vid(vid_in, vid_out)
-        else:
-            output_dir = os.path.join(vid_in_dir, "Compressed")
-            if os.path.isdir(output_dir):
-                print("Output folder already exists\nAborting...")
-                return
-            os.mkdir(output_dir)
-            for vid in vid_in:
-                vid_basename = os.path.basename(vid)
-                vid_basename_out = os.path.splitext(vid_basename)[0] + ".mp4"
-                vid_out = os.path.join(output_dir, vid_basename_out)
-                compress_vid(vid, vid_out)
+        [
+            self.compress_vid(vid_in, vid_out)
+            for vid_in, vid_out in vid_in_out.items()
+        ]
+
+    def get_input(self) -> list[str]:
+        prompt = input("Enter the path of video or folder with videos: ")
+        if os.path.isdir(prompt):
+            return [
+                os.path.join(prompt, video)
+                for video in os.listdir(prompt)
+                if video.endswith(self.vid_exts)
+            ]
+        elif os.path.isfile(prompt):
+            if prompt.endswith(self.vid_exts):
+                return [prompt]
+            else:
+                print(f"Accepted formats are: {'; '.join(self.vid_exts)}")
+        return []
+
+    def create_output_dir(self, vid_in: list[str]) -> str:
+        vid_in_dir = os.path.dirname(vid_in[0])
+        output_dir = os.path.join(vid_in_dir, "Compressed")
+        while os.path.isdir(output_dir):
+            output_dir += "_"
+        os.mkdir(output_dir)
+        return output_dir
+
+    def get_input_output(
+        self, vid_in: list[str], output_dir: str
+    ) -> dict[str, str]:
+        vid_in_out = dict()
+        for vid in vid_in:
+            vid_in_basename = os.path.basename(vid)
+            vid_in_bn_no_ext = os.path.splitext(vid_in_basename)[0]
+            vid_out_basename = vid_in_bn_no_ext + ".mp4"
+            vid_out = os.path.join(output_dir, vid_out_basename)
+            vid_in_out[vid] = vid_out
+        return vid_in_out
+
+    def compress_vid(self, vid_in: str, vid_out: str) -> None:
+        """Comprime imagem, e mantém o som;
+        quanto maior o -crf, maior a compressão"""
+
+        cmd = (
+            f'ffmpeg -i "{vid_in}" -vcodec libx265 -crf 28 -acodec '
+            f'copy "{vid_out}"'
+        )
+
+        err = subprocess.call(cmd, shell=True)
+        if err != 0:
+            print(f"Error compressing {vid_in}")
