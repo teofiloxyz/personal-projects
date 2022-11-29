@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # Media menu, usado para imagens, videos e audios
+# Needs refactoring (Video, Audio, IMG)
 
 from Tfuncs import gmenu
 
