@@ -6,15 +6,34 @@ import json
 
 
 class Mount:
-    # needs refactoring
-    def check_unmounted():
+    def main(self) -> None:
+        self.check_sdevs()
+
+        sdevs_info = self.get_sdevs_info()
+        unmounted_parts = self.get_unmounted_parts(sdevs_info)
+        if len(unmounted_parts) == 0:
+            self.error("It seems there are no devices/partitions to mount")
+
+        target = self.choose_target(unmounted_parts)
+        mount_dir = self.get_mount_dir(target)
+
+        self.mount_target(target, mount_dir)
+        self.ranger_to_mount_dir(mount_dir)
+
+    def error(self, message: str) -> None:
+        subprocess.Popen(["paplay", "rejected.wav"], start_new_session=True)
+        print("Error: " + message)
+        exit(1)
+
+    def check_sdevs(self) -> None:
         cmd = "lsblk --include 8".split()
         err = subprocess.call(
             cmd, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
         )
         if err != 0:
-            self.error("No devices found to mount")
+            self.error("No special devices found...")
 
+    def get_sdevs_info(self) -> list[dict[str, str]]:
         cmd = (
             "lsblk --json --include 8 --output NAME,SIZE,TYPE,"
             "FSTYPE,MOUNTPOINT,MODEL".split()
@@ -22,14 +41,15 @@ class Mount:
         sdevs_json = subprocess.run(cmd, capture_output=True).stdout.decode(
             "utf-8"
         )
-        sdevs_info = json.loads(sdevs_json)["blockdevices"]
+        return json.loads(sdevs_json)["blockdevices"]
 
-        unmounted_devs = list()
+    def get_unmounted_parts(self, sdevs_info: list[dict]) -> list[dict]:
+        unmounted_parts = list()
         for sdev in sdevs_info:
             if sdev["mountpoint"] is not None:
                 continue
             elif sdev["type"] == "part":
-                unmounted_devs.append(
+                unmounted_parts.append(
                     {
                         "model": sdev["model"],
                         "size": sdev["size"],
@@ -44,7 +64,7 @@ class Mount:
             for child in sdev_children:
                 if child["mountpoint"] is not None or child["type"] != "part":
                     continue
-                unmounted_devs.append(
+                unmounted_parts.append(
                     {
                         "model": sdev["model"],
                         "size": child["size"],
@@ -53,41 +73,38 @@ class Mount:
                     }
                 )
 
-        if len(unmounted_devs) == 0:
-            self.error("It seems there are no devices/partitions to mount")
-        return unmounted_devs
+        return unmounted_parts
 
-    def choose_target():
-        if len(unmounted_devs) == 1:
-            return unmounted_devs[0]
+    def choose_target(self, unmounted_parts: list[dict]) -> dict[str, str]:
+        if len(unmounted_parts) == 1:
+            return unmounted_parts[0]
 
-        print("Found the following unmounted devices/partitions:")
+        print("Found the following unmounted partitions:")
         while True:
             [
                 print(
                     f"[{n}] {part['model']}: {part['path']} "
                     f"({part['size']} {part['fstype']})"
                 )
-                for n, part in enumerate(unmounted_devs, 1)
+                for n, part in enumerate(unmounted_parts, 1)
             ]
             ans = input("\nChoose the one you want to mount: ")
             if ans == "q":
                 print("Aborting...")
                 exit(0)
             try:
-                return unmounted_devs[int(ans) - 1]
+                return unmounted_parts[int(ans) - 1]
             except (ValueError, IndexError):
                 print("Invalid answer...\n")
 
-    def get_mount_dir():
-        mount_dir = self.usb_mnt
+    def get_mount_dir(self, target: dict[str, str]) -> str:
+        mount_dir = "/mnt/usb/"
         cmd = f"mountpoint {mount_dir}".split()
         err = subprocess.call(
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         if err == 0:
             mount_dir = f"/mnt/{target['model'].replace(' ', '_')}"
-            # mount dir needs to be unique
             while os.path.isdir(mount_dir):
                 mount_dir += "_"
             cmd = f"sudo mkdir {mount_dir}".split()
@@ -96,30 +113,26 @@ class Mount:
                 self.error("Creating mount folder")
         return mount_dir
 
-    def mount_target():
+    def mount_target(self, target: dict[str, str], mount_dir: str) -> None:
         print(
             f"Mounting {target['model']}: {target['path']} "
             f"({target['size']} {target['fstype']})"
         )
 
-        # adicionar (-o uid=... -o gid=...) caso necessário
+        # Adicionar (-o uid=... -o gid=...) caso necessário
         cmd = f"sudo mount {target['path']} {mount_dir}".split()
         err = subprocess.call(cmd)
         if err != 0:
-            self.error("Mounting device")
+            self.error("Mounting device...")
 
-        subprocess.Popen(["paplay", self.m_sound])
+        subprocess.Popen(["paplay", "mounting.wav"])
         print(f"Mounted {target['path']} on {mount_dir}\n")
 
-    def ranger_to_mount_dir():
-        if input(
-            ":: Do you want to open ranger on the mounting point? " "[Y/n] "
-        ) in ("", "y", "Y"):
+    def ranger_to_mount_dir(self, mount_dir: str) -> None:
+        if input(":: Open ranger on the mounting point? [Y/n] ") in (
+            "",
+            "y",
+            "Y",
+        ):
             cmd = f"alacritty -e ranger {mount_dir}".split()
             subprocess.Popen(cmd, start_new_session=True)
-
-    unmounted_devs = check_unmounted()
-    target = choose_target()
-    mount_dir = get_mount_dir()
-    mount_target()
-    ranger_to_mount_dir()
