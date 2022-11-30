@@ -1,38 +1,40 @@
 #!/usr/bin/python3
 # Mounting tool for sdevs
 
-import sys
-import subprocess
+import argparse
+
+from mount import Mount
+from dismount import Dismount
 
 
-class Mounting:
-    def __init__(self):
-        self.usb_mnt = "/mnt/usb/"
-        self.m_sound = "mount.wav"
-        self.d_sound = "dismount.wav"
-
-    def main(self):
-        self.check_option()
-        self.process()
-
-    def error(self, msg):
-        rej_sound = "rejected.wav"
-        subprocess.Popen(["paplay", rej_sound], start_new_session=True)
-        print("Error: " + msg)
-        exit(1)
-
-    def check_option(self):
-        self.opst_dict = {"mount": self.mount, "dismount": self.dismount}
-
-        try:
-            self.option = sys.argv[1]
-        except IndexError:
-            self.error("Command needs an argument: mount or dismount")
-
-        if self.option in self.opst_dict.keys():
-            self.process = self.opst_dict[self.option]
-        else:
-            self.error("Argument needs to be 'mount' or 'dismount'")
+def main() -> None:
+    mount, dismount = cmd()
+    if mount:
+        Mount().main()
+    elif dismount:
+        Dismount().main()
+    else:
+        print("Either --mount or --dismount...")
 
 
-Mounting().main()
+def cmd() -> tuple:
+    parser = argparse.ArgumentParser(description="Mounting tool")
+    ex_args = parser.add_mutually_exclusive_group()
+    ex_args.add_argument(
+        "-m",
+        "--mount",
+        action="store_true",
+        help="mount a sdev/partition",
+    )
+    ex_args.add_argument(
+        "-d",
+        "--dismount",
+        action="store_true",
+        help="dismount a sdev/partition",
+    )
+    args = parser.parse_args()
+    return args.mount, args.dismount
+
+
+if __name__ == "__main__":
+    main()
