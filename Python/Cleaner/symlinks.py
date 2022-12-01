@@ -1,29 +1,39 @@
 #!/usr/bin/python3
 
+import os
+import subprocess
+
+from utils import Utils
+
 
 class Symlinks:
-    def manage(self):
+    def __init__(self) -> None:
+        self.utils = Utils()
+        self.path_exceptions = "/run", "/proc", "/mnt"
+
+    def manage(self) -> None:
+        broken_symlinks = self.get_broken_symlinks()
+        if len(broken_symlinks) == 0:
+            return
+        for symlink in broken_symlinks:
+            if not os.path.islink(symlink) or symlink.startswith(
+                self.path_exceptions
+            ):
+                continue
+            self.remove_symlink(symlink)
+
+    def get_broken_symlinks(self) -> list[str]:
         cmd = "find / -xtype l -print".split()
-        broken_slinks_list = (
+        return (
             subprocess.run(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
             )
             .stdout.decode("utf-8")
             .split("\n")
         )
-        if len(broken_slinks_list) == 0:
-            return
 
-        for link in broken_slinks_list:
-            if not os.path.islink(link):
-                continue
-            if (
-                link.startswith("/run")
-                or link.startswith("/proc")
-                or link.startswith("/mnt")
-            ):
-                continue
-            try:
-                self.remove_file(link)
-            except PermissionError:
-                continue
+    def remove_symlink(self, symlink: str) -> None:
+        try:
+            self.utils.remove_file(symlink)
+        except PermissionError:
+            return
