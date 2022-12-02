@@ -1,73 +1,83 @@
 #!/usr/bin/python3
-"""Hkey (ou hotkey) atua como launcher (semelhante ao dmenu/rofi), através
-da execução de comandos na shell. Este script podia ser substituido por
-'bashrc aliases' no terminal, no entanto isso iria criar conflitos com comandos
+"""Hkey (ou hotkey) atua como launcher, através da execução de comandos
+na shell. Este script podia ser substituido por 'bashrc aliases' no
+terminal, no entanto isso iria criar conflitos com comandos
 da shell, dada a enorme diversidade de potenciais hotkeys.
 Além das hkeys, existem as rkeys (ou reserved keys) que executam uma função
 específica deste script. Em breve, o mesmo terá uma interface gráfica.
-A versão princial está escrita em Go (Golang)"""
+A versão princial está escrita em Go (Golang), esta versão
+está incompleta"""
 
 import subprocess
 import json
-import sys
 from threading import Thread
-from datetime import datetime
+
+from history import History
+from json_editor import JsonEditor
 
 
 class Hkey:
-    def __init__(self):
-        self.hkeys_path = "hkeys_path"
-        try:
-            with open(self.hkeys_path, "r") as hk:
-                self.hkeys = json.load(hk)
-        except FileNotFoundError:
-            self.hkeys = {}
-
+    def __init__(self) -> None:
+        self.hkeys = self.load_hkeys()
         self.rkeys = {
             "ls": (self.show_hkeys, ": show hotkeys list"),
-            "ad": (self.add_hkey, ": add entry to hotkeys list"),
-            "rm": (self.remove_hkey, ": remove entry from hotkeys list"),
-            "ed": (self.edit_hkey, ": edit entry from hotkeys list"),
-            "hs": (self.history_menu, ": go to history menu"),
-            "h": (lambda: print(self.help_dialog), ": show help dialog"),
+            "ad": (self.js.add_hkey, ": add entry to hotkeys list"),
+            "rm": (self.js.remove_hkey, ": remove entry from hotkeys list"),
+            "ed": (self.js.edit_hkey, ": edit entry from hotkeys list"),
+            "hs": (self.hs.history_menu, ": go to history menu"),
+            "h": (self.show_help_dialog, ": show help dialog"),
             "q": (exit, ": quit"),
         }
+        self.hs = History()
+        self.js = JsonEditor(self.hkeys, self.rkeys)
 
-        self.history_path = "history_path"
-        self.help_dialog = "".join(
-            [f"'{key}'{func[1]}\n" for key, func in self.rkeys.items()]
-        )
-
-    def main(self):
+    def main(self) -> None:
         while True:
-            self.hkey = input("Enter hkey: ")
-            if " " in self.hkey:
-                self.hkey, self.cmd_input = self.hkey.split(" ", 1)
-                self.hkey += " "
-                if self.cmd_input.replace(" ", "") == "":
+            hkey = input("Enter hkey: ")
+
+            cmd_input = ""
+            if " " in hkey:
+                hkey, cmd_input = hkey.split(" ", 1)
+                hkey += " "
+                if cmd_input.replace(" ", "") == "":
                     print("Input must be something...\n")
                     continue
 
-            if self.hkey in self.hkeys:
-                Thread(target=self.history_append()).start()
-                self.launch_hkey()
-            elif self.hkey in self.rkeys:
-                self.rkeys[self.hkey][0]()
+            if hkey in self.hkeys:
+                Thread(target=self.hs.history_append(hkey, cmd_input)).start()
+                self.launch_hkey(hkey, cmd_input)
+            elif hkey in self.rkeys:
+                self.rkeys[hkey][0]()
             else:
                 print("Invalid key...\nEnter 'h' for help\n")
 
-    def launch_hkey(self):
-        cmd, new_sh = self.hkeys[self.hkey][0], self.hkeys[self.hkey][2]
-        if "cmd_input" in self.__dict__:
-            cmd += " " + self.cmd_input
+            self.hkeys = self.load_hkeys()
 
-        if new_sh == "New Session":
+    def load_hkeys(self) -> dict[str, tuple]:
+        hkeys_path = "hkeys_path"
+        try:
+            with open(hkeys_path, "r") as hk:
+                return json.load(hk)
+        except FileNotFoundError:
+            return {}
+
+    def launch_hkey(self, hkey: str, cmd_input: str = "") -> None:
+        cmd, new_session = self.hkeys[hkey][0], self.hkeys[hkey][2]
+        if cmd_input != "":
+            cmd += " " + cmd_input
+
+        if new_session == "New Session":
             subprocess.Popen(cmd, shell=True, start_new_session=True)
         else:
             subprocess.run(cmd, shell=True)
         exit()
 
-    def show_hkeys(self):
+    def show_help_dialog(self) -> None:
+        print(
+            "".join([f"'{key}'{func[1]}\n" for key, func in self.rkeys.items()])
+        )
+
+    def show_hkeys(self) -> None:
         if len(self.hkeys) == 0:
             print("Hkeys list is empty...\nEnter 'ad' to add a new hkey\n")
             return
@@ -76,14 +86,8 @@ class Hkey:
             print(f"'{hkey}': {self.hkeys[hkey][1]}")
             for hkey in self.hkeys.keys()
         ]
-        print()
+        print("")
 
 
-if len(sys.argv) == 2:
-    option = sys.argv[1]
-    if option == "history_menu":
-        Hkey().history_menu()
-    else:
-        print("Argument error...")
-else:
+if __name__ == "__main__":
     Hkey().main()
