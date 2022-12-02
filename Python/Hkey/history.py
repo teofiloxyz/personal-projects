@@ -1,24 +1,28 @@
 #!/usr/bin/python3
 
+from datetime import datetime
+
+HIST_PATH = "hist_path"
+
 
 class History:
-    def history_append(self):
+    @staticmethod
+    def history_append(hkey: str, cmd_input: str = "") -> None:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        if "cmd_input" in self.__dict__:
-            entry = f"{self.hkey}{self.cmd_input}".replace(",", "")
+        if "cmd_input" != "":
+            entry = f"{hkey}{cmd_input}".replace(",", "")
         else:
-            entry = str(self.hkey).replace(",", "")
+            entry = hkey.replace(",", "")
 
-        with open(self.history_path, "a") as hs:
+        with open(HIST_PATH, "a") as hs:
             hs.write(f"{now},{entry}\n")
 
-    def history_menu(self):
+    @staticmethod
+    def history_menu() -> None:
         import pandas as pd
 
-        df = pd.read_csv(self.history_path)
-        # Dataframe apenas com as hkeys (sem rkeys ou inputs)
-        df = df[df.entry.isin(self.hkeys)]
+        df = pd.read_csv(HIST_PATH)
         options = {
             "top": lambda num: print(
                 df["entry"].value_counts()[: int(num)] / len(df.index) * 100
