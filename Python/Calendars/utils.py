@@ -1,37 +1,39 @@
 #!/usr/bin/python3
 
+from Tfuncs import rofi, qst
+
 
 class Utils:
-    def get_title(self, title=None, use_rofi=False):
+    @staticmethod
+    def get_title(
+        event: str, title: str | None = None, use_rofi: bool = False
+    ) -> str:
         message = ""
         while True:
             if title is None:
-                qst = (
+                question = (
                     "Who's the lucky person to have its birthday noted"
-                    if self.event == "birthday"
+                    if event == "birthday"
                     else "Enter the descriptive title for the event"
                 )
                 if use_rofi:
-                    self.title = rofi.simple_prompt(qst, message)
+                    title = rofi.simple_prompt(question, message)
                 else:
-                    self.title = input(qst + ": ")
-            else:
-                self.title = title
-                title = None
+                    title = input(question + ": ")
 
-            if self.title == "q":
-                return False
-            elif 0 < len(self.title) <= 30:
+            if 0 < len(title) <= 30:
                 break
             else:
-                message = "Title is too large, try another"
+                message = "Title is too large, try another..."
                 print(message)
 
-        if self.event == "birthday":
-            self.title = "Aniversário: " + self.title
+        if event == "birthday":
+            title = "Aniversário: " + title
+        return title
 
-    def get_date(self, use_rofi=False):
-        if self.event == "birthday":
+    @staticmethod
+    def get_date(event: str, use_rofi: bool = False) -> str:
+        if event == "birthday":
             question = (
                 "Enter the date for the birthday (e.g.: 20-2; 3 = 3-"
                 "curr.month): "
@@ -42,14 +44,11 @@ class Utils:
                 "28-curr.M-curr.Y): "
             )
 
-        self.date = qst.get_date(
-            question, date_type="%d/%m/%Y", use_rofi=use_rofi
-        )
-        if self.date == "q":
-            return False
+        return qst.get_date(question, date_type="%d/%m/%Y", use_rofi=use_rofi)
 
-    def get_hour(self, time, use_rofi=False):
-        if time == "beggining":
+    @staticmethod
+    def get_hour(time: str, use_rofi: bool = False) -> str:
+        if time == "beginning":
             question = (
                 "Enter the hour of the event (e.g.: 9-35; "
                 "9 = 9-00) or leave empty for all day: "
@@ -60,6 +59,4 @@ class Utils:
                 "18-23; 18 = 18-00) or leave empty for none: "
             )
 
-        self.hour = qst.get_hour(question, hour_type="%H:%M", use_rofi=use_rofi)
-        if self.hour == "q":
-            return False
+        return qst.get_hour(question, hour_type="%H:%M", use_rofi=use_rofi)
