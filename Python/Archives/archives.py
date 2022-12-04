@@ -6,17 +6,11 @@ import os
 import sys
 import shutil
 import subprocess
-from configparser import ConfigParser
 from Tfuncs import oupt, qst, ffmt, fcol
 
 
 class Archives:
     def __init__(self):
-        self.config = ConfigParser()
-        self.config.read("config.ini")
-        self.terminal = self.config["GENERAL"]["terminal"]
-        self.rej_sound = self.config["GENERAL"]["rejected_sound"]
-
         self.arc_types = {
             ".tar.xz": "tar xvf",
             ".tar.gz": "tar xvzf",
@@ -43,7 +37,7 @@ class Archives:
         self.process()
 
     def error(self, msg):
-        subprocess.Popen(["paplay", self.rej_sound], start_new_session=True)
+        subprocess.Popen(["paplay", "rejected.wav"], start_new_session=True)
         print("Error: " + msg)
         exit(1)
 
@@ -177,7 +171,7 @@ class Archives:
             ) in ("", "y", "Y"):
                 return
 
-            cmd = f"{self.terminal} -e ranger {self.extracted_dir}"
+            cmd = f"alacritty -e ranger {self.extracted_dir}"
             subprocess.Popen(cmd, shell=True, start_new_session=True)
 
         if self.entire_folder:
