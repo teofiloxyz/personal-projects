@@ -1,8 +1,17 @@
 #!/usr/bin/python3
+# Still need refactoring
+
+from Tfuncs import ffmt, fcol
+
+import os
+import subprocess
+
+from utils import Utils
 
 
 class Extract:
-    def __init__(self):
+    def __init__(self) -> None:
+        self.utils = Utils()
         self.arc_types = {
             ".tar.xz": "tar xvf",
             ".tar.gz": "tar xvzf",
@@ -21,97 +30,98 @@ class Extract:
             ".7z": "7z x",
         }
 
-    def extract(self):
-        def extraction_process(self):
-            get_arc_name(self)
-            check_arc_extension(self)
-            create_extracted_dir(self)
-            move_to_extracted_dir(self)
-            extract_archive(self)
-            move_from_extracted_dir(self)
-
-        def get_arc_name(self):
-            if not os.path.exists(self.input):
-                self.error(f"'{self.input}' does not exist...")
-            self.basename = os.path.basename(self.input)
-
-            if ".tar." in self.basename:
-                name, self.extension = os.path.splitext(self.basename)
-                self.name, ex2 = os.path.splitext(name)
-                if ex2 == ".tar":
-                    self.extension = ex2 + self.extension
-            else:
-                self.name, self.extension = os.path.splitext(self.basename)
-
-        def check_arc_extension(self):
-            if self.extension not in self.arc_types.keys():
-                self.error(f"Don't know how to extract '{self.input}'")
-
-        def create_extracted_dir(self):
-            input_dir = os.path.dirname(self.input)
-            self.extracted_dir = os.path.join(
-                input_dir, "Extracted_" + self.name
+    def main(self, input_file: str) -> None:
+        input_is_entire_folder = self.utils.check_input(input_file)
+        if not input_is_entire_folder:
+            basename_noext, extension = self.slice_input_name(input_file)
+            self.check_file_extension(input_file, extension)
+            extraction_dir = self.create_extraction_dir(
+                input_file, basename_noext
             )
-
-            while os.path.isdir(self.extracted_dir):
-                extracted_dir_name = os.path.basename(self.extracted_dir)
-                n = extracted_dir_name.split("Extracted_")[0]
-                if n == "":
-                    self.extracted_dir = os.path.join(
-                        input_dir, "2Extracted_" + self.name
-                    )
-                else:
-                    self.extracted_dir = os.path.join(
-                        input_dir, str(int(n) + 1) + "Extracted_" + self.name
-                    )
-
-            os.mkdir(self.extracted_dir)
-
-        def move_to_extracted_dir(self):
-            self.input_on_extracted_dir = os.path.join(
-                self.extracted_dir, self.basename
+            input_on_extraction_dir = self.move_to_extraction_dir(
+                input_file, extraction_dir
             )
-            os.rename(self.input, self.input_on_extracted_dir)
-            os.chdir(self.extracted_dir)
+            self.extract_input(input_file, input_on_extraction_dir, extension)
+            self.move_from_extraction_dir(input_file, input_on_extraction_dir)
+            self.open_ranger_on_extraction_dir(extraction_dir)
+            return
 
-        def extract_archive(self):
-            print(
-                f"\n{ffmt.bold}{fcol.blue}Extracting "
-                f"{self.input}{ffmt.reset}"
+        input_files = [
+            os.path.join(os.getcwd(), file)
+            for file in os.listdir(os.getcwd())
+            if os.path.splitext(file)[1] in self.arc_types.keys()
+        ]
+        for input_file in input_files:
+            basename_noext, extension = self.slice_input_name(input_file)
+            self.check_file_extension(input_file, extension)
+            extraction_dir = self.create_extraction_dir(
+                input_file, basename_noext
             )
-            cmd = (
-                self.arc_types[self.extension]
-                + " "
-                + self.input_on_extracted_dir
+            input_on_extraction_dir = self.move_to_extraction_dir(
+                input_file, extraction_dir
             )
-            subprocess.run(cmd, shell=True)
+            self.extract_input(input_file, input_on_extraction_dir, extension)
+            self.move_from_extraction_dir(input_file, input_on_extraction_dir)
 
-        def move_from_extracted_dir(self):
-            os.rename(self.input_on_extracted_dir, self.input)
-            os.chdir("..")
+    def slice_input_name(self, input_file: str) -> tuple:
+        """Tem mesmo que ser assim, pq splitext separa a última ext"""
 
-        def open_ranger_on_extracted_dir(self):
-            if not input(
-                ":: Do you want to open ranger on the extraction "
-                "folder? [Y/n] "
-            ) in ("", "y", "Y"):
-                return
-
-            cmd = f"alacritty -e ranger {self.extracted_dir}"
-            subprocess.Popen(cmd, shell=True, start_new_session=True)
-
-        if self.entire_folder:
-            # Extrai todos os archivos da pasta
-            arcs_list = [
-                os.path.join(os.getcwd(), file)
-                for file in os.listdir(os.getcwd())
-                if os.path.splitext(file)[1] in self.arc_types.keys()
-            ]
-
-            for arc in arcs_list:
-                self.input = arc
-                extraction_process(self)
-
+        basename = os.path.basename(input_file)
+        if ".tar." in basename:
+            basename, last_ext = os.path.splitext(basename)
+            basename_noext, extension = os.path.splitext(basename)
+            extension += last_ext
         else:
-            extraction_process(self)
-            open_ranger_on_extracted_dir(self)
+            basename_noext, extension = os.path.splitext(basename)
+        return basename_noext, extension
+
+    def check_file_extension(self, input_file: str, extension: str) -> None:
+        if extension not in self.arc_types.keys():
+            self.utils.error(f"Don't know how to extract '{input_file}'")
+
+    def create_extraction_dir(
+        self, input_file: str, basename_noext: str
+    ) -> str:
+        input_dir = os.path.dirname(input_file)
+        extraction_dir = os.path.join(input_dir, "Extracted_" + basename_noext)
+        while os.path.isdir(extraction_dir):
+            extraction_dir += "_"
+
+        os.mkdir(extraction_dir)
+        return extraction_dir
+
+    def move_to_extraction_dir(
+        self, input_file: str, extraction_dir: str
+    ) -> str:
+        basename = os.path.basename(input_file)
+        input_on_extraction_dir = os.path.join(extraction_dir, basename)
+        os.rename(input_file, input_on_extraction_dir)
+        os.chdir(extraction_dir)
+        return input_on_extraction_dir
+
+    def extract_input(
+        self, input_file: str, input_on_extraction_dir: str, extension: str
+    ) -> None:
+        print(f"\n{ffmt.bold}{fcol.blue}Extracting {input_file}{ffmt.reset}")
+
+        cmd = self.arc_types[extension] + " " + input_on_extraction_dir
+        err = subprocess.call(cmd, shell=True)
+        if err != 0:
+            self.utils.error(f"Couldn't extract {input_file}")
+
+    def move_from_extraction_dir(
+        self, input_file: str, input_on_extraction_dir: str
+    ) -> None:
+        os.rename(input_on_extraction_dir, input_file)
+        os.chdir("..")
+
+    def open_ranger_on_extraction_dir(self, extraction_dir: str) -> None:
+        if not input(":: Open ranger on the extraction folder? [Y/n] ") in (
+            "",
+            "y",
+            "Y",
+        ):
+            return
+
+        cmd = f"alacritty -e ranger {extraction_dir}"
+        subprocess.Popen(cmd, shell=True, start_new_session=True)
