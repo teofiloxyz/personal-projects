@@ -1,39 +1,48 @@
 #!/usr/bin/python3
-"""Manager de arquivos (CLI): comprime, descomprime e adiciona ao arquivo,
+"""Manager de arquivos (CLI): comprime, extrai e adiciona ao arquivo,
 de forma rápida, simples e organizada"""
 
-import os
-import sys
-import shutil
-import subprocess
-from Tfuncs import oupt, qst, ffmt, fcol
+import argparse
+
+from compress import Compress
+from extract import Extract
+from add_to_archive import AddToArchive
 
 
-class Archives:
-    def main(self):
-        self.check_option()
-        self.check_input()
-        if self.option == "add":
-            self.check_input2()
-        self.process()
-
-    def check_option(self):
-        self.opst_dict = {
-            "extract": self.extract,
-            "compress": self.compress,
-            "add": self.add_to_archive,
-        }
-        try:
-            self.option = sys.argv[1]
-        except IndexError:
-            self.error("Command needs options (extract, compress or add)")
-
-        if self.option in self.opst_dict.keys():
-            self.process = self.opst_dict[self.option]
-        else:
-            self.error(
-                "First argument needs to be 'extract', " "'compress' or 'add'"
-            )
+def main() -> None:
+    compress_in, extract_in, add_in = cmd()
+    if compress_in is not None:
+        Compress().main(compress_in)
+    elif extract_in is not None:
+        Extract().main(extract_in)
+    else:
+        AddToArchive().main(add_in)
 
 
-Archives().main()
+def cmd() -> tuple:
+    parser = argparse.ArgumentParser(description="Archives manager")
+    ex_args = parser.add_mutually_exclusive_group()
+    ex_args.add_argument(
+        "-c",
+        "--compress",
+        help="compress input",
+        nargs=1,
+    )
+    ex_args.add_argument(
+        "-e",
+        "--extract",
+        help="extract input",
+        nargs=1,
+    )
+    ex_args.add_argument(
+        "-a",
+        "--add",
+        help="add input (arg1) to archive (arg2)",
+        nargs=2,
+    )
+    args = parser.parse_args()
+    return args.compress, args.extract, args.add
+
+
+if __name__ == "__main__":
+    main()
