@@ -1,9 +1,19 @@
 #!/usr/bin/python3
 
+from Tfuncs import rofi
+
+import subprocess
+from datetime import datetime, timedelta
+
+from utils import Utils
+
 
 class Event:
+    def __init__(self) -> None:
+        self.utils = Utils()
+
     @staticmethod
-    def show_events(calendar, weeks):
+    def show(calendar: str, weeks: str) -> None:
         try:
             if int(weeks) < 1:
                 print("Invalid number of weeks...")
@@ -25,19 +35,24 @@ class Event:
         )
         subprocess.run(cmd, shell=True)
 
-    def personal_event(self, title=None, use_rofi=False):
-        self.event = "personal"
-
-        if self.get_title(title, use_rofi=use_rofi) is False:
-            print("Aborted...")
+    def add_personal(
+        self, title: str | None = None, use_rofi: bool = False
+    ) -> None:
+        title = self.utils.get_title(
+            event="personal", title=title, use_rofi=use_rofi
+        )
+        if title == "q":
+            print("Aborting...")
             return
 
-        if self.get_date(use_rofi=use_rofi) is False:
-            print("Aborted...")
+        date = self.utils.get_date(event="personal", use_rofi=use_rofi)
+        if date == "q":
+            print("Aborting...")
             return
 
-        if self.get_hour("beginning", use_rofi=use_rofi) is False:
-            print("Aborted...")
+        hour = self.utils.get_hour("beginning", use_rofi=use_rofi)
+        if hour == "q":
+            print("Aborting...")
             return
 
         alarm_msg = (
@@ -110,123 +125,114 @@ class Event:
                 ':: "' + description + '"' if description != "" else ""
             )
 
-            if self.hour != "":
+            if hour != "":
                 # Muda a variável pq a função self.get_hour dá self.hour
-                hour_begin = self.hour
-                self.get_hour("end", use_rofi=use_rofi)
-                if self.hour == "q":
+                hour_ending = self.utils.get_hour("ending", use_rofi=use_rofi)
+                if hour_ending == "q":
                     print("Aborted...")
                     return
-                self.hour = (
-                    hour_begin + "-" + self.hour
-                    if self.hour != ""
-                    else hour_begin
-                )
+                elif hour_ending != "":
+                    hour += "-" + hour_ending
 
         cmd = (
-            f'khal new -a personal {self.date} {self.hour} "{self.title}" '
+            f'khal new -a personal {date} {hour} "{title}" '
             f"{description} {category} {alarm}"
         )
-        exec_cmd = subprocess.call(cmd, shell=True)
-        if exec_cmd == 0:
-            msg = "Calendar event added successfuly!"
-        else:
+        err = subprocess.call(cmd, shell=True)
+        if err != 0:
             msg = "Error adding the calendar event..."
+        else:
+            msg = "Calendar event added successfuly!"
 
         if use_rofi:
             rofi.message(msg)
         else:
             print(msg)
 
-    def recurrent_event(self):
-        self.event = "recurrent"
-
-        if self.get_title() is False:
-            print("Aborted...")
+    def add_recurrent(self) -> None:
+        title = self.utils.get_title(event="recurrent")
+        if title == "q":
+            print("Aborting...")
             return
 
-        if self.get_date() is False:
-            print("Aborted...")
+        date = self.utils.get_date(event="recurrent")
+        if date == "q":
+            print("Aborting...")
             return
 
-        recurrence_qst = (
-            "[1]: yearly\n[2]: monthly\n[3]: weekly\n[4]: "
-            "daily\nEnter the recurrence: "
-        )
         recurrence_opts = {
             "1": "-r yearly",
             "2": "-r monthly",
             "3": "-r weekly",
             "4": "-r daily",
         }
-        recurrence = qst.opts(
-            question=recurrence_qst, opts_dict=recurrence_opts
+        recurrence = input(
+            "[1]: yearly\n[2]: monthly\n[3]: weekly\n[4]: "
+            "daily\nEnter the recurrence: "
         )
-        if recurrence == "q":
+        if recurrence not in recurrence_opts.keys():
             print("Aborted...")
             return
-
-        description = ""
+        recurrence = recurrence_opts[recurrence]
 
         cmd = (
-            f'khal new -a recurrent {self.date} "{self.title}" '
-            f"{description} {recurrence} --alarms -12h"
+            f'khal new -a recurrent {date} "{title}"'
+            f" {recurrence} --alarms -12h"
         )
-        exec_cmd = subprocess.call(cmd, shell=True)
-        if exec_cmd == 0:
-            print("Calendar event added successfuly!")
-            print(f"Alarm at 12:00 on {self.date}")
-        else:
+        err = subprocess.call(cmd, shell=True)
+        if err != 0:
             print("Error adding the calendar event...")
+            return
+        print("Calendar event added successfuly!")
+        print(f"Alarm at 12:00 on {date}")
 
-    def birthday_event(self):
-        self.event = "birthday"
-
-        if self.get_title() is False:
-            print("Aborted...")
+    def add_birthday(self) -> None:
+        title = self.utils.get_title(event="birthday")
+        if title == "q":
+            print("Aborting...")
             return
 
-        if self.get_date() is False:
-            print("Aborted...")
+        date = self.utils.get_date(event="recurrent")
+        if date == "q":
+            print("Aborting...")
             return
 
         description = input(
-            "Enter a description for this person, " "or leave empty for none: "
+            "Enter a description for this person, or leave empty for none: "
         )
         if description == "q":
-            print("Aborted...")
+            print("Aborting...")
             return
         description = ':: "' + description + '"' if description != "" else ""
 
         cmd = (
-            f'khal new -a birthdays {self.date} "{self.title}" '
+            f'khal new -a birthdays {date} "{title}" '
             f"{description} -r yearly --alarms -12h"
         )
-        exec_cmd = subprocess.call(cmd, shell=True)
-        if exec_cmd == 0:
-            print("Calendar event added successfuly!")
-            print(f"Alarm at 12:00 on {self.date}")
-        else:
+        err = subprocess.call(cmd, shell=True)
+        if err != 0:
             print("Error adding the calendar event...")
+            return
+        print("Calendar event added successfuly!")
+        print(f"Alarm at 12:00 on {date}")
 
     @staticmethod
-    def edit_event(calendar):
+    def edit(calendar: str) -> None:
         if calendar == "birthdays":
             question = (
-                "Enter the name or aproximate name of the person to "
-                "edit, or <q> to quit: "
+                "Enter the name or aproximate name of the person "
+                " to edit, or <q> to quit: "
             )
         else:
             question = (
-                "Enter the title or aproximate title of the event to "
-                "edit, or <q> to quit: "
+                "Enter the title or aproximate title of the event "
+                "to edit, or <q> to quit: "
             )
 
         title = input(question)
         if title == "q":
             print(
-                "Aborting...\nTry the 'ls' option to have an ideia of the "
-                "event title"
+                "Aborting...\nTry the 'ls' option to have an ideia of the event title"
             )
             return
 
