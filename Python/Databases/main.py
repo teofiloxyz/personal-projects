@@ -1,23 +1,34 @@
 #!/usr/bin/python3
+# Menu para editar databases
 
-import os
-import sqlite3
-import subprocess
-import pandas as pd
-from Tfuncs import gmenu, ffmt, fcol, qst, inpt, oupt
+from Tfuncs import gmenu
+
+from menu import Menu
 
 
-db = Databases()
-title = "Databases-Menu"
-keys = {
-    "ls": (db.show_db_tab, "show database table"),
-    "ad": (db.add_entry_to_db_tab, "add entry to a database table"),
-    "rm": (db.remove_entry_from_db_tab, "remove entry from database table"),
-    "dc": (db.db_tab_to_csv, "export database table to csv"),
-    "cd": (db.csv_to_db_tab, "import database table from csv"),
-    "adt": (db.create_db_tab, "create new database table"),
-    "rmt": (db.remove_db_tab, "remove database table"),
-    "add": (db.create_db, "create new database"),
-    "rmd": (db.remove_db, "remove database"),
-}
-gmenu(title, keys)
+def main() -> None:
+    open_menu()
+
+
+def open_menu() -> None:
+    menu = Menu()
+    title = "Databases-Menu"
+    keys = {
+        "ls": (menu.show_db_tab, "show database table"),
+        "ad": (menu.add_entry_to_db_tab, "add entry to a database table"),
+        "rm": (
+            menu.remove_entry_from_db_tab,
+            "remove entry from database table",
+        ),
+        "dc": (menu.db_tab_to_csv, "export database table to csv"),
+        "cd": (menu.csv_to_db_tab, "import database table from csv"),
+        "adt": (menu.create_db_tab, "create new database table"),
+        "rmt": (menu.remove_db_tab, "remove database table"),
+        "add": (menu.create_db, "create new database"),
+        "rmd": (menu.remove_db, "remove database"),
+    }
+    gmenu(title, keys)
+
+
+if __name__ == "__main__":
+    main()
