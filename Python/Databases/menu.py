@@ -1,92 +1,93 @@
 #!/usr/bin/python3
 
+from Tfuncs import ffmt, fcol
+
+import os
+import subprocess
+
+from database import Database
+
 
 class Menu:
     def __init__(self) -> None:
         self.databases_dir = "databases_dir"
 
-    def refresh_dbs(self):
-        (
-            self.dbs_opts,
-            self.tabs_opts,
-            self.dbs_opts_info,
-            self.tabs_opts_info,
-            n_db,
-            n_tab,
-        ) = ({}, {}, "", "", 1, 1)
+    def get_databases(self) -> list[str]:
+        return [
+            os.path.join(self.databases_dir, database)
+            for database in os.listdir(self.databases_dir)
+            if database.endswith(".db")
+        ]
 
-        for root_dirs_files in os.walk(self.databases_path):
-            for file in root_dirs_files[2]:
+    def get_database_tabs(self, db_path: str) -> list[str]:
+        return Database.Query(db_path).get_tabs()
 
-                if file.endswith(".db"):
-                    db_path = os.path.join(root_dirs_files[0], file)
-                    db_name = os.path.basename(db_path)
-                    self.dbs_opts[str(n_db)] = db_path
-                    self.dbs_opts_info += f"[{n_db}]: {db_name}\n"
-                    n_db += 1
-                    tables = str(
-                        subprocess.run(
-                            ["sqlite3", db_path, ".tables"],
-                            stdout=subprocess.PIPE,
-                        ).stdout
-                    )[2:-3]
+    def choose_database(self) -> tuple[str, str] | str:
+        databases = self.get_databases()
+        [
+            print(f"[{n}] {os.path.basename(db_path)}")
+            for n, db_path in enumerate(databases, 1)
+        ]
+        prompt = input("Pick one database: ")
+        try:
+            db_path = databases[int(prompt) - 1]
+        except (IndexError, ValueError):
+            print("Aborting...")
+            return "q"
 
-                    if " " in tables:
-                        tables = tables.split()
-                        for table in tables:
-                            self.tabs_opts[str(n_tab)] = (db_path, table)
-                            self.tabs_opts_info += (
-                                f"[{n_tab}]: {table} " f"from {db_name}\n"
-                            )
-                            n_tab += 1
-                    else:
-                        self.tabs_opts[str(n_tab)] = (db_path, tables)
-                        self.tabs_opts_info += (
-                            f"[{n_tab}]: {tables} " f"from {db_name}\n"
-                        )
-                        n_tab += 1
+        db_name = os.path.basename(db_path)
+        return db_name, db_path
 
-    def choose_db(self):
-        self.db_path = qst.opts(
-            question=f"{self.dbs_opts_info}q: quit to "
-            f"main menu\n\n{ffmt.bold}{fcol.yellow}"
-            f"Choose the database: {ffmt.reset}",
-            opts_dict=self.dbs_opts,
-        )
-        if self.db_path == "q":
-            print("Aborted...")
-            return False
+    def choose_database_tab(self, db_path: str) -> str:
+        db_tabs = self.get_database_tabs(db_path)
+        if len(db_tabs) == 0:
+            print("This database has no tables...")
+            print("Aborting...")
+            return "q"
+        elif len(db_tabs) == 1:
+            db_tab = db_tabs[0]
+            print(f"This database has 1 table: {db_tab}")
+            return db_tab
 
-        self.db_name = os.path.basename(self.db_path)
+        [print(f"[{n}] {db_tab}") for n, db_tab in enumerate(db_tabs, 1)]
+        prompt = input("Pick one table: ")
+        try:
+            db_tab = db_tabs[int(prompt) - 1]
+        except (IndexError, ValueError):
+            print("Aborting...")
+            return "q"
 
-    def choose_db_tab(self):
-        tab = qst.opts(
-            question=f"{self.tabs_opts_info}q: quit to main "
-            f"menu\n\n{ffmt.bold}{fcol.yellow}Choose the table: "
-            f"{ffmt.reset}",
-            opts_dict=self.tabs_opts,
-        )
-        if tab == "q":
-            print("Aborted...")
-            return False
+        return db_tab
 
-        self.db_path = tab[0]
-        self.db_table = tab[1]
-        self.db_name = os.path.basename(self.db_path)
+    def show_db_tab(self) -> None:
+        db_name, db_path = self.choose_database()
+        if db_path == "q":
+            return
 
-    @generic_connection(show_only_dbs=False)
-    def show_db_tab(self):
-        self.df_from_db_tab()
+        db_tab = self.choose_database_tab(db_path)
+        if db_tab == "q":
+            return
         print(
-            f"{ffmt.bold}{fcol.green}{self.db_table.capitalize()} from "
-            f"{self.db_name.capitalize()}:{ffmt.reset}\n{self.df_output}"
+            f"{ffmt.bold}{fcol.green}{db_tab.capitalize()} from "
+            f"{db_name.capitalize()}:{ffmt.reset}"
         )
+        df = Database.Query(db_path).create_df(db_tab)
+        print(df)
 
-    @generic_connection(show_only_dbs=False)
-    def add_entry_to_db_tab(self):
+    def add_entry_to_db_tab(self) -> None:
+        db_name, db_path = self.choose_database()
+        if db_path == "q":
+            return
+
+        db_tab = self.choose_database_tab(db_path)
+        if db_tab == "q":
+            return
+
         self.cursor.execute(f"pragma table_info({self.db_table})")
         columns = self.cursor.fetchall()
         entry = []
+
+        db_tab_columns = Database.Query(db_path).get_columns(db_tab)
 
         for column in columns:
             column_name = column[1]
@@ -123,8 +124,15 @@ class Menu:
                 "entry to the table"
             )
 
-    @generic_connection(show_only_dbs=False)
     def remove_entry_from_db_tab(self):
+        db_name, db_path = self.choose_database()
+        if db_path == "q":
+            return
+
+        db_tab = self.choose_database_tab(db_path)
+        if db_tab == "q":
+            return
+
         def get_int_rowid(rowid):
             try:
                 rowid = int(rowid)
@@ -173,7 +181,6 @@ class Menu:
         else:
             print("Error, something went wrong replacing the table")
 
-    @generic_connection(show_only_dbs=False)
     def db_tab_to_csv(self):
         self.df_from_db_tab()
         csv_out = oupt.files(
@@ -191,7 +198,6 @@ class Menu:
         else:
             print("Error, something went wrong exporting table to CSV")
 
-    @generic_connection(show_only_dbs=True)
     def csv_to_db_tab(self):
         db_tables_list = [
             x[1] for x in self.tabs_opts.values() if x[0] == self.db_path
@@ -240,7 +246,6 @@ class Menu:
         else:
             print("Error, something went wrong creating the table from CSV")
 
-    @generic_connection(show_only_dbs=True)
     def create_db_tab(self):
         db_tables_list = [
             x[1] for x in self.tabs_opts.values() if x[0] == self.db_path
@@ -320,39 +325,38 @@ class Menu:
         else:
             print("Error, something went wrong creating the table")
 
-    @generic_connection(show_only_dbs=False)
-    def remove_db_tab(self):
+    def remove_db_tab(self) -> None:
+        db_name, db_path = self.choose_database()
+        if db_path == "q":
+            return
+
+        db_tab = self.choose_database_tab(db_path)
+        if db_tab == "q":
+            return
+
         if (
             input(
-                f"Are you sure you want to remove '{self.db_table}' "
-                f"from '{self.db_name}' (y/N): "
+                f":: Are you sure you want to remove '{db_tab}' "
+                f"from '{db_name}' [y/N] "
             )
             == "y"
         ):
-            self.cursor.execute(f"DROP TABLE {self.db_table}")
-            self.refresh_dbs()
-            db_tables_list = [
-                x[1] for x in self.tabs_opts.values() if x[0] == self.db_path
-            ]
-            if self.db_table not in db_tables_list:
-                print("Table removed!")
-            else:
-                print("Error, something went wrong while removing the table")
+            Database.Edit(db_path).remove_tab(db_tab)
 
-    def create_db(self):
-        self.refresh_dbs()
+    def create_db(self) -> None:
+        databases = self.get_databases()
         while True:
             new_db = input("Enter the name for the new database: ")
             if new_db == "q":
-                print("Aborted...")
+                print("Aborting...")
                 return
             elif "/" in new_db or " " in new_db or len(new_db) > 30:
                 print("Invalid name for a database")
                 continue
             if not new_db.endswith(".db"):
                 new_db += ".db"
-            new_db_path = os.path.join(self.databases_path, new_db)
-            if new_db_path in self.dbs_opts.values():
+            new_db_path = os.path.join(self.databases_dir, new_db)
+            if new_db_path in databases:
                 print(f"{new_db} already exists")
                 continue
             break
@@ -363,18 +367,14 @@ class Menu:
         else:
             print("Error, something went wrong while creating the database")
 
-    @generic_connection(show_only_dbs=True)
-    def remove_db(self):
+    def remove_db(self) -> None:
+        db_name, db_path = self.choose_database()
+        if db_path == "q":
+            return
+
         if (
-            input(
-                f"Are you sure you want to remove " f"'{self.db_name}' (y/N): "
-            )
+            input(f":: Are you sure you want to remove '{db_name}' [y/N] ")
             == "y"
         ):
-            os.remove(self.db_path)
-            if not os.path.exists(self.db_path):
-                print("Database removed!")
-            else:
-                print(
-                    "Error, something went wrong " "while removing the database"
-                )
+            os.remove(db_path)
+            print("Database removed!")
