@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # Menu para editar databases
+# Need a bit of tweaking and renaming
 
 from Tfuncs import gmenu
 
