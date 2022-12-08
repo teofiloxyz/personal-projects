@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # Menu PDF com diversas funções
 # Utils need rework on input output funcs
+# Menu also need rework and fixing
 
 from Tfuncs import gmenu
 
