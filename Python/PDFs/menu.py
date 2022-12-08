@@ -1,127 +1,71 @@
 #!/usr/bin/python3
 
+import os
+import subprocess
+
+from utils import Utils
+
 
 class Menu:
-    @staticmethod
-    def compress_pdf():
-        pdf_in = inpt.files(
-            question="Enter the PDF input full path: ", extensions="pdf"
-        )
+    def __init__(self) -> None:
+        self.utils = Utils()
+
+    def compress_pdf(self) -> None:  # falta compress folder
+        pdf_in = self.utils.get_pdf_input()
         if pdf_in == "q":
             print("Aborted...")
             return
 
-        pdf_out = oupt.files(
-            question="Enter the PDF output full path, or "
-            " just the name for same input dir, or leave "
-            "empty for <input>_output.pdf: ",
-            extension="pdf",
-            file_input=pdf_in,
-        )
-        if pdf_out == "q":
+        pdf_out = self.utils.get_pdf_output(pdf_in)
+        if pdf_in == "q":
             print("Aborted...")
             return
 
-        compress_opts = {
+        compress_options = {
             "1": "printer",
             "2": "ebook",
             "3": "default",
             "4": "screen",
         }
-        compress = qst.opts(
-            question="From [1] (best quality, recommended) "
-            "to [4] (worst quality)\nEnter the level of "
-            "compression: ",
-            opts_dict=compress_opts,
+        prompt = input(
+            "From [1] (best quality, recommended) to [4] (worst quality)"
+            "\nEnter the level of compression: "
         )
-        if compress == "q":
+        if prompt == "q":
+            print("Aborted...")
+            return
+        try:
+            compress_opt = compress_options[prompt]
+        except KeyError:
             print("Aborted...")
             return
 
         print("Wait a moment...")
-        cmd = f"ps2pdf -dPDFSETTINGS=/{compress} {pdf_in} {pdf_out}"
-        subprocess.run(
+        cmd = f"ps2pdf -dPDFSETTINGS=/{compress_opt} {pdf_in} {pdf_out}"
+        err = subprocess.call(
             cmd,
             shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        if err != 0:
+            print("Error compressing PDF")
+            return
         print(f"Compression done\nOutput at {pdf_out}")
 
-    @staticmethod
-    def compress_folder():
-        pdfs_dir = inpt.dirs(question="Enter the directory input full path: ")
-        if pdfs_dir == "q":
-            print("Aborted...")
-            return
-
-        pdf_ins_list = []
-        for root_dirs_files in os.walk(str(pdfs_dir)):
-            for file in root_dirs_files[2]:
-                if file.endswith(".pdf"):
-                    pdf_ins_list.append(os.path.join(root_dirs_files[0], file))
-
-        if len(pdf_ins_list) == 0:
-            print("No PDF files in given directory, aborted...")
-            return
-
-        compress_opts = {
-            "1": "printer",
-            "2": "ebook",
-            "3": "default",
-            "4": "screen",
-        }
-        compress = qst.opts(
-            question="From [1] (best quality, recommended) to "
-            "[4] (worst quality)\nEnter the level of "
-            "compression: ",
-            opts_dict=compress_opts,
-        )
-        if compress == "q":
-            print("Aborted...")
-            return
-
-        print("Wait a moment...")
-        compressed_dir = os.path.join(str(pdfs_dir), "compressed")
-        os.mkdir(compressed_dir)
-
-        for pdf_in in pdf_ins_list:
-            pdf_in_name = os.path.basename(pdf_in)
-            pdf_out = os.path.join(compressed_dir, pdf_in_name)
-            cmd = f"ps2pdf -dPDFSETTINGS=/{compress} {pdf_in} {pdf_out}"
-            subprocess.run(
-                cmd,
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        print(f"Compression done\nOutput at {compressed_dir}")
-
-    @staticmethod
-    def merge_pdf():
+    def merge_pdf(self) -> None:
         print("Enter as many PDF inputs as you want to merge, but in order")
-        pdf_ins_list = inpt.files(
-            question="Enter the PDF input full path, "
-            "when done leave empty to proceed: ",
-            extensions="pdf",
-            multiple=True,
-        )
-        if pdf_ins_list == "q":
+        pdf_in = self.utils.get_pdf_input(multiple=True)
+        if pdf_in == "q":
+            print("Aborted...")
+            return
+
+        pdf_out = self.utils.get_pdf_output(pdf_in)
+        if pdf_in == "q":
             print("Aborted...")
             return
 
         pdf_ins = " ".join(pdf_ins_list)
-
-        pdf_out = oupt.files(
-            question="Enter the PDF output full path, or "
-            "just the name for same input dir, or leave "
-            "empty for <input>_output.pdf: ",
-            extension="pdf",
-            file_input=pdf_ins_list[-1],
-        )
-        if pdf_out == "q":
-            print("Aborted...")
-            return
 
         print("Wait a moment...")
         cmd = f"qpdf --empty --pages {pdf_ins} -- {pdf_out}"
@@ -210,30 +154,20 @@ class Menu:
             )
         print("Split complete")
 
-    @staticmethod
-    def encrypt_pdf():
-        print("Why don't you use GPG or SSL to encrypt the file?")
-        pdf_in = inpt.files(
-            question="Enter the PDF to encrypt full path: ", extensions="pdf"
-        )
+    def encrypt_pdf(self) -> None:
+        pdf_in = self.utils.get_pdf_input()
         if pdf_in == "q":
             print("Aborted...")
             return
 
-        pdf_out = oupt.files(
-            question="Enter the PDF output full path, "
-            "or just the name for same input dir, or leave "
-            "empty for <input>_output.pdf: ",
-            extension="pdf",
-            file_input=pdf_in,
-        )
-        if pdf_out == "q":
+        pdf_out = self.utils.get_pdf_output(pdf_in)
+        if pdf_in == "q":
             print("Aborted...")
             return
 
         while True:
             crypt_pass = getpass(
-                prompt="Enter the password to " "encrypt the PDF: "
+                prompt="Enter the password to encrypt the PDF: "
             )
             crypt_pass2 = getpass(prompt="Enter again the same password: ")
             if crypt_pass == crypt_pass2:
@@ -247,23 +181,14 @@ class Menu:
         subprocess.run(cmd, shell=True)
         print(f"Encryption done\nOutput at {pdf_out}")
 
-    @staticmethod
-    def decrypt_pdf():
-        pdf_in = inpt.files(
-            question="Enter the PDF to decrypt full path: ", extensions="pdf"
-        )
+    def decrypt_pdf(self) -> None:
+        pdf_in = self.utils.get_pdf_input()
         if pdf_in == "q":
             print("Aborted...")
             return
 
-        pdf_out = oupt.files(
-            question="Enter the PDF output full path, or "
-            "just the name for same input dir, or leave "
-            "empty for <input>_output.pdf: ",
-            extension="pdf",
-            file_input=pdf_in,
-        )
-        if pdf_out == "q":
+        pdf_out = self.utils.get_pdf_output(pdf_in)
+        if pdf_in == "q":
             print("Aborted...")
             return
 
@@ -277,22 +202,14 @@ class Menu:
         )
         print(f"Decryption done\nOutput at {pdf_out}")
 
-    def rotate_pdf(self):
-        pdf_in = inpt.files(
-            question="Enter the PDF to decrypt full path: ", extensions="pdf"
-        )
+    def rotate_pdf(self) -> None:
+        pdf_in = self.utils.get_pdf_input()
         if pdf_in == "q":
             print("Aborted...")
             return
 
-        pdf_out = oupt.files(
-            question="Enter the PDF output full path, or "
-            "just the name for same input dir, or leave "
-            "empty for <input>_output.pdf: ",
-            extension="pdf",
-            file_input=pdf_in,
-        )
-        if pdf_out == "q":
+        pdf_out = self.utils.get_pdf_output(pdf_in)
+        if pdf_in == "q":
             print("Aborted...")
             return
 
@@ -306,7 +223,7 @@ class Menu:
             print("Aborted...")
             return
 
-        total_pages = self.get_pdf_pgnum(pdf_in)
+        total_pages = self.utils.get_pdf_pgnum(pdf_in)
 
         while True:
             pages = input(
@@ -321,7 +238,9 @@ class Menu:
                 break
             elif "-end" in pages:
                 if (
-                    self.validate_page_num(pages.split("-")[0], total_pages)
+                    self.utils.validate_page_num(
+                        pages.split("-")[0], total_pages
+                    )
                     is False
                 ):
                     continue
@@ -331,7 +250,7 @@ class Menu:
                 pages = pages.replace("+", ",")
                 validation = None
                 for p in pages.split(","):
-                    if self.validate_page_num(p, total_pages) is False:
+                    if self.utils.validate_page_num(p, total_pages) is False:
                         validation = False
                 if validation is not False:
                     break
@@ -346,11 +265,13 @@ class Menu:
         )
         print(f"Rotation done\nOutput at {pdf_out}")
 
-    @staticmethod
-    def ocr():
-        pdf_in = inpt.files(
-            question="Enter the PDF to read " "full path: ", extensions="pdf"
-        )
+    def ocr(self) -> None:
+        pdf_in = self.utils.get_pdf_input()
+        if pdf_in == "q":
+            print("Aborted...")
+            return
+
+        pdf_out = self.utils.get_pdf_output(pdf_in)
         if pdf_in == "q":
             print("Aborted...")
             return
@@ -393,8 +314,7 @@ class Menu:
             cmd = f"nvim {txt_final}"
             subprocess.run(cmd, shell=True)
 
-    @staticmethod
-    def convert_img_to_pdf():
+    def convert_img_to_pdf(self) -> None:
         print(
             "Enter as many image files as you want to merge in one PDF, but "
             "in order"
@@ -451,8 +371,7 @@ class Menu:
         subprocess.run(cmd, shell=True)
         print(f"Conversion complete\nOutput at {pdf_out}")
 
-    @staticmethod
-    def convert_pdf_to_img():
+    def convert_pdf_to_img(self) -> None:
         pdf_in = inpt.files(
             question="Enter the PDF to convert to images " "full path: ",
             extensions="pdf",
