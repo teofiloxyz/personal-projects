@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # Menu PDF com diversas funções
+# Utils need rework on input output funcs
 
 from Tfuncs import gmenu
 
@@ -14,9 +15,8 @@ def open_menu() -> None:
     menu = Menu()
     title = "PDF-Menu"
     keys = {
-        "c": (menu.compress_pdf, "compress PDF"),
-        "cf": (menu.compress_folder, "compress all PDF's in a folder"),
-        "m": (menu.merge_pdf, "merge (concatenate) PDFs"),
+        "c": (menu.compress_pdf, "compress PDF or folder of PDF's"),
+        "m": (menu.merge_pdf, "merge (concatenate) PDF's"),
         "s": (menu.split_pdf, "split PDF"),
         "ec": (menu.encrypt_pdf, "encrypt PDF (AES-256)"),
         "dc": (menu.decrypt_pdf, "decrypt PDF"),
