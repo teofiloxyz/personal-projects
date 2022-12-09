@@ -7,7 +7,7 @@ import pickle
 from datetime import datetime, timedelta
 
 
-class CalendarAlarms:
+class CalendarNotifs:
     def __init__(self):
         self.scheduled_path = "scheduled_path"
         self.cals_path = "calendars_path"

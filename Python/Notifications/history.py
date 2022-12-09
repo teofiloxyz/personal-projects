@@ -8,7 +8,73 @@ import pickle
 from datetime import datetime, timedelta
 
 
-class HistoryUpdater:
+class History:
+    def __init__(self):
+        self.hist_path = "history_path"
+        self.notif_hist_list = [
+            (file.split(".")[0], get_notif_list(os.path.join(r_d_f[0], file)))
+            for r_d_f in os.walk(self.hist_path)
+            for file in r_d_f[2]
+        ]
+        self.now = datetime.now()
+        self.today_date = self.now.strftime("%Y-%m-%d")
+
+    def show_new_notif():
+        new_notif_path = "new_path"
+        if not os.path.exists(new_notif_path):
+            print("No new notifications...")
+            return
+
+        print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
+        notif_list = get_notif_list(new_notif_path)
+
+        print(
+            *(f'{notif["time"]} - {notif["message"]}' for notif in notif_list),
+            sep="\n",
+        )
+        os.remove(new_notif_path)
+
+    def show_all(self):
+        for day in sorted(self.notif_hist_list):
+            if day[0] == self.today_date:
+                print(ffmt.bold + fcol.green + "\nTODAY:" + ffmt.reset)
+            else:
+                print(ffmt.bold + fcol.green + "\n" + day[0] + ":" + ffmt.reset)
+            print(
+                *(f'{notif["time"]} - {notif["message"]}' for notif in day[1]),
+                sep="\n",
+            )
+
+    def show_filter_urg(self, urg_level):
+        col = fcol.bright_white
+        if urg_level == "low":
+            col = fcol.green
+        elif urg_level == "normal":
+            col = fcol.yellow
+        elif urg_level == "critical":
+            col = fcol.red
+        print(
+            f"Showing all{ffmt.bold}{col} "
+            f"{urg_level} urgency {ffmt.reset} past notifications"
+        )
+
+        for day in sorted(self.notif_hist_list):
+            if day[0] == self.today_date:
+                print(ffmt.bold + fcol.green + "\nTODAY:" + ffmt.reset)
+            else:
+                print(ffmt.bold + fcol.green + "\n" + day[0] + ":" + ffmt.reset)
+            notif_list = [
+                f'{notif["time"]} - {notif["message"]}'
+                for notif in day[1]
+                if notif["urgency"] == urg_level
+            ]
+            if len(notif_list) == 0:
+                print("None")
+            else:
+                print("\n".join(notif_list))
+
+
+class Updater:
     def __init__(self):
         self.hist_path = "history_path"
         self.notif_new_path = "new_path"

@@ -7,7 +7,7 @@ import pickle
 from datetime import datetime
 
 
-class AlarmsListener:
+class NotifsListener:
     def __init__(self):
         self.scheduled_path = "scheduled_path"
         self.notif_sound = "notif_sound"
