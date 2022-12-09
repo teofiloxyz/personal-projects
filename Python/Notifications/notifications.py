@@ -1,62 +1,94 @@
 #!/usr/bin/python3
-# Menu de notificações com diversas funções
+# Script de notificações com diversas funções
 
-import os
-import sys
-import pickle
-from datetime import datetime, timedelta
-from Tfuncs import gmenu, ffmt, fcol, qst, rofi
+from Tfuncs import gmenu
+
+import argparse
+
+from scheduled import Scheduled
+from history import History
+from notifs_listener import NotifsListener
+from calendar_notifs import CalendarNotifs
 
 
-def show_new_notif():
-    config = ConfigParser()
-    config.read("config.ini")
-    new_notif_path = config["HISTORY"]["new_path"]
-    if not os.path.exists(new_notif_path):
-        print("No new notifications...")
-        return
+def main() -> None:
+    new_notif, update_hist, notif_listener, calendar_notif = cmd()
+    if new_notif is not None:
+        Scheduled().create_notif(msg=" ".join(new_notif))
+    elif update_hist:
+        History().update()
+    elif notif_listener:
+        NotifsListener().main()
+    elif calendar_notif:
+        CalendarNotifs().main()
+    else:
+        open_menu()
 
-    print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
-    notif_list = get_notif_list(new_notif_path)
 
-    print(
-        *(f'{notif["time"]} - {notif["message"]}' for notif in notif_list),
-        sep="\n",
+def cmd() -> tuple:
+    parser = argparse.ArgumentParser(description="Notifications tool")
+    ex_args = parser.add_mutually_exclusive_group()
+    ex_args.add_argument(
+        "-n",
+        "--new-notif",
+        help="schedule a new notification",
+        nargs=argparse.REMAINDER,
     )
-    os.remove(new_notif_path)
+    ex_args.add_argument(
+        "-u",
+        "--update-hist",
+        help="update notifications history",
+        action="store_true",
+    )
+    ex_args.add_argument(
+        "-l",
+        "--notif-listener",
+        help="check if a scheduled notification is due",
+        action="store_true",
+    )
+    ex_args.add_argument(
+        "-c",
+        "--calendar-notif",
+        help="auto-schedule calendar notifications",
+        action="store_true",
+    )
+    args = parser.parse_args()
+    return (
+        args.new_notif,
+        args.update_hist,
+        args.notif_listener,
+        args.calendar_notif,
+    )
+
+
+def open_menu() -> None:
+    hist = History()
+    schd = Scheduled()
+    title = "Notifications-Menu"
+    keys = {
+        "ls": (
+            lambda days=30: schd.show(days=days),
+            "show scheduled notifications for the next # (default 30) days",
+        ),
+        "lsh": (hist.show_all, "show all past notifications"),
+        "lsl": (
+            lambda: hist.show_filter_urg("low"),
+            "show all low urgency past notifications",
+        ),
+        "lsn": (
+            lambda: hist.show_filter_urg("normal"),
+            "show all normal urgency past notifications",
+        ),
+        "lsc": (
+            lambda: hist.show_filter_urg("critical"),
+            "show all critical urgency past notifications",
+        ),
+        "ad": (schd.create_notif, "schedule a notification"),
+        "rm": (schd.remove_notif, "remove a scheduled notification"),
+    }
+    extra_func = hist.show_new_notif
+    gmenu(title, keys, extra_func)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
-        msg = " ".join(sys.argv[2:])
-        if sys.argv[1] == "create_notif":
-            Scheduled().create_alarm(msg, use_rofi=True)
-        else:
-            print("Argument error...")
-    else:
-        hist = History()
-        schd = Scheduled()
-        title = "Notifications-Menu"
-        keys = {
-            "ls": (
-                lambda days=30: schd.show_scheduled_alarms(days=days),
-                "show scheduled alarms for next # (default 30) days",
-            ),
-            "lsh": (hist.show_all, "show all past notifications"),
-            "lsl": (
-                lambda: hist.show_filter_urg("low"),
-                "show all low urgency past notifications",
-            ),
-            "lsn": (
-                lambda: hist.show_filter_urg("normal"),
-                "show all normal urgency past notifications",
-            ),
-            "lsc": (
-                lambda: hist.show_filter_urg("critical"),
-                "show all critical urgency past notifications",
-            ),
-            "ad": (schd.create_alarm, "create a notification alarm"),
-            "rm": (schd.remove_alarm, "remove a scheduled notification alarm"),
-        }
-        extra_func = show_new_notif
-        gmenu(title, keys, extra_func)
+    main()
