@@ -1,27 +1,44 @@
 #!/usr/bin/python3
 
+import os
+import subprocess
+import pickle
+
 
 class Utils:
-    def get_notif_list(pkl_path):
-        with open(pkl_path, "rb") as pkl:
-            notif_list = pickle.load(pkl)
-            notif_list.reverse()
-            return notif_list
+    def send_notification(
+        self, message: str, submessage: str = "", muted: bool = False
+    ) -> None:
+        if not muted:
+            self.play_sound()
+        subprocess.Popen(["notify-send", message, submessage])
 
-    def send_notification(self):
-        cmd = (
-            f'paplay {self.notif_sound} & notify-send "{self.notif}"'
-            if not self.notif_is_mute
-            else f'notify-send "{self.notif}"'
-        )
-        subprocess.run(cmd, shell=True)
+    def play_sound(self) -> None:
+        notif_sound = "notif_sound.wav"
+        subprocess.Popen(["paplay", notif_sound])
 
-    def update_file(self):
-        with open(self.scheduled_path, "wb") as sa:
-            pickle.dump(
-                [self.calendar_alarms_last_update, self.alarms_list], sa
-            )
+    class Scheduled:
+        def __init__(self) -> None:
+            self.scheduled_path = "scheduled_path"
+            self.check_file()
 
-    def get_data(self):
-        with open(self.scheduled_path, "rb") as sa:
-            self.calendar_alarms_last_update, self.alarms_list = pickle.load(sa)
+        def check_file(self) -> None:
+            if not os.path.exists(self.scheduled_path):
+                self.write_file("2000-01-01 00:00:00", [])
+
+        def write_file(
+            self, cal_notifs_last_update: str, notifs: list[dict]
+        ) -> None:
+            with open(self.scheduled_path, "wb") as sn:
+                pickle.dump([cal_notifs_last_update, notifs], sn)
+
+        def load_file(self) -> tuple[str, list]:
+            with open(self.scheduled_path, "rb") as sn:
+                return pickle.load(sn)
+
+    class History:
+        def get_notif_list(pkl_path):
+            with open(pkl_path, "rb") as pkl:
+                notif_list = pickle.load(pkl)
+                notif_list.reverse()
+                return notif_list
