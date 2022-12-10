@@ -1,42 +1,41 @@
 #!/usr/bin/python3
-# Should be triggered after each notification, or as a daemon
+# The Updater should be triggered after each notification, or as a daemon
 
-import os
-import subprocess
-import json
-import pickle
+from Tfuncs import fcol, ffmt
+
 from datetime import datetime, timedelta
+
+from utils import Utils
 
 
 class History:
-    def __init__(self):
-        self.hist_path = "history_path"
-        self.notif_hist_list = [
-            (file.split(".")[0], get_notif_list(os.path.join(r_d_f[0], file)))
-            for r_d_f in os.walk(self.hist_path)
-            for file in r_d_f[2]
-        ]
-        self.now = datetime.now()
-        self.today_date = self.now.strftime("%Y-%m-%d")
+    def __init__(self) -> None:
+        self.utils = Utils()
+        self.now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.now_strp = datetime.strptime(self.now, "%Y-%m-%d %H:%M")
+        self.notifs_history = self.utils.History().get_notifs_history()
 
-    def show_new_notif():
-        new_notif_path = "new_path"
-        if not os.path.exists(new_notif_path):
+    @staticmethod
+    def update_hist() -> None:
+        Updater().main()
+
+    def show_new_notifs(self) -> None:
+        if not self.utils.History().check_for_new_notifs():
             print("No new notifications...")
             return
 
-        print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
-        notif_list = get_notif_list(new_notif_path)
+        new_notifs = self.utils.History().get_new_notifs()
+        self.utils.History().remove_new_notifs()
 
+        print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
         print(
-            *(f'{notif["time"]} - {notif["message"]}' for notif in notif_list),
+            *(f'{notif["time"]} - {notif["message"]}' for notif in new_notifs),
             sep="\n",
         )
-        os.remove(new_notif_path)
 
-    def show_all(self):
-        for day in sorted(self.notif_hist_list):
-            if day[0] == self.today_date:
+    def show_all(self) -> None:
+        for day in sorted(self.notifs_history):
+            if day[0] == self.now.split()[0]:
                 print(ffmt.bold + fcol.green + "\nTODAY:" + ffmt.reset)
             else:
                 print(ffmt.bold + fcol.green + "\n" + day[0] + ":" + ffmt.reset)
@@ -45,7 +44,7 @@ class History:
                 sep="\n",
             )
 
-    def show_filter_urg(self, urg_level):
+    def show_all_filter_urg(self, urg_level: str) -> None:
         col = fcol.bright_white
         if urg_level == "low":
             col = fcol.green
@@ -58,32 +57,33 @@ class History:
             f"{urg_level} urgency {ffmt.reset} past notifications"
         )
 
-        for day in sorted(self.notif_hist_list):
-            if day[0] == self.today_date:
+        for day in sorted(self.notifs_history):
+            if day[0] == self.now.split()[0]:
                 print(ffmt.bold + fcol.green + "\nTODAY:" + ffmt.reset)
             else:
                 print(ffmt.bold + fcol.green + "\n" + day[0] + ":" + ffmt.reset)
-            notif_list = [
+            notifs = [
                 f'{notif["time"]} - {notif["message"]}'
                 for notif in day[1]
                 if notif["urgency"] == urg_level
             ]
-            if len(notif_list) == 0:
+            if len(notifs) == 0:
                 print("None")
             else:
-                print("\n".join(notif_list))
+                print("\n".join(notifs))
 
 
 class Updater:
-    def __init__(self):
-        self.hist_path = "history_path"
-        self.notif_new_path = "new_path"
+    def __init__(self) -> None:
+        self.utils = Utils()
+        self.now = datetime.now()
+        self.today = self.now.strftime("%Y-%m-%d")
 
-    def main(self):
-        self.get_date()
-        self.get_hist_lists()
-        if self.check_dunst_list() is False:
+    def main(self) -> None:
+        dunst_hist = self.utils.History().get_dunst_hist()
+        if len(dunst_hist) == 0:
             return
+
         self.get_last_entries_id()
         if self.check_dunst_last() is False:
             return
@@ -91,45 +91,6 @@ class Updater:
             return
         self.get_new_list()
         self.refresh_lists()
-
-    def get_date(self):
-        self.now = datetime.now()
-        self.today_date = self.now.strftime("%Y-%m-%d")
-
-    def get_hist_lists(self):
-        self.notif_hist_path = os.path.join(
-            self.hist_path, f"{self.today_date}.pkl"
-        )
-        self.dunst_hist_path = "/tmp/dunst_history.json"
-
-        """foi feito assim pra ficar imediatamente em formato json;
-        doutra forma teria que se recorrer a regex, ou algo do género"""
-        subprocess.run(f"dunstctl history > {self.dunst_hist_path}", shell=True)
-        with open(self.dunst_hist_path, "r") as dh:
-            dunst_hist_dict = json.load(dh)
-
-        self.dunst_hist_list = dunst_hist_dict["data"][0]
-        os.remove(self.dunst_hist_path)
-
-        if os.path.exists(self.notif_hist_path):
-            with open(self.notif_hist_path, "rb") as nh:
-                self.notif_hist_list = pickle.load(nh)
-            self.check_yesterday = False
-        else:
-            self.notif_hist_list = []
-            self.check_yesterday = False
-            self.yesterday = str(
-                (self.now - timedelta(days=1)).strftime("%Y-%m-%d")
-            )
-            self.notif_yhist_path = os.path.join(
-                self.hist_path, f"{self.yesterday}.pkl"
-            )
-            if os.path.exists(self.notif_yhist_path):
-                self.check_yesterday = True
-
-    def check_dunst_list(self):
-        if len(self.dunst_hist_list) == 0:
-            return False
 
     def get_last_entries_id(self):
         self.dunst_hist_last_id = None
@@ -207,6 +168,3 @@ class Updater:
 
         with open(self.notif_new_path, "wb") as nn:
             pickle.dump(self.notif_new_list, nn)
-
-
-HistoryUpdater().main()
