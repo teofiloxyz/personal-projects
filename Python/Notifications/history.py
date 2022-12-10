@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # The Updater should be triggered after each notification, or as a daemon
+# Not tested... still needs a lot of work
 
 from Tfuncs import fcol, ffmt
 
@@ -10,26 +11,29 @@ from utils import Utils
 
 class History:
     def __init__(self) -> None:
-        self.utils = Utils()
+        self.utils = Utils().History()
         self.now = datetime.now().strftime("%Y-%m-%d %H:%M")
         self.now_strp = datetime.strptime(self.now, "%Y-%m-%d %H:%M")
-        self.notifs_history = self.utils.History().get_notifs_history()
+        self.notifs_history = self.utils.get_notifs_history()
 
     @staticmethod
     def update_hist() -> None:
         Updater().main()
 
-    def show_new_notifs(self) -> None:
-        if not self.utils.History().check_for_new_notifs():
+    def show_unseen_notifs(self) -> None:
+        if not self.utils.check_for_unseen_notifs():
             print("No new notifications...")
             return
 
-        new_notifs = self.utils.History().get_new_notifs()
-        self.utils.History().remove_new_notifs()
+        unseen_notifs = self.utils.get_unseen_notifs()
+        self.utils.remove_unseen_notifs()
 
         print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
         print(
-            *(f'{notif["time"]} - {notif["message"]}' for notif in new_notifs),
+            *(
+                f'{notif["time"]} - {notif["message"]}'
+                for notif in unseen_notifs
+            ),
             sep="\n",
         )
 
@@ -75,96 +79,127 @@ class History:
 
 class Updater:
     def __init__(self) -> None:
-        self.utils = Utils()
+        self.utils = Utils().History()
         self.now = datetime.now()
         self.today = self.now.strftime("%Y-%m-%d")
 
     def main(self) -> None:
-        dunst_hist = self.utils.History().get_dunst_hist()
+        dunst_hist = self.get_dunst_hist()
         if len(dunst_hist) == 0:
             return
 
-        self.get_last_entries_id()
-        if self.check_dunst_last() is False:
-            return
-        if self.check_if_new() is False:
-            return
-        self.get_new_list()
-        self.refresh_lists()
-
-    def get_last_entries_id(self):
-        self.dunst_hist_last_id = None
-
-        for notif in self.dunst_hist_list:
-            if notif["category"]["data"] != "trash":
-                self.dunst_hist_last_id = notif["id"]["data"]
-                break
-
-        if len(self.notif_hist_list) != 0:
-            self.notif_hist_last_id = self.notif_hist_list[0]["id"]
-        else:
-            if self.check_yesterday is True:
-                with open(self.notif_yhist_path, "rb") as nyh:
-                    notif_yhist_list = pickle.load(nyh)
-                self.notif_hist_last_id = notif_yhist_list[0]["id"]
-            else:
-                self.notif_hist_last_id = 0
-
-    def check_dunst_last(self):
-        if self.dunst_hist_last_id is None:
-            return False
-
-    def check_if_new(self):
-        if self.dunst_hist_last_id == self.notif_hist_last_id:
-            return False
-
-    def get_new_list(self):
-        if os.path.exists(self.notif_new_path):
-            with open(self.notif_new_path, "rb") as nn:
-                self.notif_new_list = pickle.load(nn)
-        else:
-            self.notif_new_list = []
-
-    def get_time(self):
-        with open("/proc/uptime", "r") as ut:
-            uptime_secs = float(ut.readline().split()[0])
-        time_secs_diff = uptime_secs - float(self.time) / 1000000
-        self.time = str(
-            (self.now - timedelta(seconds=time_secs_diff)).strftime("%H:%M:%S")
+        last_notifs_hist_date, last_notifs_hist = self.get_last_notifs_hist()
+        last_notifs_hist_is_from_yesterday = self.is_from_yesterday(
+            last_notifs_hist_date
         )
 
-    def get_urgency(self):
+        last_dunst_notif_id = self.get_last_dunst_notif_id(dunst_hist)
+        if last_dunst_notif_id is None:
+            return
+        last_hist_notif_id = self.get_last_hist_notif_id(
+            last_notifs_hist, last_notifs_hist_is_from_yesterday
+        )
+        if not self.last_dunst_notif_is_new(
+            last_hist_notif_id, last_dunst_notif_id
+        ):
+            return
+
+        unseen_notifs = self.get_unseen_notifs()
+
+        notifs_hist, unseen_notifs = self.update_notifs_lists(
+            dunst_hist, last_notifs_hist, unseen_notifs, last_hist_notif_id
+        )
+        self.utils.write_file(
+            self.utils.hist_path + self.today + ".pkl", notifs_hist
+        )
+        self.utils.write_file(self.utils.unseen_notif_path, unseen_notifs)
+
+    def get_dunst_hist(self) -> dict:
+        return self.utils.get_dunst_hist()
+
+    def get_last_notifs_hist(self) -> tuple[str, list[dict]]:
+        return self.utils.get_notifs_history()[0]
+
+    def is_from_yesterday(self, last_notifs_hist_date: str) -> bool:
+        yesterday = (self.now - timedelta(days=1)).strftime("%Y-%m-%d")
+        if last_notifs_hist_date == yesterday:
+            return True
+        return False
+
+    def get_last_dunst_notif_id(self, dunst_hist: dict) -> int | None:
+        for notif in dunst_hist:
+            if notif["category"]["data"] != "trash":
+                return notif["id"]["data"]
+
+    def get_last_hist_notif_id(
+        self,
+        last_notifs_hist: list[dict],
+        last_notifs_hist_is_from_yesterday: bool,
+    ) -> int:
+        if len(last_notifs_hist) != 0:
+            return int(last_notifs_hist[0]["id"])
+        else:
+            if last_notifs_hist_is_from_yesterday:
+                notifs = self.utils.get_notifs_history()[1][-1]
+                return int(notifs[0]["id"])
+            return 0
+
+    def last_dunst_notif_is_new(
+        self, last_dunst_notif_id: int, last_hist_notif_id: int
+    ) -> bool:
+        if last_dunst_notif_id == last_hist_notif_id:
+            return False
+        return True
+
+    def get_unseen_notifs(self) -> list:
+        if self.utils.check_for_unseen_notifs():
+            return self.utils.get_unseen_notifs()
+        return []
+
+    def get_notif_time(self, notif: dict) -> str:
+        notif_time = notif["timestamp"]["data"]
+        with open("/proc/uptime", "r") as ut:
+            os_uptime_in_secs = float(ut.readline().split()[0])
+
+        time_diff_in_secs = os_uptime_in_secs - float(notif_time) / 1000000
+        return (self.now - timedelta(seconds=time_diff_in_secs)).strftime(
+            "%H:%M:%S"
+        )
+
+    def get_notif_urgency(self, notif: dict) -> str:
+        notif_urgency = notif["timeout"]["data"]
         urgency_opts = {3000000: "low", 10000000: "normal", 0: "critical"}
         try:
-            self.urgency = urgency_opts[int(self.urgency)]
+            return urgency_opts[int(notif_urgency)]
         except (ValueError, KeyError):
-            self.urgency = "normal"
+            return "normal"
 
-    def refresh_lists(self):
-        n = 0
-        for notif in self.dunst_hist_list:
+    def update_notifs_lists(
+        self,
+        dunst_hist: dict,
+        notifs_hist: list,
+        unseen_notifs: list,
+        last_hist_notif_id: int,
+    ) -> tuple[list, list]:
+        for n, notif in enumerate(dunst_hist):
             notif_id = notif["id"]["data"]
-            if notif_id == self.notif_hist_last_id:
+            if notif_id == last_hist_notif_id:
                 break
             if notif["category"]["data"] == "trash":
                 continue
-            self.time = notif["timestamp"]["data"]
-            self.get_time()
-            self.urgency = notif["timeout"]["data"]
-            self.get_urgency()
+
+            time = self.get_notif_time(notif)
+            urgency = self.get_notif_urgency(notif)
             message = notif["summary"]["data"]
+            submessage = notif["body"]["data"]
             notif_dict = {
                 "id": notif_id,
-                "time": self.time,
-                "urgency": self.urgency,
+                "time": time,
+                "urgency": urgency,
                 "message": message,
+                "submessage": submessage,
             }
-            self.notif_hist_list.insert(n, notif_dict)
-            self.notif_new_list.insert(n, notif_dict)
-            n += 1
+            notifs_hist.insert(n, notif_dict)
+            unseen_notifs.insert(n, notif_dict)
 
-        with open(self.notif_hist_path, "wb") as nh:
-            pickle.dump(self.notif_hist_list, nh)
-
-        with open(self.notif_new_path, "wb") as nn:
-            pickle.dump(self.notif_new_list, nn)
+        return notifs_hist, unseen_notifs
