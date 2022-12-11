@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # Script de notificações com diversas funções
+# Whole script still needs work
 
 from Tfuncs import gmenu
 
