@@ -30,12 +30,12 @@ class Utils:
         def write_file(
             self, cal_notifs_last_update: str, notifs: list[dict]
         ) -> None:
-            with open(self.scheduled_path, "wb") as sn:
-                pickle.dump([cal_notifs_last_update, notifs], sn)
+            with open(self.scheduled_path, "wb") as f:
+                pickle.dump([cal_notifs_last_update, notifs], f)
 
         def load_file(self) -> tuple[str, list]:
-            with open(self.scheduled_path, "rb") as sn:
-                return pickle.load(sn)
+            with open(self.scheduled_path, "rb") as f:
+                return pickle.load(f)
 
     class History:
         def __init__(self) -> None:
@@ -74,44 +74,25 @@ class Utils:
                 for file in hist_files
             ]
 
-        # reduzir!
-        def get_dunst_hist(self):
-            self.notif_hist_path = os.path.join(
-                self.hist_path, f"{self.today_date}.pkl"
-            )
-            self.dunst_hist_path = "/tmp/dunst_history.json"
-
-            """foi feito assim pra ficar imediatamente em formato json;
+        def get_dunst_hist(self) -> dict:
+            """Foi feito assim pra ficar imediatamente em formato json;
             doutra forma teria que se recorrer a regex, ou algo do género"""
-            subprocess.run(
-                f"dunstctl history > {self.dunst_hist_path}", shell=True
-            )
-            with open(self.dunst_hist_path, "r") as dh:
-                dunst_hist_dict = json.load(dh)
 
-            self.dunst_hist_list = dunst_hist_dict["data"][0]
-            os.remove(self.dunst_hist_path)
+            dunst_hist_path = "/tmp/dunst_history.json"
+            subprocess.run(f"dunstctl history > {dunst_hist_path}", shell=True)
 
-            if os.path.exists(self.notif_hist_path):
-                with open(self.notif_hist_path, "rb") as nh:
-                    self.notif_hist_list = pickle.load(nh)
-                self.check_yesterday = False
-            else:
-                self.notif_hist_list = []
-                self.check_yesterday = False
-                self.yesterday = str(
-                    (self.now - timedelta(days=1)).strftime("%Y-%m-%d")
-                )
-                self.notif_yhist_path = os.path.join(
-                    self.hist_path, f"{self.yesterday}.pkl"
-                )
-                if os.path.exists(self.notif_yhist_path):
-                    self.check_yesterday = True
+            dunst_hist = self.load_json_file(dunst_hist_path)
+            os.remove(dunst_hist_path)
+            return dunst_hist["data"][0]
+
+        def load_json_file(self, file: str) -> dict:
+            with open(file, "r") as f:
+                return json.load(f)
 
         def write_file(self, file: str, notifs: list[dict]) -> None:
-            with open(file, "wb") as sn:
-                pickle.dump(notifs, sn)
+            with open(file, "wb") as f:
+                pickle.dump(notifs, f)
 
         def load_file(self, file: str) -> list[dict]:
-            with open(file, "rb") as sn:
-                return pickle.load(sn)
+            with open(file, "rb") as f:
+                return pickle.load(f)
