@@ -5,15 +5,12 @@ from youtube_search import YoutubeSearch
 import sys
 import subprocess
 import time
-from configparser import ConfigParser
 
 
 class Youtube:
     def __init__(self):
-        self.config = ConfigParser()
-        self.config.read("config.ini")
-        self.music_playlist = self.config["YOUTUBE"]["music_playlist"]
-        self.download_path = self.config["YOUTUBE"]["download_path"]
+        self.music_playlist = "music_playlist"
+        self.download_path = "download_path"
         self.max_results = 15
 
     def main(self, entry):
