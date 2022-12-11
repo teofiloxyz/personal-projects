@@ -16,7 +16,7 @@ def main() -> None:
     if new_notif is not None:
         Scheduled().create_notif(msg=" ".join(new_notif))
     elif update_hist:
-        History().update()
+        History().update_hist()
     elif notif_listener:
         NotifsListener().main()
     elif calendar_notif:
@@ -72,21 +72,21 @@ def open_menu() -> None:
         ),
         "lsh": (hist.show_all, "show all past notifications"),
         "lsl": (
-            lambda: hist.show_filter_urg("low"),
+            lambda: hist.show_all_filter_urg("low"),
             "show all low urgency past notifications",
         ),
         "lsn": (
-            lambda: hist.show_filter_urg("normal"),
+            lambda: hist.show_all_filter_urg("normal"),
             "show all normal urgency past notifications",
         ),
         "lsc": (
-            lambda: hist.show_filter_urg("critical"),
+            lambda: hist.show_all_filter_urg("critical"),
             "show all critical urgency past notifications",
         ),
         "ad": (schd.create_notif, "schedule a notification"),
         "rm": (schd.remove_notif, "remove a scheduled notification"),
     }
-    extra_func = hist.show_new_notif
+    extra_func = hist.show_unseen_notifs
     gmenu(title, keys, extra_func)
 
 
