@@ -6,19 +6,18 @@ from utils import Utils
 
 
 class Browser:
-    def __init__(self) -> None:
-        self.utils = Utils()
-        self.browser = "browser"
+    utils = Utils()
+    browser = "browser"
 
-        # Add whatever you want
-        self.options = {
-            "s": "",
-            "p": "python ",
-            "b": "bash ",
-            "g": "golang ",
-            "la": "latex ",
-            "l": "linux ",
-        }
+    # Add whatever you want
+    options = {
+        "s": "",
+        "p": "python ",
+        "b": "bash ",
+        "g": "golang ",
+        "la": "latex ",
+        "l": "linux ",
+    }
 
     def main(self, cmd_arg: str) -> None:
         option, entry = self.utils.divide_arg(cmd_arg, self.options)
