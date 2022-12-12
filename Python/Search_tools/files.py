@@ -1,47 +1,39 @@
 #!/usr/bin/python3
 # Search file or folder by title
 
-import os
-import sys
-import subprocess
 from Tfuncs import rofi
+
+import os
+import subprocess
 
 
 class Files:
-    def __init__(self):
-        self.dir_path = '/home'
+    dir_path = "/home"
 
-    def main(self, entry):
-        self.entry = entry
-        if self.search_entry():
-            self.rofi_dmenu()
-            if self.choice != "":
-                self.open_choice()
+    def main(self, entry: str) -> None:
+        results = self.search_entry(entry)
+        if len(results) == 0:
+            rofi.message(f"Didn't find in home any file with '{entry}'")
+            return
+        choice = self.choose_with_rofi_dmenu(results)
+        if choice != "":
+            self.open_choice_with_ranger(choice)
 
-    def search_entry(self):
-        cmd = f'fd --hidden --ignore-case "{self.entry}" {self.dir_path}'
-        self.results = subprocess.run(cmd, shell=True, capture_output=True) \
-            .stdout.decode('utf-8').split('\n')[:-1]
+    def search_entry(self, entry: str) -> list[str]:
+        cmd = f'fd --hidden --ignore-case "{entry}" {self.dir_path}'
+        return (
+            subprocess.run(cmd, shell=True, capture_output=True)
+            .stdout.decode("utf-8")
+            .split("\n")[:-1]
+        )
 
-        if len(self.results) == 0:
-            rofi.message(f"Didn't find in home any file with '{self.entry}'")
-            return False
-        return True
+    def choose_with_rofi_dmenu(self, results: list) -> str:
+        prompt = "Choose which one to open with ranger"
+        return rofi.custom_dmenu(prompt, results)
 
-    def rofi_dmenu(self):
-        prompt = 'Choose which one to open with ranger'
-        dmenu = self.results
-        self.choice = rofi.custom_dmenu(prompt, dmenu)
-        if not os.path.isdir(self.choice):
-            self.choice = "--selectfile=" + self.choice
+    def open_choice_with_ranger(self, choice: str) -> None:
+        if not os.path.isdir(choice):
+            choice = "--selectfile=" + choice
 
-    def open_choice(self):
-        cmd = f'alacritty -e ranger "{self.choice}"'
+        cmd = f'alacritty -e ranger "{choice}"'
         subprocess.run(cmd, shell=True)
-
-
-if len(sys.argv) > 1:
-    entry = ' '.join(sys.argv[1:])
-    Files().main(entry)
-else:
-    print('Argument needed...')
