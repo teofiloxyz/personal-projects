@@ -9,16 +9,20 @@ It's mostly Python scripts.
 There's just a few (Bash) shell scripts here, which are a bit old.
 I've also been programing in Go (Golang).
 
-Currently I'm redesigning all python scripts
+Currently I'm redesigning, and fixing, all python scripts
 
 Main Projects
 -------------
 
 ### My favorite project so far
+
 * `./Go/Rofi-hkey`
 
-### Some good scripts
+### Some interesting python scripts
+
 * `./Python/Fintracker`
-* `./Python/Music_playlist`
-* `./Python/Mounting`
 * `./Python/Notifications`
+* `./Python/Music_playlist`
+* `./Python/Search_tools`
+* `./Python/Media`
+* `./Python/PDFs`
