@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
+import json
+
 
 class Utils:
-    def save_json(self):
+    def write_json(self, json_info: dict) -> None:
         with open("config.json", "w") as cf:
-            json.dump(self.json_info, cf)
+            json.dump(json_info, cf)
 
-    def open_json(self):
+    def load_json(self) -> dict:
         with open("config.json", "r") as cf:
-            self.json_info = json.load(cf)
+            return json.load(cf)
