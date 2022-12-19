@@ -2,13 +2,18 @@
 
 import pandas as pd
 
+import os
 import subprocess
 import sqlite3
+
+from utils import Utils
 
 
 class Database:
     def __init__(self) -> None:
-        self.db_path = self.json_info["db_path"]
+        utils = Utils()
+        json_info = utils.load_json()
+        self.db_path = json_info["db_path"]
         if not os.path.isfile(self.db_path):
             self.setup_database()
 
@@ -30,7 +35,7 @@ class Database:
             "NOT NULL, amount REAL NOT NULL, note TEXT)"
         )
         """Eu sei que podia ficar tudo numa tabela com category NULL
-        Faço assim para usar foreign key"""
+        Faço assim pela graça de usar foreign key"""
         self.cursor.execute(
             "CREATE TABLE expenses(transaction_id "
             "INTEGER, category TEXT NOT NULL, "
@@ -41,9 +46,9 @@ class Database:
         self.disconnect()
 
     class Query:
-        def __init__(self, db_path: str) -> None:
+        def __init__(self) -> None:
             self.db = Database()
-            self.db_con, self.cursor = self.db.connect(db_path)
+            self.db_con, self.cursor = self.db.connect()
 
         def get_tabs(self) -> list[str]:
             self.cursor.execute(
@@ -53,8 +58,71 @@ class Database:
             self.db.disconnect()
             return tabs
 
-        def create_df(self, db_table: str) -> pd.DataFrame:
-            df = pd.read_sql(f"SELECT * FROM {db_table}", self.db_con)
+        def get_transactions_by_id(self, trn_id: int) -> tuple:
+            self.cursor.execute(
+                f"SELECT * FROM transactions WHERE transaction_id = {trn_id}"
+            )
+            trn_id_fetch = self.cursor.fetchone()
+            self.db.disconnect()
+            return trn_id_fetch
+
+        def get_last_transaction(self) -> tuple:
+            self.cursor.execute(
+                "SELECT * FROM transactions ORDER BY "
+                "transaction_id DESC LIMIT 1"
+            )
+            trn_id_fetch = self.cursor.fetchone()
+            self.db.disconnect()
+            return trn_id_fetch
+
+        def create_df_of_expenses(self) -> pd.DataFrame:
+            df = pd.read_sql(
+                "SELECT SUBSTR(time, 1, 10) as date, amount, "
+                "category FROM transactions LEFT JOIN expenses "
+                "USING(transaction_id) WHERE "
+                'trn_type = "Expense"',
+                self.db_con,
+            )
+            self.db.disconnect()
+            return df
+
+        def create_df_trn_type(self, trn_type: str) -> pd.DataFrame:
+            df = pd.read_sql(
+                "SELECT SUBSTR(time, 1, 10) as date, amount FROM "
+                f'transactions WHERE trn_type = "{trn_type}"',
+                self.db_con,
+            )
+            self.db.disconnect()
+            return df
+
+        def create_df_transactions(self) -> pd.DataFrame:
+            df = pd.read_sql("SELECT * FROM transactions", self.db_con)
+            self.db.disconnect()
+            return df
+
+        def create_df_transactions_all(self) -> pd.DataFrame:
+            df = pd.read_sql(
+                "SELECT * FROM transactions LEFT JOIN expenses USING(transaction_id)",
+                self.db_con,
+            )
+            self.db.disconnect()
+            return df
+
+        def create_df_transactions_expenses(self) -> pd.DataFrame:
+            df = pd.read_sql(
+                "SELECT * FROM transactions LEFT JOIN "
+                "expenses USING(transaction_id) WHERE "
+                'trn_type = "Expense"',
+                self.db_con,
+            )
+            self.db.disconnect()
+            return df
+
+        def create_df_transactions_revenue(self) -> pd.DataFrame:
+            df = pd.read_sql(
+                "SELECT * FROM transactions WHERE " 'trn_type = "Revenue"',
+                self.db_con,
+            )
             self.db.disconnect()
             return df
 
@@ -65,12 +133,42 @@ class Database:
             return columns
 
     class Edit:
-        def __init__(self, db_path: str) -> None:
+        def __init__(self) -> None:
             self.db = Database()
-            self.db_con, self.cursor = self.db.connect(db_path)
+            self.db_con, self.cursor = self.db.connect()
 
         def add_entry(self, table: str, entry: tuple) -> None:
             self.cursor.execute(f"INSERT INTO {table} VALUES {entry}")
+            self.db_con.commit()
+            self.db.disconnect()
+
+        def add_transaction(self, entry: tuple) -> None:
+            self.cursor.execute(
+                "INSERT INTO transactions (time, "
+                f"trn_type, amount, note) VALUES {entry}"
+            )
+            self.db_con.commit()
+            self.db.disconnect()
+
+        def add_expense(self, category: str, trn_id: str) -> None:
+            self.cursor.execute(
+                "INSERT INTO expenses (transaction_id, "
+                f"category) VALUES {trn_id, category}"
+            )
+            self.db_con.commit()
+            self.db.disconnect()
+
+        def remove_transaction(self, trn_id: int) -> None:
+            self.cursor.execute(
+                f"DELETE FROM transactions WHERE transaction_id = {trn_id}"
+            )
+            self.db_con.commit()
+            self.db.disconnect()
+
+        def remove_expense(self, trn_id: int) -> None:
+            self.cursor.execute(
+                f"DELETE FROM expenses WHERE transaction_id = {trn_id}"
+            )
             self.db_con.commit()
             self.db.disconnect()
 
