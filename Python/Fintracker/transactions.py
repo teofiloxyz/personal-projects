@@ -2,6 +2,7 @@
 
 from Tfuncs import fcol, ffmt
 import pandas as pd
+from tabulate import tabulate
 
 import re
 from datetime import datetime, timedelta
@@ -129,13 +130,29 @@ class Transactions:
         )
         balance_30d = revenue_30d - expenses_30d
 
+        # need a loop
         values = {
-            "Revenue": [revenue_24h, revenue_7d, revenue_30d],
-            "Expenses": [expenses_24h, expenses_7d, expenses_30d],
-            "Balance": [balance_24h, balance_7d, balance_30d],
+            "Timespan": ["Last 24 hours", "Last 7 days", "Last 30 days"],
+            "Revenue": [
+                self.utils.get_val_as_currency(revenue_24h),
+                self.utils.get_val_as_currency(revenue_7d),
+                self.utils.get_val_as_currency(revenue_30d),
+            ],
+            "Expenses": [
+                self.utils.get_val_as_currency(expenses_24h),
+                self.utils.get_val_as_currency(expenses_7d),
+                self.utils.get_val_as_currency(expenses_30d),
+            ],
+            "Balance": [
+                self.utils.get_val_as_currency(balance_24h),
+                self.utils.get_val_as_currency(balance_7d),
+                self.utils.get_val_as_currency(balance_30d),
+            ],
         }
-        timespan = ["Last 24 hours", "Last 7 days", "Last 30 days"]
-        print(pd.DataFrame(data=values, index=timespan))
+        table = tabulate(
+            values, headers="keys", tablefmt="fancy_grid", stralign="center"
+        )
+        print(table)
 
     def show(self, option: str, timespan: str) -> None:
         # improve

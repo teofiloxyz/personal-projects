@@ -23,3 +23,9 @@ class Utils:
         now = datetime.now().strftime("%Y-%m-%d")
         now_strp = datetime.strptime(now, "%Y-%m-%d")
         return datetime.strftime(now_strp - timedelta(days=days), "%Y-%m-%d")
+
+    def get_val_as_currency(self, amount: int) -> str:
+        if amount >= 0:
+            return "${:,.2f}".format(amount)
+        else:
+            return "-${:,.2f}".format(-amount)
