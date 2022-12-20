@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 from Tfuncs import fcol, ffmt
+from tabulate import tabulate
 
 from utils import Utils
 from transactions import Transactions
@@ -10,36 +11,49 @@ class Balance:
     utils = Utils()
     transactions = Transactions()
 
-    def show_balance(self) -> None:
+    def show(self) -> None:
         assets, liabilities = self.get_balance_info()
-        assets_sum = sum(assets.values())
-        liabilities_sum = sum(liabilities.values())
-        balance = assets_sum - liabilities_sum
+        total_assets = sum(assets.values())
+        total_liabilities = sum(liabilities.values())
 
-        print(
-            f"{ffmt.bold}{fcol.green}Assets:{ffmt.reset} "
-            f"{'€ {:,.2f}'.format(assets_sum)}"
-        )
-        [
-            print(f"{asset.capitalize()}: {'€ {:,.2f}'.format(amount)}")
+        assets = [
+            (asset.capitalize(), self.utils.get_val_as_currency(amount))
             for asset, amount in assets.items()
         ]
-
-        print(
-            f"\n{ffmt.bold}{fcol.red}Liabilities:{ffmt.reset} "
-            f"{'€ {:,.2f}'.format(liabilities_sum)}"
+        assets.append(
+            (
+                f"{ffmt.bold}{fcol.green}Total Assets",
+                self.utils.get_val_as_currency(total_assets) + ffmt.reset,
+            )
         )
-        [
-            print(f"{liability.capitalize()}: {'€ {:,.2f}'.format(amount)}")
+        liabilities = [
+            (liability.capitalize(), self.utils.get_val_as_currency(amount))
             for liability, amount in liabilities.items()
         ]
-
-        print(
-            f"\n{ffmt.bold}{fcol.yellow}Balance:{ffmt.reset} "
-            f"{'€ {:,.2f}'.format(balance)}"
+        liabilities.append(
+            (
+                f"{ffmt.bold}{fcol.red}Total Liabilities",
+                self.utils.get_val_as_currency(total_liabilities) + ffmt.reset,
+            )
+        )
+        balance = assets + liabilities
+        balance.append(
+            (
+                f"{ffmt.bold}Balance",
+                self.utils.get_val_as_currency(total_assets - total_liabilities)
+                + ffmt.reset,
+            )
         )
 
-    def edit_balance(self) -> None:
+        table = tabulate(
+            balance,
+            headers=(f"{ffmt.bold}{fcol.cyan}Item", f"Amount{ffmt.reset}"),
+            tablefmt="fancy_grid",
+            stralign="center",
+        )
+        print(table)
+
+    def edit(self) -> None:
         assets, liabilities = self.get_balance_info()
 
         balance = {
