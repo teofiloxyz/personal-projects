@@ -20,7 +20,7 @@ class Charts:
             ),
             "2": (
                 "Expenses of last 30 days",
-                lambda: self.show_time_chart_by_trn_type("Expense"),
+                lambda: self.show_time_chart_by_trn_type("Expenses"),
             ),
             "3": (
                 "Category percentage of expenses of last 30 days",
@@ -40,7 +40,9 @@ class Charts:
                 continue
 
     def show_pie_chart_expenses_cat(self) -> None:
-        df = self.database.Query().create_df_of_expenses()
+        df = self.database.Query().create_df_with_expenses(
+            selection="SUBSTR(time, 1, 10) as date, amount, category"
+        )
         date_limit = self.utils.get_date_limit(days=30)
         df = df.loc[df["date"] > date_limit]
         categories_list = df["category"].unique().tolist()
@@ -58,7 +60,14 @@ class Charts:
 
     def show_time_chart_by_trn_type(self, trn_type: str) -> None:
         print(f"Showing {trn_type} chart...")
-        df = self.database.Query().create_df_trn_type(trn_type)
+        if trn_type == "Expenses":
+            df = self.database.Query().create_df_with_expenses(
+                selection="SUBSTR(time, 1, 10) as date, amount"
+            )
+        else:
+            df = self.database.Query().create_df_with_revenue(
+                selection="SUBSTR(time, 1, 10) as date, amount"
+            )
         date_limit = self.utils.get_date_limit(days=30)
         df = df.loc[df["date"] > date_limit].groupby("date")["amount"].sum()
 

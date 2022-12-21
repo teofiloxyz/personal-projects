@@ -11,6 +11,6 @@ class CSVFile:
             print("Aborted...")
             return
 
-        df = Database().Query().create_df_of_expenses()
+        df = Database().Query().create_df_with_transactions()
         df.to_csv(str(csv_output), encoding="utf-8", index=False)
         print(f"Export done\nOutput at '{csv_output}'")

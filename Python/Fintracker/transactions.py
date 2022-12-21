@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from Tfuncs import fcol, ffmt
-import pandas as pd
 from tabulate import tabulate
 
 import re
@@ -83,7 +82,7 @@ class Transactions:
         now = self.utils.get_date_now()
         now_strp = datetime.strptime(now, "%Y-%m-%d %H:%M:%S")
         # rework
-        df = self.database.Query().create_df_transactions()
+        df = self.database.Query().create_df_with_transactions()
         date_24h = datetime.strftime(
             now_strp - timedelta(days=1), "%Y-%m-%d %H:%M:%S"
         )
@@ -157,11 +156,11 @@ class Transactions:
     def show(self, option: str, timespan: str) -> None:
         # improve
         if option == "all":
-            df = self.database.Query().create_df_transactions_all()
+            df = self.database.Query().create_df_with_transactions()
         elif option == "expenses":
-            df = self.database.Query().create_df_transactions_expenses()
+            df = self.database.Query().create_df_with_expenses()
         elif option == "revenue":
-            df = self.database.Query().create_df_transactions_revenue()
+            df = self.database.Query().create_df_with_revenue()
 
         if type(timespan) != "int":
             try:
@@ -252,7 +251,7 @@ class Transactions:
             )
 
     def remove(self) -> None:
-        df = self.database.Query().create_df_transactions_all()
+        df = self.database.Query().create_df_with_transactions()
         print(df.to_string(index=False))
         while True:
             selected_id = input(
@@ -297,16 +296,16 @@ class Transactions:
     def add_transaction(self, entry: tuple) -> None:
         self.database.Edit().add_transaction(entry)
 
-    def remove_transaction(self, trn_id: str) -> None:
+    def remove_transaction(self, tid: str) -> None:
         try:
-            trn_id = int(trn_id)
+            tid = int(tid)
         except ValueError:
             print("Must enter an integer...")
             return
 
-        trn_id_fetch = self.database.Query().get_transactions_by_id(trn_id)
+        trn_id_fetch = self.database.Query().get_transaction_from_id(tid)
         if trn_id_fetch is None:
-            print(f"Transaction with id '{trn_id}' not found on database!")
+            print(f"Transaction with id '{tid}' not found on database!")
             return
 
         trn_type, amount, note = (
@@ -315,26 +314,27 @@ class Transactions:
             trn_id_fetch[4],
         )
 
-        self.database.Edit().remove_transaction(trn_id)
-        if trn_id_fetch[2] == "Expense":
-            self.database.Edit().remove_expense(trn_id)
+        if trn_id_fetch[2] != "Expense":
+            self.database.Edit().remove_transaction(tid)
+            return
 
-            # Correct the balance statement
-            if trn_type == "Balance":
+        # Correct the balance statement
+        self.database.Edit().remove_transaction(tid, is_expense=True)
+        if trn_type == "Balance":
 
-                note_1 = re.sub(" [-+][la]:.*$", "", note)
-                note_2 = note.replace(note_1, "").strip()
+            note_1 = re.sub(" [-+][la]:.*$", "", note)
+            note_2 = note.replace(note_1, "").strip()
 
-                self.change_balance_item(note_1, amount)
-                # if not isolated balance change to be reversed
-                if note_2 != "":
-                    self.change_balance_item(note_2, amount)
+            self.change_balance_item(note_1, amount)
+            # if not isolated balance change to be reversed
+            if note_2 != "":
+                self.change_balance_item(note_2, amount)
 
-            elif trn_type == "Expense":
-                self.json_info["assets"]["cash"] += amount
-            else:
-                self.json_info["assets"]["cash"] -= amount
-            self.utils.write_json(self.json_info)
+        elif trn_type == "Expense":
+            self.json_info["assets"]["cash"] += amount
+        else:
+            self.json_info["assets"]["cash"] -= amount
+        self.utils.write_json(self.json_info)
 
     def change_balance_item(self, entry: str, amount: float) -> None:
         category = "assets" if entry[1] == "a" else "liabilities"

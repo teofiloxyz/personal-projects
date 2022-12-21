@@ -35,11 +35,11 @@ def open_menu() -> None:
             lambda timespan=30: tra.show("revenue", timespan),
             "show past # (default 30) days revenue",
         ),
-        "lsb": (bal.show_balance, "show balance statement"),
+        "lsb": (bal.show, "show balance statement"),
         "sm": (tra.summary, "show summary"),
         "ad": (tra.add, "add transaction to database"),
         "rm": (tra.remove, "remove transaction from database"),
-        "ed": (bal.edit_balance, "edit balance statement"),
+        "ed": (bal.edit, "edit balance statement"),
         "ch": (cht.show, "select and show charts"),
         "ex": (csv.export_csv, "export database tables to CSV file"),
     }
