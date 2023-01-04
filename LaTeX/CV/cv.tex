@@ -34,13 +34,15 @@
 \cs_new_eq:NN \Repeat \prg_replicate:nn
 \ExplSyntaxOff
 % Colours
+\usepackage{afterpage} % Tirar cor nas páginas seguintes
 \usepackage{transparent}
 \usepackage{color}
 \usepackage{xcolor}
-\definecolor{titlecol}{RGB}{24, 190, 173}
-\definecolor{localcol}{RGB}{89, 89, 89}
-\definecolor{circcol}{RGB}{171, 171, 171}
-\definecolor{iconcol}{RGB}{0, 103, 222}
+\definecolor{titlecol}{RGB}{0, 100, 160} % azul
+\definecolor{iconcol}{RGB}{0, 100, 160} % azul
+\definecolor{circcol}{RGB}{140, 140, 140} % cinza
+\definecolor{localcol}{RGB}{75, 75, 75} % cinza
+\definecolor{pagebackcol}{RGB}{205, 205, 205} % cinza
 % Icones
 \usepackage{fontawesome5}
 \usepackage{amssymb}
@@ -52,7 +54,7 @@ colorlinks=true,
 linkcolor=blue,
 filecolor=magenta,
 urlcolor=blue,
-pdftitle={Nome do PDF!},
+pdftitle={Nome do PDF},
 pdfpagemode=FullScreen,
 }
 \urlstyle{same}
@@ -165,7 +167,7 @@ pdfpagemode=FullScreen,
 \cvtitle{Competências Digitais}
 \txsep
 \cvtext{
-    \textbf{C++\hfill{\skill{4}}\skisep Python\hfill{\skill{5}}\skisep Linux\hfill{\skill{5}}\skisep Go (Golang)\hfill{\skill{3}}\skisep SQL\hfill{\skill{4}}\skisep LaTeX\hfill{\skill{1}}\skisep MS Office\hfill{\skill{2}}\skisep VBA\hfill{\skill{2}}\skisep}
+    \textbf{C++\hfill{\skill{4}}\skisep Python\hfill{\skill{5}}\skisep Linux\hfill{\skill{5}}\skisep Go (Golang)\hfill{\skill{3}}\skisep SQL\hfill{\skill{4}}\skisep LaTeX\hfill{\skill{1}}\skisep MS Office\hfill{\skill{2}}\skisep VBA\hfill{\skill{2}}\skisep}}
 \end{leftcolumn}
 % Coluna da direita
 \begin{rightcolumn}
@@ -196,13 +198,13 @@ pdfpagemode=FullScreen,
     \locsep
         \cvlocal{Faculdade y}
         \locsep
-            \cvtext{Janeiro de 1999}
+            \cvtext{Janeiro de 1999 - Março de 2001}
     \degsep
     \cvdegree{Licenciatura z}
     \locsep
         \cvlocal{Faculdade j}
         \locsep
-            \cvtext{Julho de 1997}
+            \cvtext{Julho de 1997 - Novembro de 1998}
 \elsepd
 % Educação complementar
 \cvtitle{Educação Complementar}
@@ -232,21 +234,22 @@ pdfpagemode=FullScreen,
     \begin{itemize}
         \item \hyperlink{page.3}{\underline{Diploma do Mestrado}}
         \item \hyperlink{page.4}{\underline{Diploma da Licenciatura}}
-        \item \hyperlink{page.5}{\underline{Diploma do Curso tal}}
-        \item \hyperlink{page.6}{\underline{Carta de recomendação de xyz}}
-        \item \hyperlink{page.7}{\underline{Certificados da conferência tal}}
+        \item \hyperlink{page.5}{\underline{Diploma do Curso x}}
+        \item \hyperlink{page.6}{\underline{Carta de recomendação de y}}
+        \item \hyperlink{page.7}{\underline{Certificados da conferência z}}
         \elsepe
     \end{itemize}
 % Links úteis
 \cvtitlex{Links úteis}
     \begin{itemize}
         \item \href{https://domain.com}
-        {\underline{domain.org(comprovativo cetificado tal)}}
+        {\underline{domain.org(comprovativo cetificado x)}}
         \item \href{https://domain2.com}
-        {\underline{domain2.org(comprovativo diploma x)}}
+        {\underline{domain2.org(comprovativo diploma y)}}
         \item \href{https://verify.domain3.com/}
-        {\underline{Verificação de diploma y}}
+        {\underline{Verificação de diploma z}}
     \end{itemize}
 % Páginas restantes
+\afterpage{\nopagecolor} % Tirar cor de fundo das páginas seguintes
 \includepdf[pages=-]{path/to/Appendix.pdf}
 \end{document}
