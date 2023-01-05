@@ -1,19 +1,13 @@
-#!/usr/bin/python3
-
 import pandas as pd
 
 import os
 import subprocess
 import sqlite3
 
-from utils import Utils
-
 
 class Database:
     def __init__(self) -> None:
-        utils = Utils()
-        json_info = utils.load_json()
-        self.db_path = json_info["db_path"]
+        self.db_path = "fintracker.db"
         if not os.path.isfile(self.db_path):
             self.setup_database()
 
@@ -35,7 +29,7 @@ class Database:
             "NOT NULL, amount REAL NOT NULL, note TEXT)"
         )
         """Eu sei que podia ficar tudo numa tabela com category NULL
-        Faço assim pela experiência de usar foreign key"""
+        Faço assim somente pela experiência de usar foreign key"""
         self.cursor.execute(
             "CREATE TABLE expenses(transaction_id "
             "INTEGER, category TEXT NOT NULL, "
@@ -49,6 +43,12 @@ class Database:
         def __init__(self) -> None:
             self.db = Database()
             self.db_con, self.cursor = self.db.connect()
+
+        def get_categories(self) -> tuple:
+            self.cursor.execute(f"SELECT DISTINCT category FROM expenses")
+            categories = self.cursor.fetchone()
+            self.db.disconnect()
+            return categories
 
         def get_transaction_from_id(self, tid: int) -> tuple:
             self.cursor.execute(

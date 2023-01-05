@@ -1,9 +1,7 @@
-#!/usr/bin/python3
-
 from Tfuncs import fcol, ffmt
 from tabulate import tabulate
 
-from utils import Utils
+from utils import Utils, Fintracker
 from transactions import Transactions
 
 
@@ -12,24 +10,18 @@ class Balance:
     transactions = Transactions()
 
     def show(self) -> None:
-        assets, liabilities = self.get_balance_info()
+        assets, liabilities = Fintracker.balance.values()
         total_assets = sum(assets.values())
         total_liabilities = sum(liabilities.values())
 
-        assets = [
-            (asset.capitalize(), self.utils.get_val_as_currency(amount))
-            for asset, amount in assets.items()
-        ]
+        assets = self.get_category_as_currency(assets)
         assets.append(
             (
                 f"{ffmt.bold}{fcol.green}Total Assets",
                 self.utils.get_val_as_currency(total_assets) + ffmt.reset,
             )
         )
-        liabilities = [
-            (liability.capitalize(), self.utils.get_val_as_currency(amount))
-            for liability, amount in liabilities.items()
-        ]
+        liabilities = self.get_category_as_currency(liabilities)
         liabilities.append(
             (
                 f"{ffmt.bold}{fcol.red}Total Liabilities",
@@ -54,7 +46,7 @@ class Balance:
         print(table)
 
     def edit(self) -> None:
-        assets, liabilities = self.get_balance_info()
+        assets, liabilities = Fintracker.balance.values()
 
         balance = {
             "assets": dict(assets),  # dict para fazer uma cópia
@@ -129,9 +121,11 @@ class Balance:
         if category_2 is not None:
             self.save_balance_info(category_2, item_2, new_item_2_val)
 
-    def get_balance_info(self) -> tuple:
-        json_info = self.utils.load_json()
-        return json_info["assets"], json_info["liabilities"]
+    def get_category_as_currency(self, category: dict) -> list[tuple]:
+        return [
+            (item.capitalize(), self.utils.get_val_as_currency(amount))
+            for item, amount in category.items()
+        ]
 
     def pick_balance_item(
         self, question: str, balance: dict, can_cancel: bool = False

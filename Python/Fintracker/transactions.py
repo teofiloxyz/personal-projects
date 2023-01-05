@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from Tfuncs import fcol, ffmt
 from tabulate import tabulate
 
@@ -7,14 +5,13 @@ import re
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from utils import Utils
+from utils import Utils, Fintracker
 from database import Database
 
 
 class Transactions:
     utils = Utils()
     database = Database()
-    json_info = utils.load_json()
 
     def show_opening_message(self) -> None:
         message = self.auto_transactions()
@@ -38,15 +35,10 @@ class Transactions:
         self.summary()
 
     def get_balance_negative_items(self) -> list[str]:
-        # Ñ faço merge aos dicionários pq podem ter items com o mesmo nome
-        balance = (
-            self.json_info["assets"].items(),
-            self.json_info["liabilities"].items(),
-        )
         return [
             item
-            for category in balance
-            for item, amount in category
+            for category in Fintracker.balance.values()
+            for item, amount in category.items()
             if amount < 0
         ]
 
@@ -56,26 +48,27 @@ class Transactions:
         now = self.utils.get_date_now()
         now_strp = datetime.strptime(now, "%Y-%m-%d %H:%M:%S")
         message = list()
-        for n, income in enumerate(self.json_info["incomes"].values(), 1):
+        for title, income in Fintracker.auto_transactions["incomes"].items():
             date = income["expected_date"]
             date_strp = datetime.strptime(date, "%Y-%m-%d")
             amount = income["expected_amount"]
-            income_title = income["title"]
             if now_strp >= date_strp:
-                entry = now, "Revenue", amount, income_title
+                entry = now, "Revenue", amount, title
                 self.database.Edit().add_transaction(entry)
                 if income["recurrence"] == "monthly":
                     delta = relativedelta(months=1)
                 else:
                     delta = timedelta(days=7)
                 new_date = datetime.strftime(date_strp + delta, "%Y-%m-%d")
-                self.json_info["incomes"][str(n)]["expected_date"] = new_date
+                Fintracker.auto_transactions["incomes"][title][
+                    "expected_date"
+                ] = new_date
                 # O dinheiro ganho aumenta a rúbrica cash do balanço
-                self.json_info["assets"]["cash"] += amount
-                self.utils.write_json(self.json_info)
+                Fintracker.balance["assets"]["cash"] += amount
+                self.utils.save()
 
                 amount_eur = "€ {:,.2f}".format(amount)
-                message.append(f"{amount_eur} from {income_title} was added!")
+                message.append(f"{amount_eur} from {title} was added!")
         return message
 
     def summary(self) -> None:
@@ -200,7 +193,7 @@ class Transactions:
             break
 
         if trn_type == "Expense":
-            categories = self.json_info["expenses_categories"]
+            categories = self.database.Query().get_categories()
             [
                 print(f"[{n}] {category}")
                 for n, category in enumerate(categories, 1)
@@ -221,8 +214,7 @@ class Transactions:
                     except IndexError:
                         print("Index outside the list...")
                     except ValueError:
-                        self.json_info["expenses_categories"].append(category)
-                        self.utils.write_json(self.json_info)
+                        self.utils.save()
                         break
 
         note = input("Enter a note (leave empty for none): ")
@@ -231,10 +223,10 @@ class Transactions:
             return
 
         if trn_type == "Expense":
-            self.json_info["assets"]["cash"] -= amount
+            Fintracker.balance["assets"]["cash"] -= amount
         else:
-            self.json_info["assets"]["cash"] += amount
-        self.utils.write_json(self.json_info)
+            Fintracker.balance["assets"]["cash"] += amount
+        self.utils.save()
 
         entry = now, trn_type, amount, note
         self.database.Edit().add_transaction(entry)
@@ -244,7 +236,7 @@ class Transactions:
             trn_id = last_transaction[0]
             self.database.Edit().add_expense(category, trn_id)
 
-        if self.json_info["assets"]["cash"] < 0:
+        if Fintracker.balance["assets"]["cash"] < 0:
             print(
                 f"{ffmt.bold}{fcol.red}You got negative cash, please edit "
                 f"the balance statement!{ffmt.reset}"
@@ -274,11 +266,7 @@ class Transactions:
         need_to_edit_balance = False
         # Ñ dou merge aos dicionários pq podem ter items com o mesmo nome
         # put in utils
-        balance = (
-            self.json_info["assets"].items(),
-            self.json_info["liabilities"].items(),
-        )
-        for items in balance:
+        for items in Fintracker.balance:
             for item, amount in items:
                 if amount < 0:
                     need_to_edit_balance = True
@@ -331,10 +319,10 @@ class Transactions:
                 self.change_balance_item(note_2, amount)
 
         elif trn_type == "Expense":
-            self.json_info["assets"]["cash"] += amount
+            Fintracker.balance["assets"]["cash"] += amount
         else:
-            self.json_info["assets"]["cash"] -= amount
-        self.utils.write_json(self.json_info)
+            Fintracker.balance["assets"]["cash"] -= amount
+        self.utils.save()
 
     def change_balance_item(self, entry: str, amount: float) -> None:
         category = "assets" if entry[1] == "a" else "liabilities"
@@ -342,12 +330,12 @@ class Transactions:
         operation = entry[0]
 
         item_val = (
-            self.json_info[category][item]
-            if item in self.json_info[category].keys()
+            Fintracker.balance[category][item]
+            if item in Fintracker.balance[category].keys()
             else 0
         )
         if operation == "+":
             # Reversed bc removed transaction
-            self.json_info[category][item] = item_val - amount
+            Fintracker.balance[category][item] = item_val - amount
         else:
-            self.json_info[category][item] = item_val + amount
+            Fintracker.balance[category][item] = item_val + amount
