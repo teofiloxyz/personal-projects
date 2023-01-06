@@ -44,11 +44,11 @@ class Database:
             self.db = Database()
             self.db_con, self.cursor = self.db.connect()
 
-        def get_categories(self) -> tuple:
+        def get_categories(self) -> list:
             self.cursor.execute(f"SELECT DISTINCT category FROM expenses")
-            categories = self.cursor.fetchone()
+            categories = self.cursor.fetchall()
             self.db.disconnect()
-            return categories
+            return [category[0] for category in categories]
 
         def get_transaction_from_id(self, tid: int) -> tuple:
             self.cursor.execute(

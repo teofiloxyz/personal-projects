@@ -229,7 +229,7 @@ class Transactions:
         self.utils.save()
 
         entry = now, trn_type, amount, note
-        self.database.Edit().add_transaction(entry)
+        self.add_entry(entry)
 
         last_transaction = self.database.Query().get_last_transaction()
         if trn_type == "Expense":
@@ -256,24 +256,24 @@ class Transactions:
             elif "+" in selected_id:
                 selected_id = selected_id.split("+")
                 no_errors = [
-                    self.remove_transaction(trn_id) for trn_id in selected_id
+                    self.remove_entry(trn_id) for trn_id in selected_id
                 ]
+                no_errors = False if False in no_errors else True
             else:
-                no_errors = self.remove_transaction(selected_id)
+                no_errors = self.remove_entry(selected_id)
             if no_errors:
                 break
 
         need_to_edit_balance = False
-        # Ñ dou merge aos dicionários pq podem ter items com o mesmo nome
         # put in utils
-        for items in Fintracker.balance:
-            for item, amount in items:
-                if amount < 0:
-                    need_to_edit_balance = True
-                    print(
-                        f"{ffmt.bold}{fcol.red}{item.capitalize()} "
-                        f"is negative!{ffmt.reset}"
-                    )
+        for items in Fintracker.balance.values():
+            for item, amount in items.items():
+                if amount >= 0:
+                    continue
+                need_to_edit_balance = True
+                print(
+                    f"{ffmt.bold}{fcol.red}{item.capitalize()} is negative!{ffmt.reset}"
+                )
 
         if need_to_edit_balance:
             print(
@@ -281,20 +281,20 @@ class Transactions:
                 f"statement!{ffmt.reset}"
             )
 
-    def add_transaction(self, entry: tuple) -> None:
+    def add_entry(self, entry: tuple) -> None:
         self.database.Edit().add_transaction(entry)
 
-    def remove_transaction(self, tid: str) -> None:
+    def remove_entry(self, tid: str) -> bool:
         try:
             tid = int(tid)
         except ValueError:
             print("Must enter an integer...")
-            return
+            return False
 
         trn_id_fetch = self.database.Query().get_transaction_from_id(tid)
         if trn_id_fetch is None:
             print(f"Transaction with id '{tid}' not found on database!")
-            return
+            return False
 
         trn_type, amount, note = (
             trn_id_fetch[2],
@@ -302,27 +302,25 @@ class Transactions:
             trn_id_fetch[4],
         )
 
-        if trn_id_fetch[2] != "Expense":
+        if trn_type == "Expense":
+            self.database.Edit().remove_transaction(tid, is_expense=True)
+            Fintracker.balance["assets"]["cash"] += amount
+        elif trn_type == "Revenue":
             self.database.Edit().remove_transaction(tid)
-            return
-
-        # Correct the balance statement
-        self.database.Edit().remove_transaction(tid, is_expense=True)
-        if trn_type == "Balance":
-
+            Fintracker.balance["assets"]["cash"] -= amount
+        elif trn_type == "Balance":
+            self.database.Edit().remove_transaction(tid)
             note_1 = re.sub(" [-+][la]:.*$", "", note)
             note_2 = note.replace(note_1, "").strip()
-
             self.change_balance_item(note_1, amount)
             # if not isolated balance change to be reversed
             if note_2 != "":
                 self.change_balance_item(note_2, amount)
-
-        elif trn_type == "Expense":
-            Fintracker.balance["assets"]["cash"] += amount
         else:
-            Fintracker.balance["assets"]["cash"] -= amount
+            return False
+
         self.utils.save()
+        return True
 
     def change_balance_item(self, entry: str, amount: float) -> None:
         category = "assets" if entry[1] == "a" else "liabilities"

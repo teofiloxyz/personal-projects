@@ -17,7 +17,7 @@ class Utils:
         return datetime.strftime(now_strp - timedelta(days=days), "%Y-%m-%d")
 
     @staticmethod
-    def get_val_as_currency(amount: int) -> str:
+    def get_val_as_currency(amount: float) -> str:
         if amount >= 0:
             return "€ {:,.2f}".format(amount)
         else:
