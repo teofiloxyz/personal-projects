@@ -52,6 +52,7 @@ class Balance:
         ]
 
     def edit(self) -> None:
+        # made a copy here
         balance = Fintracker.balance
         category, item = self.pick_balance_item(
             balance, question="Choose the item to edit: "
@@ -107,14 +108,15 @@ class Balance:
             category, item, category_2, item_2, val_diff
         )
 
-        now = self.utils.get_date_now()
-        entry = now, "Balance", val_diff, description
+        now = self.utils.get_date_now(date_format="%Y-%m-%d %H:%M:%S")
+        entry = now, "Balance", abs(val_diff), description
         self.transactions.add_entry(entry)
 
         Fintracker.balance[category][item] = item_new_val
         if category_2 != "":
             Fintracker.balance[category_2][item_2] = item_2_new_val
         self.utils.save()
+        self.transactions.check_for_balance_negative_items()
 
     def pick_balance_item(
         self, balance: dict, question: str, can_cancel: bool = False

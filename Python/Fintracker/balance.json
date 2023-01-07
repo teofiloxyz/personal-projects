@@ -1,14 +1,14 @@
 {
     "assets": {
         "house": 120000,
-        "stocks": 20000,
+        "stocks": 20000.0,
         "savings": 10000.0,
-        "cash": 2000.0
+        "cash": 500.0
     },
     "liabilities": {
         "mortgage": 100000,
         "car loan": 9000.0,
         "credit card 1": 3000.0,
-        "credit card 2": 500
+        "credit card 2": 500.0
     }
 }

@@ -1,20 +1,48 @@
 import json
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from dataclasses import dataclass
 
 
 class Utils:
-    def get_date_now(self, get_HMS: bool = True) -> str:
-        date_format = "%Y-%m-%d %H:%M:%S" if get_HMS else "%Y-%m-%d"
+    def get_date_now(self, date_format: str = "%Y-%m-%d") -> str:
         return datetime.now().strftime(date_format)
 
     def get_date_strp(self, date_string: str, date_format: str) -> datetime:
         return datetime.strptime(date_string, date_format)
 
-    def get_date_limit(self, days: int = 30) -> str:
-        now = self.get_date_now(get_HMS=False)
-        now_strp = self.get_date_strp(now, "%Y-%m-%d")
-        return datetime.strftime(now_strp - timedelta(days=days), "%Y-%m-%d")
+    def get_date_limit(
+        self, days: int = 30, date_format: str = "%Y-%m-%d"
+    ) -> str:
+        now = self.get_date_now(date_format=date_format)
+        now_strp = self.get_date_strp(now, date_format)
+        return datetime.strftime(now_strp - timedelta(days=days), date_format)
+
+    def date_is_due(
+        self, date_string: str, date_format: str = "%Y-%m-%d"
+    ) -> bool:
+        now = self.get_date_now(date_format)
+        now_strp = self.get_date_strp(now, date_format)
+        date_strp = self.get_date_strp(date_string, date_format)
+        if now_strp >= date_strp:
+            return True
+        return False
+
+    def get_date_delta(self, recurrence: str) -> timedelta | relativedelta:
+        # very simplistic
+        if recurrence == "monthly":
+            return relativedelta(months=1)
+        else:
+            return timedelta(days=7)
+
+    def add_delta_to_date(
+        self,
+        date_string: str,
+        delta: timedelta | relativedelta,
+        date_format: str = "%Y-%m-%d",
+    ) -> str:
+        date_strp = self.get_date_strp(date_string, date_format)
+        return datetime.strftime(date_strp + delta, "%Y-%m-%d")
 
     @staticmethod
     def get_val_as_currency(amount: float) -> str:

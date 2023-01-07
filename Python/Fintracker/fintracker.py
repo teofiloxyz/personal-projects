@@ -2,7 +2,7 @@
 """ Fintracker (ou personal finances tracker) é um menu simples,
 onde se registam todas as transações efetuadas.
 Também guarda o balanço, e é possível editá-lo."""
-# Still needs a lot of refactoring and fixing
+# Still needs some refactoring
 
 from Tfuncs import gmenu
 
@@ -36,7 +36,7 @@ def open_menu() -> None:
             "show past # (default 30) days revenue",
         ),
         "lsb": (bal.show, "show balance statement"),
-        "sm": (tra.summary, "show summary"),
+        "sm": (tra.show_summary, "show summary"),
         "ad": (tra.add, "add transaction to database"),
         "rm": (tra.remove, "remove transaction from database"),
         "ed": (bal.edit, "edit balance statement"),
