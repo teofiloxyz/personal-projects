@@ -6,9 +6,8 @@ from Tfuncs import gmenu
 
 import argparse
 
-from scheduled import Scheduled
+from scheduled import Scheduled, NotifsListener
 from history import History
-from notifs_listener import NotifsListener
 from calendar_notifs import CalendarNotifs
 
 
