@@ -5,6 +5,7 @@
 from Tfuncs import fcol, ffmt
 
 from datetime import datetime, timedelta
+import re
 
 from utils import Utils
 
@@ -77,84 +78,56 @@ class History:
                 print("\n".join(notifs))
 
 
+# Big mess...
 class Updater:
     def __init__(self) -> None:
-        self.utils = Utils().History()
+        self.utils = Utils()
         self.now = datetime.now()
         self.today = self.now.strftime("%Y-%m-%d")
 
     def main(self) -> None:
-        dunst_hist = self.get_dunst_hist()
-        if len(dunst_hist) == 0:
-            return
-
-        last_notifs_hist_date, last_notifs_hist = self.get_last_notifs_hist()
-        last_notifs_hist_is_from_yesterday = self.is_from_yesterday(
-            last_notifs_hist_date
-        )
-
-        last_dunst_notif_id = self.get_last_dunst_notif_id(dunst_hist)
-        if last_dunst_notif_id is None:
-            return
-        last_hist_notif_id = self.get_last_hist_notif_id(
-            last_notifs_hist, last_notifs_hist_is_from_yesterday
-        )
-        if not self.last_dunst_notif_is_new(
-            last_hist_notif_id, last_dunst_notif_id
-        ):
-            return
-
-        unseen_notifs = self.get_unseen_notifs()
-
-        notifs_hist, unseen_notifs = self.update_notifs_lists(
-            dunst_hist, last_notifs_hist, unseen_notifs, last_hist_notif_id
-        )
-        self.utils.write_file(
-            self.utils.hist_path + self.today + ".pkl", notifs_hist
-        )
-        self.utils.write_file(self.utils.unseen_notif_path, unseen_notifs)
-
-    def get_dunst_hist(self) -> dict:
-        return self.utils.get_dunst_hist()
-
-    def get_last_notifs_hist(self) -> tuple[str, list[dict]]:
-        return self.utils.get_notifs_history()[0]
-
-    def is_from_yesterday(self, last_notifs_hist_date: str) -> bool:
-        yesterday = (self.now - timedelta(days=1)).strftime("%Y-%m-%d")
-        if last_notifs_hist_date == yesterday:
-            return True
-        return False
-
-    def get_last_dunst_notif_id(self, dunst_hist: dict) -> int | None:
-        for notif in dunst_hist:
-            if notif["category"]["data"] != "trash":
-                return notif["id"]["data"]
-
-    def get_last_hist_notif_id(
-        self,
-        last_notifs_hist: list[dict],
-        last_notifs_hist_is_from_yesterday: bool,
-    ) -> int:
-        if len(last_notifs_hist) != 0:
-            return int(last_notifs_hist[0]["id"])
-        else:
-            if last_notifs_hist_is_from_yesterday:
-                notifs = self.utils.get_notifs_history()[1][-1]
-                return int(notifs[0]["id"])
-            return 0
-
-    def last_dunst_notif_is_new(
-        self, last_dunst_notif_id: int, last_hist_notif_id: int
-    ) -> bool:
-        if last_dunst_notif_id == last_hist_notif_id:
-            return False
-        return True
-
-    def get_unseen_notifs(self) -> list:
-        if self.utils.check_for_unseen_notifs():
-            return self.utils.get_unseen_notifs()
-        return []
+        notifs, sender = dict(), "0"
+        cmd = "dbus-monitor interface='org.freedesktop.Notifications'"
+        for line in self.utils.shell_generator(cmd):
+            line = " ".join(line.split())
+            if line.startswith("method call time="):
+                item = re.search("sender=:(.+) ->", line)
+                if item:
+                    sender = item.group(1)
+                    notifs[sender] = dict()
+                item = re.search("time=(.[0-9]+)\.", line)
+                if item:
+                    time = item.group(1)
+                    notifs[sender]["time"] = time
+                    notifs[sender]["body"] = list()
+            elif line.startswith("signal time="):
+                item = re.search("destination=:(.+) serial=", line)
+                if item:
+                    destination = item.group(1)
+                    if destination in notifs.keys():
+                        time = notifs[destination]["time"]
+                        body = notifs[destination]["body"]
+                        title = body[3].strip("string ")
+                        message = body[4].strip("string ")
+                        index = body.index('string "urgency"')
+                        urgency = body[index + 1][-1]
+                        urgs = ["low", "normal", "critical"]
+                        urgency = urgs[int(urgency)]
+                        category = ""
+                        if 'string "category"' in body:
+                            index = body.index('string "category"')
+                            category = body[index + 1]
+                            category = category.strip("variant string ")
+                        del notifs[destination]
+                        sender = "0"
+                        self.update_notifs_lists(
+                            time, title, message, urgency, category
+                        )
+            else:
+                if sender == "0":
+                    notifs[sender] = dict()
+                    notifs[sender]["body"] = list()
+                notifs[sender]["body"].append(line)
 
     def get_notif_time(self, notif: dict) -> str:
         notif_time = notif["timestamp"]["data"]
@@ -166,40 +139,16 @@ class Updater:
             "%H:%M:%S"
         )
 
-    def get_notif_urgency(self, notif: dict) -> str:
-        notif_urgency = notif["timeout"]["data"]
-        urgency_opts = {3000000: "low", 10000000: "normal", 0: "critical"}
-        try:
-            return urgency_opts[int(notif_urgency)]
-        except (ValueError, KeyError):
-            return "normal"
-
     def update_notifs_lists(
-        self,
-        dunst_hist: dict,
-        notifs_hist: list,
-        unseen_notifs: list,
-        last_hist_notif_id: int,
-    ) -> tuple[list, list]:
-        for n, notif in enumerate(dunst_hist):
-            notif_id = notif["id"]["data"]
-            if notif_id == last_hist_notif_id:
-                break
-            if notif["category"]["data"] == "trash":
-                continue
-
-            time = self.get_notif_time(notif)
-            urgency = self.get_notif_urgency(notif)
-            message = notif["summary"]["data"]
-            submessage = notif["body"]["data"]
-            notif_dict = {
-                "id": notif_id,
-                "time": time,
-                "urgency": urgency,
-                "message": message,
-                "submessage": submessage,
-            }
-            notifs_hist.insert(n, notif_dict)
-            unseen_notifs.insert(n, notif_dict)
-
-        return notifs_hist, unseen_notifs
+        self, date: str, title: str, message: str, urgency: str, category: str
+    ) -> None:
+        entry = {
+            "date": date,
+            "title": title,
+            "message": message,
+            "urgency": urgency,
+            "category": category,
+        }
+        # needs fixing
+        notifs_hist.append(entry)
+        unseen_notifs.append(entry)

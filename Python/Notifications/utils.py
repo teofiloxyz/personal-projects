@@ -18,6 +18,11 @@ class Utils:
         notif_sound = "notif_sound.wav"
         subprocess.Popen(["paplay", notif_sound])
 
+    def shell_generator(self, cmd: str):
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        while True:
+            yield process.stdout.readline().decode("utf-8").rstrip()
+
     class Scheduled:
         def __init__(self) -> None:
             self.scheduled_path = "scheduled_path"
