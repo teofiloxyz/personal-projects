@@ -12,11 +12,11 @@ from calendar_notifs import CalendarNotifs
 
 
 def main() -> None:
-    new_notif, update_hist, notif_listener, calendar_notif = cmd()
+    new_notif, hist_daemon, notif_listener, calendar_notif = cmd()
     if new_notif is not None:
         Scheduled().create_notif(msg=" ".join(new_notif))
-    elif update_hist:
-        History().update_hist()
+    elif hist_daemon:
+        History().updater_daemon()
     elif notif_listener:
         NotifsListener().main()
     elif calendar_notif:
@@ -35,9 +35,9 @@ def cmd() -> tuple:
         nargs=argparse.REMAINDER,
     )
     ex_args.add_argument(
-        "-u",
-        "--update-hist",
-        help="update notifications history",
+        "-d",
+        "--hist-daemon",
+        help="initialize history updater daemon",
         action="store_true",
     )
     ex_args.add_argument(
@@ -55,7 +55,7 @@ def cmd() -> tuple:
     args = parser.parse_args()
     return (
         args.new_notif,
-        args.update_hist,
+        args.hist_daemon,
         args.notif_listener,
         args.calendar_notif,
     )
