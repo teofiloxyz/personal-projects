@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 # Script de notificações com diversas funções
-# Whole script still needs work
 
 from Tfuncs import gmenu
 
 import argparse
 
-from scheduled import Scheduled, NotifsListener
+from scheduled import Scheduled, ScheduledNotifsListener
 from history import History
 from calendar_notifs import CalendarNotifs
 
@@ -14,11 +13,11 @@ from calendar_notifs import CalendarNotifs
 def main() -> None:
     new_notif, hist_daemon, notif_listener, calendar_notif = cmd()
     if new_notif is not None:
-        Scheduled().create_notif(msg=" ".join(new_notif))
+        Scheduled().create_notif(message=" ".join(new_notif))
     elif hist_daemon:
         History().updater_daemon()
     elif notif_listener:
-        NotifsListener().main()
+        ScheduledNotifsListener().main()
     elif calendar_notif:
         CalendarNotifs().main()
     else:
@@ -67,7 +66,7 @@ def open_menu() -> None:
     title = "Notifications-Menu"
     keys = {
         "ls": (
-            lambda days=30: schd.show(days=days),
+            lambda days=30: schd.show(days=int(days)),
             "show scheduled notifications for the next # (default 30) days",
         ),
         "lsh": (hist.show_all, "show all past notifications"),
