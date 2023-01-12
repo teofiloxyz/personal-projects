@@ -118,15 +118,17 @@ class UpdaterDaemon:
     def create_notif(self, current_notifs: dict, destination_num: str) -> Notif:
         notif_body = current_notifs[destination_num]["body"]
         notif_unix_time = current_notifs[destination_num]["unix_time"]
+        date, hour = self.get_notif_full_date(notif_unix_time).split()
         return Notif(
-            date=self.get_notif_date(notif_unix_time),
+            date=date,
+            hour=hour,
             title=self.get_notif_title(notif_body),
             message=self.get_notif_message(notif_body),
             urgency=self.get_notif_urgency(notif_body),
             category=self.get_notif_category(notif_body),
         )
 
-    def get_notif_date(self, unix_time: float) -> str:
+    def get_notif_full_date(self, unix_time: float) -> str:
         return self.utils.get_date_from_unix_time(unix_time)
 
     def get_notif_title(self, body: list) -> str:
