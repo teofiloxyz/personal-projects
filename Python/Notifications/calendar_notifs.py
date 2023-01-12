@@ -1,51 +1,49 @@
-#!/usr/bin/python3
 """Deve ser usado após a criação/edição de eventos no calendário,
 de modo a criar notificações no ficheiro de scheduled."""
 
 import os
-from datetime import datetime, timedelta
 
-from utils import Utils
+from utils import Utils, Notif
 
 
 class CalendarNotifs:
-    utils = Utils().Scheduled()
+    utils = Utils()
     cals_path = "calendars_path"
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    now_strp = datetime.strptime(now, "%Y-%m-%d %H:%M:%S")
-    (
-        cal_notifs_last_update,
-        notifs,
-    ) = utils.load_file()
+    last_update_path = "last_calendar_update"
+    notifs = utils.Scheduled().get_scheduled_notifs()
 
     def main(self) -> None:
-        cal_notifs_last_update, notifs = self.get_notifs_info()
-        cal_notifs_last_update_strp = self.get_date_strp(cal_notifs_last_update)
+        last_update = self.get_last_update()
+        last_update_strp = self.utils.get_date_strp(last_update)
 
-        notifs_uids = self.get_notifs_uids(notifs)
+        notifs_uids = self.get_notifs_uids()
         cals_uids = list()
 
-        cal_files = self.get_cal_files(self.cals_path)
+        cal_files = self.get_cal_files()
         for cal_file in cal_files:
             cal_file_uid = self.get_cal_file_uid(cal_file)
             cals_uids.append(cal_file_uid)
 
-            is_rec_and_past = self.check_if_rec_and_past(
-                cal_file, cal_file_uid, notifs_uids
+            is_rec_and_already_scheduled = (
+                self.check_if_rec_and_already_scheduled(
+                    cal_file, cal_file_uid, notifs_uids
+                )
             )
-            cal_file_modif_date = self.get_cal_file_modif_date(cal_file)
-            cal_file_modif_date_strp = self.get_date_strp(cal_file_modif_date)
-            is_new = self.check_if_new(
-                cal_file_modif_date_strp, cal_notifs_last_update_strp
+            cal_file_modif_date = self.utils.get_file_modif_date(cal_file)
+            cal_file_modif_date_strp = self.utils.get_date_strp(
+                cal_file_modif_date
             )
-            if not is_rec_and_past and not is_new:
+            is_new = self.utils.check_if_date_a_is_newer(
+                cal_file_modif_date_strp, last_update_strp
+            )
+            if is_rec_and_already_scheduled or not is_new:
                 continue
 
             if cal_file_uid in notifs_uids:
                 # Acaba por ser modificado, ao apagar e criar nova(s)
-                notifs = self.delete_event_notifs(cal_file_uid, notifs)
+                self.delete_event_notifs(cal_file_uid)
 
-            cal_file_lines = self.get_file_lines(cal_file)
+            cal_file_lines = self.get_cal_file_lines(cal_file)
             (
                 cal_event_date,
                 cal_event_notifs,
@@ -56,7 +54,7 @@ class CalendarNotifs:
             cal_event_date_format = self.get_cal_event_date_format(
                 cal_event_date
             )
-            cal_event_date_strp = self.get_date_strp(
+            cal_event_date_strp = self.utils.get_date_strp(
                 cal_event_date, cal_event_date_format
             )
             cal_file_has_notifs = self.check_if_cal_file_has_notifs(
@@ -84,98 +82,92 @@ class CalendarNotifs:
                     notif_msg_appendix = notif_msg_appendix[:-2] + ")"
 
                 if notif_delay_is_negative:
-                    notif_date_strp = self.get_notif_date(
-                        notif_delay_secs,
+                    notif_date_strp = self.utils.get_date_with_delay(
                         cal_event_date_strp,
+                        notif_delay_secs,
                         notif_delay_is_negative,
                     )
                 else:
-                    notif_date_strp = self.get_notif_date(
-                        notif_delay_secs,
+                    notif_date_strp = self.utils.get_date_with_delay(
                         cal_event_date_strp,
+                        notif_delay_secs,
                         notif_delay_is_negative,
                     )
                     notif_msg_appendix = ""
 
                 if event_is_recurrent:
-                    self.correct_recurrent_date(
-                        notif_date_strp, event_recurrency
+                    notif_date_strp = (
+                        self.utils.correct_recurrent_calendar_date(
+                            notif_date_strp, event_recurrency
+                        )
                     )
 
-                if self.check_if_notif_date_already_passed(notif_date_strp):
+                if self.utils.check_if_date_is_due(notif_date_strp):
                     continue
 
                 notifs_uids.append(cal_file_uid)
-                notif_entry = self.create_notif_entry(
-                    cal_file_uid, notif_date_strp, notif_msg, notif_msg_appendix
+
+                date, hour = self.utils.get_date_strf(notif_date_strp).split()
+                notif = Notif(
+                    uid=cal_file_uid,
+                    date=date,
+                    hour=hour,
+                    title="Calendar",
+                    message=notif_msg + notif_msg_appendix,
                 )
-                notifs = self.schedule_notif(
-                    notifs, notif_entry, notif_date_strp
+                self.notifs.append(notif)
+                self.notifs = sorted(
+                    self.notifs, key=lambda notif: (notif.date + notif.hour)
                 )
 
-        notifs = self.refresh_notifs(notifs, cals_uids)
-        cal_notifs_last_update = self.now
-        self.utils.write_file(cal_notifs_last_update, notifs)
+        self.refresh_notifs(cals_uids)
+        self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+        self.refresh_last_update()
 
-    def get_notifs_info(self) -> tuple[str, list]:
-        return self.utils.load_file()
+    def get_last_update(self) -> str:
+        if not os.path.isfile(self.last_update_path):
+            return "2000-01-01 00:00:01"
+        with open(self.last_update_path, "r") as f:
+            return f.readline()
 
-    def get_date_strp(
-        self, date: str, date_format: str = "%Y-%m-%d %H:%M:%S"
-    ) -> datetime:
-        return datetime.strptime(date, date_format)
+    def get_notifs_uids(self) -> list:
+        return [notif.uid for notif in self.notifs]
 
-    def get_notifs_uids(self, notifs: list) -> list:
-        return [notif["uid"] for notif in notifs]
-
-    def get_cal_files(self, cals_path: str) -> list[str]:
+    def get_cal_files(self) -> list[str]:
         return [
             os.path.join(root_dirs_files[0], file)
-            for root_dirs_files in os.walk(cals_path)
+            for root_dirs_files in os.walk(self.cals_path)
             for file in root_dirs_files[2]
         ]
 
     def get_cal_file_uid(self, cal_file: str) -> str:
         return os.path.basename(cal_file).split(".")[0]
 
-    def check_if_rec_and_past(
+    def check_if_rec_and_already_scheduled(
         self, cal_file: str, cal_file_uid: str, notifs_uids: list[str]
     ) -> bool:
         """Para os calendários recurrentes: Caso o evento já tenha passado
         e o ficheiro não seja recente, volta a criar um novo evento para
         a próxima data, de acordo com a respetiva recurrência"""
 
-        return "personal" not in cal_file and cal_file_uid not in notifs_uids
-
-    def get_cal_file_modif_date(self, cal_file: str) -> str:
-        cal_file_modif_date = os.path.getmtime(cal_file)
-        return datetime.fromtimestamp(cal_file_modif_date).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-    def check_if_new(
-        self,
-        cal_file_modif_date_strp: datetime,
-        cal_notifs_last_update_strp: datetime,
-    ) -> bool:
-        if cal_file_modif_date_strp > cal_notifs_last_update_strp:
+        if "personal" not in cal_file and cal_file_uid in notifs_uids:
             return True
         return False
 
-    def delete_event_notifs(
-        self, cal_file_uid: str, notifs: list[dict]
-    ) -> list[dict]:
+    def delete_event_notifs(self, cal_file_uid: str) -> None:
         """Plural because one cal event can have several scheduled notifs"""
-        return [notif for notif in notifs if notif["uid"] != cal_file_uid]
+        self.notifs = [
+            notif for notif in self.notifs if notif.uid != cal_file_uid
+        ]
 
-    def get_file_lines(self, file: str) -> list[str]:
-        with open(file, "r") as cf:
+    def get_cal_file_lines(self, cal_file: str) -> list[str]:
+        with open(cal_file, "r") as cf:
             return cf.readlines()
 
     def get_cal_file_info(
         self, cal_file: str, cal_file_lines: list[str]
     ) -> tuple:
-        # needs rework
+        # Needs rework
         (
             cal_event_date,
             cal_event_notifs,
@@ -213,7 +205,12 @@ class CalendarNotifs:
             porque nunca são recurrentes. """
             if line.startswith("RRULE") and "personal" not in cal_file:
                 event_is_recurrent = True
-                event_recurrency = line.split("=")[-1]
+                if "FREQ=YEARLY" in line:
+                    event_recurrency = "YEARLY"
+                elif "FREQ=MONTHLY" in line:
+                    event_recurrency = "MONTHLY"
+                else:
+                    event_recurrency = "WEEKLY"
 
         return (
             cal_event_date,
@@ -250,7 +247,7 @@ class CalendarNotifs:
         notif_time_type: str,
         notif_time_has_HMS: bool,
     ) -> tuple[str, int]:
-        # Need rework
+        # Needs rework
         if notif_delay == "0":
             return " (now)", 0
 
@@ -270,73 +267,17 @@ class CalendarNotifs:
                 return f" (in {notif_delay} months)", 2592000 * int(notif_delay)
         return f" (in {notif_delay} years)", 12 * 2592000 * int(notif_delay)
 
-    def get_notif_date(
-        self,
-        notif_delay_secs: int,
-        cal_event_date_strp: datetime,
-        notif_delay_is_negative: bool,
-    ) -> datetime:
-        if notif_delay_is_negative:
-            return cal_event_date_strp - timedelta(seconds=notif_delay_secs)
-        return cal_event_date_strp + timedelta(seconds=notif_delay_secs)
+    def refresh_notifs(self, cals_uids: list) -> None:
+        """Assegura se algum cal_file foi apagado, eliminando
+        as respectivas notifs; uid == "" é para as notifs criadas
+        manualmente fora de eventos de calendar"""
 
-    def correct_recurrent_date(
-        self, notif_date_strp: datetime, event_recurrency: str
-    ) -> datetime:
-        while self.now_strp > notif_date_strp:
-            if event_recurrency == "YEARLY":
-                return notif_date_strp.replace(year=notif_date_strp.year + 1)
-            elif event_recurrency == "MONTHLY":
-                return notif_date_strp.replace(year=notif_date_strp.month + 1)
-            elif event_recurrency == "WEEKLY":
-                return notif_date_strp + timedelta(days=7)
-            else:
-                return notif_date_strp
-
-    def check_if_notif_date_already_passed(
-        self, notif_date_strp: datetime
-    ) -> bool:
-        if self.now_strp > notif_date_strp:
-            return True
-        return False
-
-    def create_notif_entry(
-        self,
-        cal_file_uid: str,
-        notif_date_strp: datetime,
-        notif_msg: str,
-        notif_msg_appendix: str,
-    ) -> dict:
-        return {
-            "uid": cal_file_uid,
-            "date": datetime.strftime(notif_date_strp, "%Y-%m-%d %H:%M"),
-            "msg": notif_msg + notif_msg_appendix,
-        }
-
-    def schedule_notif(
-        self, notifs: list, new_notif_entry: dict, new_notif_date_strp: datetime
-    ) -> list:
-        # need rework and variable renaming
-        if len(notifs) == 0:
-            notifs.append(new_notif_entry)
-            return notifs
-
-        for notif in notifs:
-            notif_date = notif["date"]
-            notif_date_strp = datetime.strptime(notif_date, "%Y-%m-%d %H:%M")
-            if new_notif_date_strp <= notif_date_strp:
-                notifs.insert(notifs.index(notif), new_notif_entry)
-                return notifs
-            elif new_notif_date_strp > notif_date_strp and notif == notifs[-1]:
-                notifs.append(new_notif_entry)
-                return notifs
-
-    def refresh_notifs(self, notifs: list, cals_uids: list) -> list:
-        """Assegura se algum cal_file foi apagado, eliminando as respectivas notifs
-        N/A é para as notifs criadas manualmente fora de eventos de calendar"""
-
-        return [
+        self.notifs = [
             notif
-            for notif in notifs
-            if notif["uid"] in cals_uids or notif["uid"] == "#N/A"
+            for notif in self.notifs
+            if notif.uid in cals_uids or notif.uid == ""
         ]
+
+    def refresh_last_update(self) -> None:
+        with open(self.last_update_path, "w") as f:
+            f.write(self.utils.get_date_now())

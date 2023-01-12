@@ -5,6 +5,7 @@ import re
 from typing import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 
 @dataclass
@@ -61,6 +62,11 @@ class Utils:
     ) -> datetime:
         return datetime.strptime(date_string, date_format)
 
+    def get_date_strf(
+        self, date: datetime, date_format: str = "%Y-%m-%d %H:%M:%S"
+    ) -> str:
+        return datetime.strftime(date, date_format)
+
     def get_date_limit_strp(
         self, days: int = 30, date_format: str = "%Y-%m-%d %H:%M:%S"
     ) -> datetime:
@@ -70,6 +76,50 @@ class Utils:
 
     def get_date_from_unix_time(self, unix_time: float) -> str:
         return datetime.fromtimestamp(unix_time).strftime("%Y-%m-%d %H:%M:%S")
+
+    def get_file_modif_date(self, file_path: str) -> str:
+        file_modif_unix_time = os.path.getmtime(file_path)
+        return self.get_date_from_unix_time(file_modif_unix_time)
+
+    def check_if_date_a_is_newer(
+        self,
+        date_a: datetime,
+        date_b: datetime,
+    ) -> bool:
+        if date_a > date_b:
+            return True
+        return False
+
+    def check_if_date_is_due(self, date_strp: datetime) -> bool:
+        now = self.get_date_now()
+        now_strp = self.get_date_strp(now)
+        if now_strp >= date_strp:
+            return True
+        return False
+
+    def get_date_with_delay(
+        self,
+        date_strp: datetime,
+        delay_from_date_secs: int,
+        delay_is_negative: bool,
+    ) -> datetime:
+        if delay_is_negative:
+            return date_strp - timedelta(seconds=delay_from_date_secs)
+        return date_strp + timedelta(seconds=delay_from_date_secs)
+
+    def correct_recurrent_calendar_date(
+        self, notif_date_strp: datetime, event_recurrency: str
+    ) -> datetime:
+        now = self.get_date_now()
+        now_strp = self.get_date_strp(now)
+        while now_strp >= notif_date_strp:
+            if event_recurrency == "YEARLY":
+                notif_date_strp += relativedelta(years=1)
+            elif event_recurrency == "MONTHLY":
+                notif_date_strp += relativedelta(months=1)
+            elif event_recurrency == "WEEKLY":
+                notif_date_strp += relativedelta(days=7)
+        return notif_date_strp
 
     class Scheduled:
         scheduled_path = "scheduled_path"
