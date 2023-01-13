@@ -10,7 +10,7 @@ class CalendarNotifs:
     utils = Utils()
     cals_path = "calendars_path"
     last_update_path = "last_calendar_update"
-    notifs = utils.Scheduled().get_scheduled_notifs()
+    notifs = utils.get_scheduled_notifs()
 
     def main(self) -> None:
         last_update = self.get_last_update()
@@ -121,7 +121,7 @@ class CalendarNotifs:
                 )
 
         self.refresh_notifs(cals_uids)
-        self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+        self.utils.save_scheduled_notifs(self.notifs)
         self.refresh_last_update()
 
     def get_last_update(self) -> str:

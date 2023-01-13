@@ -20,6 +20,10 @@ class Notif:
 
 
 class Utils:
+    hist_path = "history_path"
+    unseen_notif_path = "unseen_notif_path"
+    scheduled_path = "scheduled_path"
+
     def send_notification(
         self,
         title: str,
@@ -46,7 +50,7 @@ class Utils:
         while True:
             yield process.stdout.readline().decode("utf-8").rstrip()
 
-    def extract_str_from_substr(
+    def extract_substr_from_str(
         self, regex: str, string: str, not_found_str: str = ""
     ) -> str:
         substr = re.search(regex, string)
@@ -121,76 +125,56 @@ class Utils:
                 notif_date_strp += relativedelta(days=7)
         return notif_date_strp
 
-    class Scheduled:
-        scheduled_path = "scheduled_path"
+    def get_scheduled_notifs(self) -> list[Notif]:
+        if self.check_for_file(self.scheduled_path):
+            return self.load_pkl(self.scheduled_path)
+        return list()
 
-        def check_for_notifs_file(self) -> bool:
-            if os.path.exists(self.scheduled_path):
-                return True
-            return False
+    def save_scheduled_notifs(self, notifs: list[Notif]) -> None:
+        self.write_pkl(self.scheduled_path, notifs)
 
-        def get_scheduled_notifs(self) -> list[Notif]:
-            if self.check_for_notifs_file():
-                return self.load_pkl(self.scheduled_path)
-            return list()
+    def get_unseen_notifs(self) -> list[Notif]:
+        if self.check_for_file(self.unseen_notif_path):
+            return self.load_pkl(self.unseen_notif_path)
+        return list()
 
-        def save_scheduled_notifs(self, notifs: list[Notif]) -> None:
-            self.write_pkl(self.scheduled_path, notifs)
+    def save_unseen_notifs(self, notifs: list[Notif]) -> None:
+        self.write_pkl(self.unseen_notif_path, notifs)
 
-        def write_pkl(self, file_path: str, notifs: list[Notif]) -> None:
-            with open(file_path, "wb") as f:
-                pickle.dump(notifs, f)
+    def remove_unseen_notifs(self) -> None:
+        os.remove(self.unseen_notif_path)
 
-        def load_pkl(self, file_path: str) -> list[Notif]:
-            with open(file_path, "rb") as f:
-                return pickle.load(f)
+    def get_today_notifs_history(self) -> tuple[list[Notif], str]:
+        today = datetime.now().strftime("%Y-%m-%d")
+        file_path = os.path.join(self.hist_path, today)
+        if self.check_for_file(file_path):
+            return self.load_pkl(file_path), file_path
+        return list(), file_path
 
-    class History:
-        hist_path = "history_path"
-        unseen_notif_path = "unseen_notif_path"
+    def save_today_notifs_history(
+        self, notifs: list[Notif], history_file_path: str
+    ) -> None:
+        self.write_pkl(history_file_path, notifs)
 
-        def check_for_notifs_file(self, file_path: str) -> bool:
-            if os.path.exists(file_path):
-                return True
-            return False
+    def get_notifs_history(self) -> list[list[Notif]]:
+        hist_files = self.get_history_files()
+        return [self.load_pkl(file) for file in hist_files]
 
-        def get_unseen_notifs(self) -> list[Notif]:
-            if self.check_for_notifs_file(self.unseen_notif_path):
-                return self.load_pkl(self.unseen_notif_path)
-            return list()
+    def get_history_files(self) -> list[str]:
+        return [
+            os.path.join(self.hist_path, file)
+            for file in os.listdir(self.hist_path)
+        ]
 
-        def save_unseen_notifs(self, notifs: list[Notif]) -> None:
-            self.write_pkl(self.unseen_notif_path, notifs)
+    def check_for_file(self, file_path: str) -> bool:
+        if os.path.exists(file_path):
+            return True
+        return False
 
-        def remove_unseen_notifs(self) -> None:
-            os.remove(self.unseen_notif_path)
+    def write_pkl(self, file_path: str, notifs: list[Notif]) -> None:
+        with open(file_path, "wb") as f:
+            pickle.dump(notifs, f)
 
-        def get_today_notifs_history(self) -> tuple[list[Notif], str]:
-            today = datetime.now().strftime("%Y-%m-%d")
-            file_path = os.path.join(self.hist_path, today)
-            if self.check_for_notifs_file(file_path):
-                return self.load_pkl(file_path), file_path
-            return list(), file_path
-
-        def save_today_notifs_history(
-            self, notifs: list[Notif], history_file_path: str
-        ) -> None:
-            self.write_pkl(history_file_path, notifs)
-
-        def get_notifs_history(self) -> list[list[Notif]]:
-            hist_files = self.get_history_files()
-            return [self.load_pkl(file) for file in hist_files]
-
-        def get_history_files(self) -> list[str]:
-            return [
-                os.path.join(self.hist_path, file)
-                for file in os.listdir(self.hist_path)
-            ]
-
-        def write_pkl(self, file_path: str, notifs: list[Notif]) -> None:
-            with open(file_path, "wb") as f:
-                pickle.dump(notifs, f)
-
-        def load_pkl(self, file_path: str) -> list[Notif]:
-            with open(file_path, "rb") as f:
-                return pickle.load(f)
+    def load_pkl(self, file_path: str) -> list[Notif]:
+        with open(file_path, "rb") as f:
+            return pickle.load(f)

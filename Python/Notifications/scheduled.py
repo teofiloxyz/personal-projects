@@ -5,7 +5,7 @@ from utils import Utils, Notif
 
 class Scheduled:
     utils = Utils()
-    notifs = utils.Scheduled().get_scheduled_notifs()
+    notifs = utils.get_scheduled_notifs()
 
     def show(self, days: int = 366, show_index: bool = False) -> None:
         date_limit_strp = self.utils.get_date_limit_strp(days)
@@ -70,7 +70,7 @@ class Scheduled:
     def save_notif(self, notif: Notif) -> None:
         self.notifs.append(notif)
         self.order_notifs()
-        self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+        self.utils.save_scheduled_notifs(self.notifs)
 
     def order_notifs(self) -> None:
         self.notifs = sorted(
@@ -102,7 +102,7 @@ class Scheduled:
                 break
 
         [self.notifs.pop(x) for x in nindex]
-        self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+        self.utils.save_scheduled_notifs(self.notifs)
 
     def correct_notif_index(self, index: str) -> int | None:
         """List is printed in reverse,
@@ -151,7 +151,7 @@ class Scheduled:
                 self.order_notifs()
                 break
 
-        self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+        self.utils.save_scheduled_notifs(self.notifs)
 
     def edit_notif_message(self, notif: Notif) -> str:
         print(f"Current message: {notif.message}")
@@ -171,7 +171,7 @@ class Scheduled:
 # Should be triggered every minute or so
 class ScheduledNotifsListener:  # Need a better class name
     utils = Utils()
-    notifs = utils.Scheduled().get_scheduled_notifs()
+    notifs = utils.get_scheduled_notifs()
     now = utils.get_date_now()
     now_strp = utils.get_date_strp(now)
 
@@ -188,7 +188,7 @@ class ScheduledNotifsListener:  # Need a better class name
             notif_is_muted, update_file = True, True
 
         if update_file:
-            self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+            self.utils.save_scheduled_notifs(self.notifs)
 
     def notification_is_due(self, notif: Notif) -> bool:
         notif_full_date = f"{notif.date} {notif.hour}"
