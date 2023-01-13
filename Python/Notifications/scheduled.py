@@ -169,7 +169,7 @@ class Scheduled:
 
 
 # Should be triggered every minute or so
-class ScheduledNotifsListener:  # Need a better class name
+class NotifSender:
     utils = Utils()
     notifs = utils.get_scheduled_notifs()
     now = utils.get_date_now()

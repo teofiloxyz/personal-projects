@@ -5,7 +5,7 @@ from Tfuncs import gmenu
 
 import argparse
 
-from scheduled import Scheduled, ScheduledNotifsListener
+from scheduled import Scheduled, NotifSender
 from history import History
 from calendar_notifs import CalendarNotifs
 
@@ -17,7 +17,7 @@ def main() -> None:
     elif hist_daemon:
         History().updater_daemon()
     elif notif_listener:
-        ScheduledNotifsListener().main()
+        NotifSender().main()
     elif calendar_notif:
         CalendarNotifs().main()
     else:
