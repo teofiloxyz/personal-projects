@@ -84,6 +84,7 @@ def open_menu() -> None:
         ),
         "ad": (schd.create_notif, "schedule a notification"),
         "rm": (schd.remove_notif, "remove a scheduled notification"),
+        "ed": (schd.edit_notif, "edit a scheduled notification"),
     }
     extra_func = hist.show_unseen_notifs
     gmenu(title, keys, extra_func)

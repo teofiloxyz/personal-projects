@@ -3,7 +3,6 @@ from Tfuncs import qst, rofi
 from utils import Utils, Notif
 
 
-# add edit option
 class Scheduled:
     utils = Utils()
     notifs = utils.Scheduled().get_scheduled_notifs()
@@ -106,15 +105,67 @@ class Scheduled:
         self.utils.Scheduled().save_scheduled_notifs(self.notifs)
 
     def correct_notif_index(self, index: str) -> int | None:
+        """List is printed in reverse,
+        thus it needs to reverse the provided index"""
+
         try:
-            index = int(index) - 1
+            index = len(self.notifs) - int(index)
             self.notifs[index]
             return index
         except ValueError:
             print("Enter an integer...")
         except IndexError:
-            print(f"Index {index} not found on notifs list...")
+            print(f"Index not found on notifs list...")
         return None
+
+    def edit_notif(self) -> None:
+        self.show(show_index=True)
+        while True:
+            prompt = input("\nChoose the notification to edit: ")
+            if prompt == "q":
+                print("Aborting...")
+                return
+            nindex = self.correct_notif_index(prompt)
+            if nindex is not None:
+                break
+        notif = self.notifs[nindex]
+
+        while True:
+            prompt = input("\n:: Edit what: message or time [M/t] ")
+            if prompt == "q":
+                print("Aborting...")
+                return
+            elif prompt in ("", "M", "m"):
+                message = self.edit_notif_message(notif)
+                if message == "q":
+                    print("Aborting...")
+                    return
+                notif.message = message
+                break
+            elif prompt in ("T", "t"):
+                full_date = self.edit_notif_full_date(notif)
+                if full_date == "q":
+                    print("Aborting...")
+                    return
+                notif.date, notif.hour = full_date.split()
+                self.order_notifs()
+                break
+
+        self.utils.Scheduled().save_scheduled_notifs(self.notifs)
+
+    def edit_notif_message(self, notif: Notif) -> str:
+        print(f"Current message: {notif.message}")
+        return self.get_notif_message(message=None, use_rofi=False)
+
+    def edit_notif_full_date(self, notif: Notif) -> str:
+        print(f"Current full date: {notif.date} {notif.hour}")
+        date = self.get_notif_date(date=None, use_rofi=False)
+        if date == "q":
+            return "q"
+        hour = self.get_notif_hour(hour=None, use_rofi=False)
+        if hour == "q":
+            return "q"
+        return date + " " + hour
 
 
 # Should be triggered every minute or so
