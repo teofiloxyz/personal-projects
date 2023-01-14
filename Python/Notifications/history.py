@@ -8,7 +8,8 @@ class History:
     notifs_history = utils.get_notifs_history()
 
     def show_all(self) -> None:
-        for day_notifs in sorted(self.notifs_history):
+        notifs_hist = sorted(self.notifs_history, key=lambda x: x[0].date)
+        for day_notifs in notifs_hist:
             day = day_notifs[0].date
             print(f"\n{ffmt.bold}{day}{ffmt.reset}")
             self.print_all_notifs(day_notifs)
@@ -27,13 +28,24 @@ class History:
         }
         return urg_colors[urgency]
 
-    def show_unseen_notifs(self) -> None:
+    def show_unseen_notifs(self, resend_notifs: bool = False) -> None:
         if not self.utils.check_for_file(self.utils.unseen_notif_path):
             print("No new notifications...")
             return
         unseen_notifs = self.utils.get_unseen_notifs()
         print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
         self.print_all_notifs(unseen_notifs)
+        if resend_notifs:
+            [
+                self.utils.send_notification(
+                    notif.title,
+                    notif.message,
+                    notif.urgency,
+                    category="trash",
+                    muted=True,
+                )
+                for notif in unseen_notifs
+            ]
         self.utils.remove_unseen_notifs()
 
     @staticmethod

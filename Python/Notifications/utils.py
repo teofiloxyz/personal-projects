@@ -38,7 +38,7 @@ class Utils:
         if urgency != "":
             cmd.append(f"--urgency={urgency}")
         if category != "":
-            cmd.append(f'--category="{category}"')
+            cmd.append(f"--category={category}")
         subprocess.Popen(cmd)
 
     def play_sound(self) -> None:

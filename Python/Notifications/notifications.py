@@ -11,15 +11,17 @@ from calendar_notifs import CalendarNotifs
 
 
 def main() -> None:
-    new_notif, hist_daemon, notif_listener, calendar_notif = cmd()
+    new_notif, hist_daemon, notif_listener, calendar_notif, show_unseen = cmd()
     if new_notif is not None:
-        Scheduled().create_notif(message=" ".join(new_notif))
+        Scheduled().create_notif(message=" ".join(new_notif), use_rofi=True)
     elif hist_daemon:
         History().start_updater_daemon()
     elif notif_listener:
         NotifSender().main()
     elif calendar_notif:
         CalendarNotifs().main()
+    elif show_unseen:
+        History().show_unseen_notifs(resend_notifs=True)
     else:
         open_menu()
 
@@ -51,12 +53,19 @@ def cmd() -> tuple:
         help="auto-schedule calendar notifications",
         action="store_true",
     )
+    ex_args.add_argument(
+        "-u",
+        "--show-unseen",
+        help="show unseen notifications",
+        action="store_true",
+    )
     args = parser.parse_args()
     return (
         args.new_notif,
         args.hist_daemon,
         args.notif_sender,
         args.calendar_notif,
+        args.show_unseen,
     )
 
 
