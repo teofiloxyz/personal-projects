@@ -40,8 +40,8 @@ def cmd() -> tuple:
         action="store_true",
     )
     ex_args.add_argument(
-        "-l",
-        "--notif-listener",
+        "-s",
+        "--notif-sender",
         help="check if a scheduled notification is due",
         action="store_true",
     )
@@ -55,7 +55,7 @@ def cmd() -> tuple:
     return (
         args.new_notif,
         args.hist_daemon,
-        args.notif_listener,
+        args.notif_sender,
         args.calendar_notif,
     )
 
@@ -66,7 +66,7 @@ def open_menu() -> None:
     title = "Notifications-Menu"
     keys = {
         "ls": (
-            lambda days=30: schd.show(days=int(days)),
+            lambda days=30: schd.show(days_limit=int(days)),
             "show scheduled notifications for the next # (default 30) days",
         ),
         "lsh": (hist.show_all, "show all past notifications"),

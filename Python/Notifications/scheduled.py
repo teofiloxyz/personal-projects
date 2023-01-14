@@ -7,8 +7,8 @@ class Scheduled:
     utils = Utils()
     notifs = utils.get_scheduled_notifs()
 
-    def show(self, days: int = 366, show_index: bool = False) -> None:
-        date_limit_strp = self.utils.get_date_limit_strp(days)
+    def show(self, days_limit: int, show_index: bool = False) -> None:
+        date_limit_strp = self.utils.get_date_limit_strp(days_limit)
         for n, notif in enumerate(reversed(self.notifs), 1):
             notif_full_date = f"{notif.date} {notif.hour}"
             if self.utils.get_date_strp(notif_full_date) > date_limit_strp:
@@ -85,8 +85,7 @@ class Scheduled:
         rofi.message(msg) if use_rofi else print(msg)
 
     def remove_notif(self) -> None:
-        # Improve design
-        self.show(show_index=True)
+        self.show(days_limit=365, show_index=True)
         while True:
             prompt = input(
                 "\nChoose the notification to remove or "
@@ -98,28 +97,25 @@ class Scheduled:
 
             nindex = prompt.split("+")
             nindex = [self.correct_notif_index(x) for x in nindex]
-            if None not in nindex:
+            all_index = range(len(self.notifs))
+            if None not in nindex and set(nindex).issubset(all_index):
                 break
+            print("Invalid input...")
 
-        [self.notifs.pop(x) for x in nindex]
+        [self.notifs.pop(x) for x in sorted(nindex, reverse=True)]
         self.utils.save_scheduled_notifs(self.notifs)
 
     def correct_notif_index(self, index: str) -> int | None:
         """List is printed in reverse,
-        thus it needs to reverse the provided index"""
+        thus this needs to reverse the provided index"""
 
         try:
-            index = len(self.notifs) - int(index)
-            self.notifs[index]
-            return index
+            return len(self.notifs) - int(index)
         except ValueError:
-            print("Enter an integer...")
-        except IndexError:
-            print(f"Index not found on notifs list...")
-        return None
+            return None
 
     def edit_notif(self) -> None:
-        self.show(show_index=True)
+        self.show(days_limit=365, show_index=True)
         while True:
             prompt = input("\nChoose the notification to edit: ")
             if prompt == "q":
