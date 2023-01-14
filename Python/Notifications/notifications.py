@@ -15,7 +15,7 @@ def main() -> None:
     if new_notif is not None:
         Scheduled().create_notif(message=" ".join(new_notif))
     elif hist_daemon:
-        History().updater_daemon()
+        History().start_updater_daemon()
     elif notif_listener:
         NotifSender().main()
     elif calendar_notif:
@@ -70,18 +70,6 @@ def open_menu() -> None:
             "show scheduled notifications for the next # (default 30) days",
         ),
         "lsh": (hist.show_all, "show all past notifications"),
-        "lsl": (
-            lambda: hist.show_all_filter_urg("low"),
-            "show all low urgency past notifications",
-        ),
-        "lsn": (
-            lambda: hist.show_all_filter_urg("normal"),
-            "show all normal urgency past notifications",
-        ),
-        "lsc": (
-            lambda: hist.show_all_filter_urg("critical"),
-            "show all critical urgency past notifications",
-        ),
         "ad": (schd.create_notif, "schedule a notification"),
         "rm": (schd.remove_notif, "remove a scheduled notification"),
         "ed": (schd.edit_notif, "edit a scheduled notification"),

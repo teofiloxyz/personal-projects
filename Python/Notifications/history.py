@@ -3,64 +3,42 @@ from Tfuncs import fcol, ffmt
 from utils import Utils, Notif
 
 
-# clean this
 class History:
     utils = Utils()
     notifs_history = utils.get_notifs_history()
 
-    @staticmethod
-    def updater_daemon() -> None:
-        UpdaterDaemon().main()
-
-    def show_unseen_notifs(self) -> None:
-        if not self.utils.check_for_file(self.utils.unseen_notif_path):
-            print("No new notifications...")
-            return
-
-        unseen_notifs = self.utils.get_unseen_notifs()
-        self.utils.remove_unseen_notifs()
-
-        print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
-        print(
-            *(
-                f"{notif.date} - {notif.title}: {notif.message}"
-                for notif in unseen_notifs
-            ),
-            sep="\n",
-        )
-
     def show_all(self) -> None:
-        for day in sorted(self.notifs_history):
-            print(
-                *(
-                    f"{notif.date} - {notif.title}: {notif.message}"
-                    for notif in day
-                ),
-                sep="\n",
-            )
+        for day_notifs in sorted(self.notifs_history):
+            day = day_notifs[0].date
+            print(f"\n{ffmt.bold}{day}{ffmt.reset}")
+            self.print_all_notifs(day_notifs)
 
-    def show_all_filter_urg(self, urgency: str) -> None:
+    def print_all_notifs(self, notifs: list[Notif]) -> None:
+        for notif in notifs:
+            urgency_color = self.get_urgency_color(notif.urgency)
+            row = f"{notif.hour} - {notif.title}: {notif.message}"
+            print(urgency_color + row + ffmt.reset)
+
+    def get_urgency_color(self, urgency: str) -> str:
         urg_colors = {
             "low": fcol.green,
             "normal": fcol.yellow,
             "critical": fcol.red,
         }
-        col = urg_colors[urgency]
-        print(
-            f"Showing all{ffmt.bold}{col} "
-            f"{urgency} urgency{ffmt.reset} past notifications"
-        )
+        return urg_colors[urgency]
 
-        for day in sorted(self.notifs_history):
-            notifs = [
-                f"{notif.date} - {notif.title}: {notif.message}"
-                for notif in day
-                if notif.urgency == urgency
-            ]
-            if len(notifs) == 0:
-                print("None")
-            else:
-                print("\n".join(notifs))
+    def show_unseen_notifs(self) -> None:
+        if not self.utils.check_for_file(self.utils.unseen_notif_path):
+            print("No new notifications...")
+            return
+        unseen_notifs = self.utils.get_unseen_notifs()
+        print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
+        self.print_all_notifs(unseen_notifs)
+        self.utils.remove_unseen_notifs()
+
+    @staticmethod
+    def start_updater_daemon() -> None:
+        UpdaterDaemon().main()
 
 
 class UpdaterDaemon:
