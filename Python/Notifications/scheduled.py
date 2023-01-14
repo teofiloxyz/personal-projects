@@ -1,17 +1,17 @@
 from Tfuncs import qst, rofi
 
-from utils import Utils, Notif
+from utils import Utils, Date, ScheduledNotif, Urgency
 
 
 class Scheduled:
-    utils = Utils()
+    utils, date = Utils(), Date()
     notifs = utils.get_scheduled_notifs()
 
     def show(self, days_limit: int, show_index: bool = False) -> None:
-        date_limit_strp = self.utils.get_date_limit_strp(days_limit)
+        date_limit_strp = self.date.get_date_limit_strp(days_limit)
         for n, notif in enumerate(reversed(self.notifs), 1):
             notif_full_date = f"{notif.date} {notif.hour}"
-            if self.utils.get_date_strp(notif_full_date) > date_limit_strp:
+            if self.date.get_date_strp(notif_full_date) > date_limit_strp:
                 continue
             entry = f"{notif.date} {notif.hour} - {notif.message}"
             if show_index:
@@ -40,7 +40,9 @@ class Scheduled:
             print("Aborting...")
             return
 
-        notif = Notif(date=date, hour=hour, title="Scheduled", message=message)
+        notif = ScheduledNotif(
+            date=date, hour=hour, title="Scheduled", message=message
+        )
         self.save_notif(notif)
         self.show_schedule_message(notif, use_rofi)
 
@@ -67,7 +69,7 @@ class Scheduled:
             question, hour_type="%H:%M:%S", answer=hour, use_rofi=use_rofi
         )
 
-    def save_notif(self, notif: Notif) -> None:
+    def save_notif(self, notif: ScheduledNotif) -> None:
         self.notifs.append(notif)
         self.order_notifs()
         self.utils.save_scheduled_notifs(self.notifs)
@@ -77,7 +79,9 @@ class Scheduled:
             self.notifs, key=lambda notif: (notif.date + notif.hour)
         )
 
-    def show_schedule_message(self, notif: Notif, use_rofi: bool) -> None:
+    def show_schedule_message(
+        self, notif: ScheduledNotif, use_rofi: bool
+    ) -> None:
         msg = (
             f"New notification '{notif.message}' on {notif.date} "
             f"at {notif.hour} added!"
@@ -149,11 +153,11 @@ class Scheduled:
 
         self.utils.save_scheduled_notifs(self.notifs)
 
-    def edit_notif_message(self, notif: Notif) -> str:
+    def edit_notif_message(self, notif: ScheduledNotif) -> str:
         print(f"Current message: {notif.message}")
         return self.get_notif_message(message=None, use_rofi=False)
 
-    def edit_notif_full_date(self, notif: Notif) -> str:
+    def edit_notif_full_date(self, notif: ScheduledNotif) -> str:
         print(f"Current full date: {notif.date} {notif.hour}")
         date = self.get_notif_date(date=None, use_rofi=False)
         if date == "q":
@@ -166,10 +170,10 @@ class Scheduled:
 
 # Should be triggered every minute or so
 class NotifSender:
-    utils = Utils()
+    utils, date = Utils(), Date()
     notifs = utils.get_scheduled_notifs()
-    now = utils.get_date_now()
-    now_strp = utils.get_date_strp(now)
+    now = date.get_date_now()
+    now_strp = date.get_date_strp(now)
 
     def main(self) -> None:
         if len(self.notifs) == 0:
@@ -186,13 +190,15 @@ class NotifSender:
         if update_file:
             self.utils.save_scheduled_notifs(self.notifs)
 
-    def notification_is_due(self, notif: Notif) -> bool:
+    def notification_is_due(self, notif: ScheduledNotif) -> bool:
         notif_full_date = f"{notif.date} {notif.hour}"
-        if self.now_strp >= self.utils.get_date_strp(notif_full_date):
+        if self.now_strp >= self.date.get_date_strp(notif_full_date):
             return True
         return False
 
-    def send_notification(self, notif: Notif, notif_is_muted: bool) -> None:
+    def send_notification(
+        self, notif: ScheduledNotif, notif_is_muted: bool
+    ) -> None:
         self.utils.send_notification(
             title=notif.title,
             message=notif.message,

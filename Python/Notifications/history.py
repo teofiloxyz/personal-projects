@@ -1,6 +1,6 @@
 from Tfuncs import fcol, ffmt
 
-from utils import Utils, Notif
+from utils import Utils, Date, Notif, Urgency
 
 
 class History:
@@ -20,21 +20,23 @@ class History:
             row = f"{notif.hour} - {notif.title}: {notif.message}"
             print(urgency_color + row + ffmt.reset)
 
-    def get_urgency_color(self, urgency: str) -> str:
-        urg_colors = {
-            "low": fcol.green,
-            "normal": fcol.yellow,
-            "critical": fcol.red,
+    def get_urgency_color(self, urgency: Urgency) -> str:
+        urgency_colors = {
+            Urgency.LOW: fcol.green,
+            Urgency.NORMAL: fcol.yellow,
+            Urgency.CRITICAL: fcol.red,
         }
-        return urg_colors[urgency]
+        return urgency_colors[urgency]
 
     def show_unseen_notifs(self, resend_notifs: bool = False) -> None:
         if not self.utils.check_for_file(self.utils.unseen_notif_path):
             print("No new notifications...")
             return
+
         unseen_notifs = self.utils.get_unseen_notifs()
         print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
         self.print_all_notifs(unseen_notifs)
+
         if resend_notifs:
             [
                 self.utils.send_notification(
@@ -54,7 +56,7 @@ class History:
 
 
 class UpdaterDaemon:
-    utils = Utils()
+    utils, date = Utils(), Date()
 
     # Improve design
     def main(self) -> None:
@@ -89,7 +91,9 @@ class UpdaterDaemon:
         return self.utils.extract_substr_from_str("sender=:(.+) ->", line, "0")
 
     def get_notif_unix_time(self, line: str) -> int:
-        time = self.utils.extract_substr_from_str("time=(.[0-9]+)\.", line, "0")
+        time = self.utils.extract_substr_from_str(
+            "time=(.[0-9]+)\\.", line, "0"
+        )
         return int(time)
 
     def update_current_notifs(
@@ -119,7 +123,7 @@ class UpdaterDaemon:
         )
 
     def get_notif_full_date(self, unix_time: float) -> str:
-        return self.utils.get_date_from_unix_time(unix_time)
+        return self.date.get_date_from_unix_time(unix_time)
 
     def get_notif_title(self, body: list) -> str:
         return self.utils.extract_substr_from_str('string "(.*)"', body[3])
@@ -127,10 +131,10 @@ class UpdaterDaemon:
     def get_notif_message(self, body: list) -> str:
         return self.utils.extract_substr_from_str('string "(.*)"', body[4])
 
-    def get_notif_urgency(self, body: list) -> str:
+    def get_notif_urgency(self, body: list) -> Urgency:
         index = body.index('string "urgency"')
         urgency_int = body[index + 1][-1]
-        urgs = ["low", "normal", "critical"]
+        urgs = [Urgency.LOW, Urgency.NORMAL, Urgency.CRITICAL]
         return urgs[int(urgency_int)]
 
     def get_notif_category(self, body: list) -> str:

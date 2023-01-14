@@ -3,18 +3,18 @@ de modo a criar notificações no ficheiro de scheduled."""
 
 import os
 
-from utils import Utils, Notif
+from utils import Utils, Date, ScheduledNotif
 
 
 class CalendarNotifs:
-    utils = Utils()
+    utils, date = Utils(), Date()
     cals_path = "calendars_path"
     last_update_path = "last_calendar_update"
     notifs = utils.get_scheduled_notifs()
 
     def main(self) -> None:
         last_update = self.get_last_update()
-        last_update_strp = self.utils.get_date_strp(last_update)
+        last_update_strp = self.date.get_date_strp(last_update)
 
         notifs_uids = self.get_notifs_uids()
         cals_uids = list()
@@ -29,11 +29,11 @@ class CalendarNotifs:
                     cal_file, cal_file_uid, notifs_uids
                 )
             )
-            cal_file_modif_date = self.utils.get_file_modif_date(cal_file)
-            cal_file_modif_date_strp = self.utils.get_date_strp(
+            cal_file_modif_date = self.date.get_file_modif_date(cal_file)
+            cal_file_modif_date_strp = self.date.get_date_strp(
                 cal_file_modif_date
             )
-            is_new = self.utils.check_if_date_a_is_newer(
+            is_new = self.date.check_if_date_a_is_newer(
                 cal_file_modif_date_strp, last_update_strp
             )
             if is_rec_and_already_scheduled or not is_new:
@@ -54,7 +54,7 @@ class CalendarNotifs:
             cal_event_date_format = self.get_cal_event_date_format(
                 cal_event_date
             )
-            cal_event_date_strp = self.utils.get_date_strp(
+            cal_event_date_strp = self.date.get_date_strp(
                 cal_event_date, cal_event_date_format
             )
             cal_file_has_notifs = self.check_if_cal_file_has_notifs(
@@ -82,13 +82,13 @@ class CalendarNotifs:
                     notif_msg_appendix = notif_msg_appendix[:-2] + ")"
 
                 if notif_delay_is_negative:
-                    notif_date_strp = self.utils.get_date_with_delay(
+                    notif_date_strp = self.date.get_date_with_delay(
                         cal_event_date_strp,
                         notif_delay_secs,
                         notif_delay_is_negative,
                     )
                 else:
-                    notif_date_strp = self.utils.get_date_with_delay(
+                    notif_date_strp = self.date.get_date_with_delay(
                         cal_event_date_strp,
                         notif_delay_secs,
                         notif_delay_is_negative,
@@ -96,19 +96,17 @@ class CalendarNotifs:
                     notif_msg_appendix = ""
 
                 if event_is_recurrent:
-                    notif_date_strp = (
-                        self.utils.correct_recurrent_calendar_date(
-                            notif_date_strp, event_recurrency
-                        )
+                    notif_date_strp = self.date.correct_recurrent_calendar_date(
+                        notif_date_strp, event_recurrency
                     )
 
-                if self.utils.check_if_date_is_due(notif_date_strp):
+                if self.date.check_if_date_is_due(notif_date_strp):
                     continue
 
                 notifs_uids.append(cal_file_uid)
 
-                date, hour = self.utils.get_date_strf(notif_date_strp).split()
-                notif = Notif(
+                date, hour = self.date.get_date_strf(notif_date_strp).split()
+                notif = ScheduledNotif(
                     uid=cal_file_uid,
                     date=date,
                     hour=hour,
@@ -280,4 +278,4 @@ class CalendarNotifs:
 
     def refresh_last_update(self) -> None:
         with open(self.last_update_path, "w") as f:
-            f.write(self.utils.get_date_now())
+            f.write(self.date.get_date_now())
