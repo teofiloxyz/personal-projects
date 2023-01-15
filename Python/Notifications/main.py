@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # Script de notificações com diversas funções
 
-from Tfuncs import gmenu
+from Tfuncs import Menu
 
 import argparse
 
@@ -10,23 +10,62 @@ from history import History
 from calendar_notifs import CalendarNotifs
 
 
-def main() -> None:
-    new_notif, hist_daemon, notif_listener, calendar_notif, show_unseen = cmd()
-    if new_notif is not None:
-        Scheduled().create_notif(message=" ".join(new_notif), use_rofi=True)
-    elif hist_daemon:
-        History().start_updater_daemon()
-    elif notif_listener:
+class Notifications:
+    def __init__(self) -> None:
+        self.scheduled = Scheduled()
+        self.history = History()
+
+    def schedule_notif(self, message: str) -> None:
+        self.scheduled.create_notif(message=" ".join(message), use_rofi=True)
+
+    def start_history_daemon(self) -> None:
+        self.history.start_updater_daemon()
+
+    def run_notif_sender(self) -> None:
         NotifSender().main()
-    elif calendar_notif:
+
+    def run_calendar_notifs_scheduler(self) -> None:
         CalendarNotifs().main()
-    elif show_unseen:
-        History().show_unseen_notifs(resend_notifs=True)
-    else:
-        open_menu()
+
+    def show_unseen_notifs(self) -> None:
+        self.history.show_unseen_notifs(resend_notifs=True)
+
+    def open_menu(self) -> None:
+        menu = Menu(
+            title="Notifications-Menu",
+            beginning_func=self.history.show_unseen_notifs,
+        )
+
+        menu.add_option(
+            key="ls",
+            func=lambda days=30: self.scheduled.show(days_limit=int(days)),
+            help="show scheduled notifications for the next # (default 30) days",
+        )
+        menu.add_option(
+            key="lsh",
+            func=self.history.show_all,
+            help="show all past notifications",
+        )
+        menu.add_option(
+            key="ad",
+            func=self.scheduled.create_notif,
+            help="schedule a notification",
+        )
+        menu.add_option(
+            key="rm",
+            func=self.scheduled.remove_notif,
+            help="remove a scheduled notification",
+        )
+        menu.add_option(
+            key="ed",
+            func=self.scheduled.edit_notif,
+            help="edit a scheduled notification",
+        )
+
+        menu.start()
 
 
-def cmd() -> tuple:
+def handle_cmd_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Notifications tool")
     ex_args = parser.add_mutually_exclusive_group()
     ex_args.add_argument(
@@ -37,7 +76,7 @@ def cmd() -> tuple:
     )
     ex_args.add_argument(
         "-d",
-        "--hist-daemon",
+        "--history-daemon",
         help="initialize history updater daemon",
         action="store_true",
     )
@@ -49,7 +88,7 @@ def cmd() -> tuple:
     )
     ex_args.add_argument(
         "-c",
-        "--calendar-notif",
+        "--calendar-notifs",
         help="auto-schedule calendar notifications",
         action="store_true",
     )
@@ -59,32 +98,35 @@ def cmd() -> tuple:
         help="show unseen notifications",
         action="store_true",
     )
-    args = parser.parse_args()
-    return (
-        args.new_notif,
-        args.hist_daemon,
-        args.notif_sender,
-        args.calendar_notif,
-        args.show_unseen,
-    )
+    return parser.parse_args()
 
 
-def open_menu() -> None:
-    hist = History()
-    schd = Scheduled()
-    title = "Notifications-Menu"
-    keys = {
-        "ls": (
-            lambda days=30: schd.show(days_limit=int(days)),
-            "show scheduled notifications for the next # (default 30) days",
-        ),
-        "lsh": (hist.show_all, "show all past notifications"),
-        "ad": (schd.create_notif, "schedule a notification"),
-        "rm": (schd.remove_notif, "remove a scheduled notification"),
-        "ed": (schd.edit_notif, "edit a scheduled notification"),
+def main() -> None:
+    notifs = Notifications()
+    args = handle_cmd_args()
+
+    funcs = {
+        "new_notif": notifs.schedule_notif,
+        "history_daemon": notifs.start_history_daemon,
+        "notif_sender": notifs.run_notif_sender,
+        "calendar_notifs": notifs.run_calendar_notifs_scheduler,
+        "show_unseen": notifs.show_unseen_notifs,
     }
-    extra_func = hist.show_unseen_notifs
-    gmenu(title, keys, extra_func)
+
+    # simplify this in the future
+    for func in funcs:
+        if getattr(args, func):
+            command = func
+            break
+    else:
+        command = None
+    if not command:
+        notifs.open_menu()
+        return
+    try:
+        funcs[command](getattr(args, command))
+    except TypeError:
+        funcs[command]()
 
 
 if __name__ == "__main__":
