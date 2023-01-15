@@ -3,7 +3,8 @@ de modo a criar notificações no ficheiro de scheduled."""
 
 import os
 
-from utils import Utils, Date, ScheduledNotif
+from notifs import ScheduledNotif
+from utils import Utils, Date
 
 
 class CalendarNotifs:

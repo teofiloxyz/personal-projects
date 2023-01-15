@@ -1,6 +1,7 @@
 from Tfuncs import fcol, ffmt
 
-from utils import Utils, Date, Notif, Urgency
+from notifs import Notif, Urgency
+from utils import Utils, Date
 
 
 class History:

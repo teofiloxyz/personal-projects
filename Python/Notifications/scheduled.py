@@ -1,6 +1,7 @@
 from Tfuncs import qst, rofi
 
-from utils import Utils, Date, ScheduledNotif, Urgency
+from notifs import ScheduledNotif
+from utils import Utils, Date
 
 
 class Scheduled:
