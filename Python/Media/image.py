@@ -1,107 +1,55 @@
-#!/usr/bin/python3
-
-import os
-import subprocess
+from utils import Utils
 
 
 class Image:
-    def __init__(self) -> None:
-        self.img_exts = "jpg", "png"
+    utils = Utils()
+    image_exts = "jpg", "png"
+    output_ext = "jpg"
 
     def compress(self) -> None:
-        img_in = self.get_input()
-        if len(img_in) == 0:
+        images = self.utils.get_input(self.image_exts)
+        if len(images) == 0:
             print("Aborted...")
             return
 
-        img_qlt = self.get_compression_qlt()
-        if img_qlt == "q":
+        image_qlt = self._get_compression_qlt()
+        if image_qlt == "q":
             print("Aborted...")
             return
 
-        special_opts = (
-            ""
-            if (
-                input(
-                    ":: Want to apply any special option, that might decrease size "
-                    "a bit more, but change the image? [y/N] "
-                )
-                == "y"
-            )
-            else self.get_compress_special_opts()
+        special_opts = self._get_compress_special_opts()
+        output_dir = self.utils.create_output_dir(
+            images, title=f"Compressed_{image_qlt}%_quality"
         )
-
-        output_dir = self.create_output_dir(img_in, img_qlt)
-        img_in_out = self.get_input_output(img_in, output_dir)
+        images = self.utils.get_output(images, output_dir, self.output_ext)
 
         [
-            self.compress_img(img_in, img_out, img_qlt, special_opts)
-            for img_in, img_out in img_in_out.items()
+            self._compress_image(image, image_qlt, special_opts)
+            for image in images
         ]
 
     def convert(self) -> None:
-        # Melhorar input
-        img_in = self.get_input()
-        if len(img_in) == 0:
+        images = self.utils.get_input(self.image_exts)
+        if len(images) == 0:
             print("Aborted...")
             return
 
-        # Melhorar para mais formatos no futuro
-        img_path, in_ext = os.path.splitext(img_in[0])
-        out_ext = ".png" if in_ext == ".jpg" else ".jpg"
-        img_out = img_path + out_ext
-
-        self.convert_img(img_in[0], img_out)
+        output_dir = self.utils.create_output_dir(images, title="Converted")
+        images = self.utils.get_output_alternate_ext(images, output_dir)
+        [self._convert_image(image) for image in images]
 
     def ocr(self) -> None:
-        # Melhorar input
-        img_in = self.get_input()
-        if len(img_in) == 0:
+        image = self.utils.get_input(self.image_exts, only_one_file=True)
+        if len(image) == 0:
             print("Aborted...")
             return
 
-        output = os.path.splitext(img_in[0])[0]
+        output_dir = self.utils.create_output_dir(image, title="OCR")
+        image = self.utils.get_output(image, output_dir, ".txt")
+        language = self._get_orc_language()
+        self._ocr_image(image[0]["input"], image[0]["output"], language)
 
-        self.ocr_img(img_in[0], output)
-
-    def get_input(self) -> list[str]:
-        prompt = input("Enter the path of image or folder with images: ")
-        if os.path.isdir(prompt):
-            return [
-                os.path.join(prompt, image)
-                for image in os.listdir(prompt)
-                if image.endswith(self.img_exts)
-            ]
-        elif os.path.isfile(prompt):
-            if prompt.endswith(self.img_exts):
-                return [prompt]
-            else:
-                print(f"Accepted formats are: {'; '.join(self.img_exts)}")
-        return []
-
-    def create_output_dir(self, img_in: list[str], img_quality: str) -> str:
-        img_in_dir = os.path.dirname(img_in[0])
-        output_dir = os.path.join(
-            img_in_dir, f"Compressed_{img_quality}%_quality"
-        )
-        while os.path.isdir(output_dir):
-            output_dir += "_"
-        os.mkdir(output_dir)
-        return output_dir
-
-    def get_input_output(
-        self, img_in: list[str], output_dir: str
-    ) -> dict[str, str]:
-        img_in_out = dict()
-        for img in img_in:
-            img_in_basename = os.path.basename(img)
-            img_in_bn_no_ext = os.path.splitext(img_in_basename)[0]
-            img_out_basename = img_in_bn_no_ext + ".jpg"
-            img_out = os.path.join(output_dir, img_out_basename)
-            img_in_out[img] = img_out
-        return img_in_out
-
-    def get_compression_qlt(self) -> str:
+    def _get_compression_qlt(self) -> str:
         while True:
             quality = input(
                 "Enter the quality of the output image (1-100) "
@@ -123,56 +71,59 @@ class Image:
                 print("Quality must be a number...")
                 continue
 
-    def get_compress_special_opts(self) -> str:
+    def _get_compress_special_opts(self) -> str:
         special_opts = ""
+        prompt = input(
+            ":: Want to apply any special option, that might decrease size "
+            "a bit more, but change the image? [y/N] "
+        )
+        if prompt.lower() == "y":
+            return special_opts
 
         """Alterar o número de blur (0.05) altera apenas o blur,
         mantendo o tamanho de armazenamento"""
         if input(":: Want to apply a little blur? [y/N] ") == "y":
-            special_opts += "-gaussian-blur 0.05"
-
-        if (
-            input(
-                ":: Want to apply colorspace RGB (img might become darker)? "
-                "[y/N] "
-            )
-            == "y"
-        ):
+            special_opts += " -gaussian-blur 0.05"
+        prompt = input(
+            ":: Want to apply colorspace RGB (img might become darker)? [y/N] "
+        )
+        if prompt.lower() == "y":
             special_opts += " -colorspace RGB"
         return special_opts
 
-    def compress_img(
-        self, img_in: str, img_out: str, quality: str, special_opts: str
+    def _compress_image(
+        self, image: dict, image_qlt: str, special_opts: str
     ) -> None:
         cmd = (
-            f'convert "{img_in}" {special_opts} -sampling-factor '
-            f"4:2:0 -strip -quality {quality} -interlace Plane "
-            f'"{img_out}"'
+            f'convert "{image["input"]}" {special_opts} -sampling-factor '
+            f"4:2:0 -strip -quality {image_qlt} -interlace Plane "
+            f'"{image["output"]}"'
         )
-        err = subprocess.call(cmd, shell=True)
+        err = self.utils.run_cmd(cmd)
         if err != 0:
-            print(f"Error compressing {img_in}")
+            print(f"Error compressing {image['input']}")
 
-    def convert_img(self, img_in: str, img_out: str) -> None:
-        cmd = f"convert {img_in} {img_out}"
-        err = subprocess.call(cmd, shell=True)
+    def _convert_image(self, image: dict) -> None:
+        cmd = f"convert {image['input']} {image['output']}"
+        err = self.utils.run_cmd(cmd)
         if err != 0:
-            print(f"Error converting {img_in}")
+            print(f"Error converting {image['input']}")
 
-    def ocr_img(self, img_in: str, txt_out: str) -> None:
-        # refactor!
-        lang = input(
+    def _get_orc_language(self) -> str:
+        return input(
             "Enter the language of the image (for multiple languages "
             "e.g.: por+eng)\nOr leave empty for auto (not recommended): "
         )
 
-        cmd = f"tesseract {img_in} {txt_out}"
-        if lang != "":
-            cmd += f" -l {lang}"
-        err = subprocess.call(cmd, shell=True)
+    def _ocr_image(
+        self, image_input: str, txt_output: str, language: str
+    ) -> None:
+        cmd = f"tesseract {image_input} {txt_output}"
+        if language != "":
+            cmd += f" -l {language}"
+        err = self.utils.run_cmd(cmd)
         if err != 0:
-            print(f"Error OCR'ing {img_in}")
+            print(f"Error OCR'ing {image_input}")
 
         if input(":: Open the txt output? [Y/n] ") in ("", "Y", "y"):
-            cmd = f"nvim {txt_out}.txt"
-            subprocess.run(cmd, shell=True)
+            self.utils.open_on_vim(txt_output)
