@@ -26,7 +26,7 @@ class Pdf:
             "3": "default",
             "4": "screen",
         }
-        compress_option = self.get_compression_option(compress_options)
+        compress_option = self._get_compression_option(compress_options)
         if compress_option is None:
             return
 
@@ -37,7 +37,7 @@ class Pdf:
                 return
         print("Compression done")
 
-    def get_compression_option(
+    def _get_compression_option(
         self, compress_options: dict[str, str]
     ) -> Optional[str]:
         prompt = input(
@@ -356,8 +356,6 @@ class Pdf:
 
         new_title = input("Enter the new title for the pdf: ")
 
-        # func in utils
-        cmd = f'exiftool -Title="{new_title}" "{pdf_in}" -out "{pdf_out}"'
-        err = self.utils.run_cmd(cmd)
+        err = self.utils.change_pdf_title(pdf_in, pdf_out, new_title)
         if err != 0:
             print(f"Error changing title")
