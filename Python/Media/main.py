@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # Media menu, usado para imagens, videos e audios
 
-from Tfuncs import gmenu
+from Tfuncs import Menu
 
 from image import Image
 from audio import Audio
@@ -9,20 +9,22 @@ from video import Video
 
 
 def main() -> None:
-    open_menu()
-
-
-def open_menu() -> None:
     img, aud, vid = Image(), Audio(), Video()
-    title = "Media-Menu"
-    keys = {
-        "ic": (img.compress, "compress image or folder of images"),
-        "if": (img.convert, "convert image format"),
-        "ocr": (img.ocr, "read image with an OCR"),
-        "ac": (aud.compress, "compress audio or folder of audios"),
-        "vc": (vid.compress, "compress video or folder of videos"),
-    }
-    gmenu(title, keys)
+    menu = Menu(title="Media-Menu")
+
+    menu.add_option(
+        key="ic", func=img.compress, help="compress image or folder of images"
+    )
+    menu.add_option(key="if", func=img.convert, help="convert image format")
+    menu.add_option(key="ocr", func=img.ocr, help="read image with an OCR")
+    menu.add_option(
+        key="ac", func=aud.compress, help="compress audio or folder of audios"
+    )
+    menu.add_option(
+        key="vc", func=vid.compress, help="compress video or folder of videos"
+    )
+
+    menu.start()
 
 
 if __name__ == "__main__":
