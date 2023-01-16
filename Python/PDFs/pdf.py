@@ -5,7 +5,7 @@ from getpass import getpass
 from utils import Utils
 
 
-class Menu:
+class Pdf:
     def __init__(self) -> None:
         self.utils = Utils()
 

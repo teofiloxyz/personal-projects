@@ -5,7 +5,7 @@
 
 from Tfuncs import gmenu
 
-from menu import Menu
+from pdf import Pdf
 
 
 def main() -> None:
@@ -13,19 +13,19 @@ def main() -> None:
 
 
 def open_menu() -> None:
-    menu = Menu()
+    pdf = Pdf()
     title = "PDF-Menu"
     keys = {
-        "c": (menu.compress_pdf, "compress PDF or folder of PDF's"),
-        "m": (menu.merge_pdf, "merge (concatenate) PDF's"),
-        "s": (menu.split_pdf, "split PDF"),
-        "ec": (menu.encrypt_pdf, "encrypt PDF (AES-256)"),
-        "dc": (menu.decrypt_pdf, "decrypt PDF"),
-        "r": (menu.rotate_pdf, "rotate PDF"),
-        "o": (menu.ocr, "read PDF with OCR"),
-        "ip": (menu.convert_img_to_pdf, "convert images into PDF"),
-        "pi": (menu.convert_pdf_to_img, "convert PDF into images"),
-        "t": (menu.change_pdf_title, "change pdf title (not filename)"),
+        "c": (pdf.compress_pdf, "compress PDF or folder of PDF's"),
+        "m": (pdf.merge_pdf, "merge (concatenate) PDF's"),
+        "s": (pdf.split_pdf, "split PDF"),
+        "ec": (pdf.encrypt_pdf, "encrypt PDF (AES-256)"),
+        "dc": (pdf.decrypt_pdf, "decrypt PDF"),
+        "r": (pdf.rotate_pdf, "rotate PDF"),
+        "o": (pdf.ocr, "read PDF with OCR"),
+        "ip": (pdf.convert_img_to_pdf, "convert images into PDF"),
+        "pi": (pdf.convert_pdf_to_img, "convert PDF into images"),
+        "t": (pdf.change_pdf_title, "change pdf title (not filename)"),
     }
     gmenu(title, keys)
 
