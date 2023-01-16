@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import os
 import math
 from getpass import getpass
@@ -308,3 +306,18 @@ class Menu:
 
         img_out = f"{out_dir}/{pdf_name}"
         self.utils.pdf_to_img(pdf_in, img_out)
+
+    def change_pdf_title(self) -> None:
+        pdf_in = self.utils.get_pdf_input()
+        if pdf_in == "q":
+            print("Aborted...")
+            return
+        pdf_out = self.utils.get_pdf_output(pdf_in)
+        if pdf_in == "q":
+            print("Aborted...")
+            return
+        new_title = input("Enter the new title for the pdf: ")
+        cmd = f'exiftool -Title="{new_title}" "{pdf_in}" -out "{pdf_out}"'
+        err = self.utils.run_cmd(cmd)
+        if err != 0:
+            print(f"Error changing title")
