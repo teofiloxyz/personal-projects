@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from dataclasses import dataclass
 
 
 class Utils:
@@ -60,13 +59,3 @@ class Utils:
     def load_json(file_path: str) -> dict:
         with open(file_path, "r") as cf:
             return json.load(cf)
-
-    def save(self) -> None:
-        self.write_json("auto_transactions.json", Fintracker.auto_transactions)
-        self.write_json("balance.json", Fintracker.balance)
-
-
-@dataclass
-class Fintracker:
-    auto_transactions = Utils().load_json("auto_transactions.json")
-    balance = Utils().load_json("balance.json")
