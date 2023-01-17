@@ -3,22 +3,19 @@ import math
 from getpass import getpass
 from typing import Optional
 
-from utils import Utils
+from utils import Utils, FileType
 
 
 class Pdf:
     utils = Utils()
 
     def compress(self) -> None:
-        pdfs_in = self.utils.get_pdf_input(accept_dirs=True)
-        if pdfs_in == "q":
+        pdf_ins = self.utils.get_input(FileType.PDF, accept_dirs=True)
+        if not pdf_ins:
             print("Aborted...")
             return
 
-        pdfs_out = self.utils.get_pdf_output(pdfs_in)
-        if pdfs_out == "q":
-            print("Aborted...")
-            return
+        pdf_outs = self.utils.get_output(pdf_ins, output_dirname="Compressed")
 
         compress_options = {
             "1": "printer",
@@ -30,7 +27,7 @@ class Pdf:
         if compress_option is None:
             return
 
-        for pdf_in, pdf_out in zip(pdfs_in, pdfs_out):
+        for pdf_in, pdf_out in zip(pdf_ins, pdf_outs):
             err = self.utils.compress_pdf(pdf_in, pdf_out, compress_option)
             if err != 0:
                 print(f"Error compressing {pdf_in}\nAborted...")
@@ -54,14 +51,16 @@ class Pdf:
             return None
 
     def merge(self) -> None:
-        pdf_ins = self.utils.get_pdf_input(allow_multiple_prompts=True)
-        if pdf_ins == "q":
+        pdf_ins = self.utils.get_input(
+            FileType.PDF, allow_multiple_prompts=True
+        )
+        if not pdf_ins or pdf_ins is str:
             print("Aborted...")
             return
 
-        pdf_out = pdf_ins[0].strip(".pdf") + "_merged.pdf"
-        pdf_in = " ".join(pdf_ins)
+        pdf_out = self.utils.get_output(pdf_ins[0], output_dirname="Merged")
 
+        pdf_in = " ".join(pdf_ins)
         err = self.utils.merge_pdf(pdf_in, pdf_out)
         if err != 0:
             print(f"Error merging {pdf_in}\nAborted...")
@@ -69,28 +68,29 @@ class Pdf:
         print("Merge complete")
 
     def split(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
 
-        pdf_in_dir = os.path.dirname(str(pdf_in))
-        pdf_in_name = os.path.basename(str(pdf_in))
+        pdf_out = self.utils.get_output(pdf_in, output_dirname="Splited")
+        pdf_out = pdf_out.split(".pdf")[0]
+
         total_pages = self.utils.get_pdf_num_of_pages(pdf_in)
-        pages = self.get_pages_to_split(total_pages)
+        pages = self._get_pages_to_split(total_pages)
         if pages is None:
             return
 
         print("Wait a moment...")
         for page in pages.split():
-            pdf_out = f"{pdf_in_dir}/{pdf_in_name}_{page}.pdf"
+            pdf_out = f"{pdf_out}_{page}.pdf"
             err = self.utils.split_pdf(pdf_in, pdf_out, page)
             if err != 0:
                 print(f"Error spliting {pdf_in}\nAborted...")
                 return
         print("Split complete")
 
-    def get_pages_to_split(self, total_pages: int) -> Optional[str]:
+    def _get_pages_to_split(self, total_pages: int) -> Optional[str]:
         # improve func
         while True:
             pages = input(
@@ -144,15 +144,11 @@ class Pdf:
             print("Invalid answer")
 
     def encrypt(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
-
-        pdf_out = self.utils.get_pdf_output(pdf_in)
-        if pdf_in == "q":
-            print("Aborted...")
-            return
+        pdf_out = self.utils.get_output(pdf_in, output_dirname="Encrypted")
 
         while True:
             crypt_pass = getpass(
@@ -169,15 +165,11 @@ class Pdf:
             return
 
     def decrypt(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
-
-        pdf_out = self.utils.get_pdf_output(pdf_in)
-        if pdf_in == "q":
-            print("Aborted...")
-            return
+        pdf_out = self.utils.get_output(pdf_in, output_dirname="Decrypted")
 
         crypt_pass = getpass(prompt="Enter the crypt password of the PDF: ")
 
@@ -187,24 +179,21 @@ class Pdf:
             return
 
     def rotate(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
 
-        pdf_out = self.utils.get_pdf_output(pdf_in)
-        if pdf_out == "q":
-            print("Aborted...")
-            return
+        pdf_out = self.utils.get_output(pdf_in, output_dirname="Rotated")
 
         rotation_options = {"1": "+90", "2": "-90", "3": "+180"}
-        rotation = self.get_rotation_angle(rotation_options)
-        if rotation is None:
+        rotation = self._get_rotation_angle(rotation_options)
+        if not rotation:
             return
 
         total_pages = self.utils.get_pdf_num_of_pages(pdf_in)
-        pages = self.get_pages_to_rotate(total_pages)
-        if pages is None:
+        pages = self._get_pages_to_rotate(total_pages)
+        if not pages:
             return
 
         err = self.utils.rotate_pdf(pdf_in, pdf_out, rotation, pages)
@@ -212,7 +201,7 @@ class Pdf:
             print(f"Error rotating {pdf_in}\nAborted...")
             return
 
-    def get_rotation_angle(
+    def _get_rotation_angle(
         self, rotation_options: dict[str, str]
     ) -> Optional[str]:
         prompt = input(
@@ -227,7 +216,7 @@ class Pdf:
             print("Invalid option")
             return None
 
-    def get_pages_to_rotate(self, total_pages: int) -> Optional[str]:
+    def _get_pages_to_rotate(self, total_pages: int) -> Optional[str]:
         while True:
             pages = input(
                 "Enter the pages to rotate (e.g.: 4 or 1+14+5+10 or "
@@ -259,25 +248,17 @@ class Pdf:
             print("Invalid answer")
 
     def ocr(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        # still needs fixing
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
 
-        img_out = self.utils.get_img_output(pdf_in)
-        if img_out == "q":
-            print("Aborted...")
-            return
-
-        img_dir = "/tmp/pdf_menu_ocr/"
-        if not os.path.isdir(img_dir):
-            os.mkdir(img_dir)
+        img_out = self.utils.get_output(
+            pdf_in, output_dirname="OCR'ed", output_file_extension==".png"
+        )
 
         self.utils.pdf_to_img(pdf_in, img_out)
-
-        txt_final = pdf_in + "_ocr.txt"
-        if os.path.isfile(txt_final):
-            os.remove(txt_final)
 
         for n, img in enumerate(sorted(os.listdir(img_dir)), 1):
             img = os.path.join(img_dir, img)
@@ -290,31 +271,32 @@ class Pdf:
                 tx.writelines(page)
 
         if input(":: Do you want to open the txt? [Y/n] ") in ("", "Y", "y"):
-            self.utils.open_txt(txt_final)
+            self.utils.open_in_vim(txt_final)
 
     def convert_from_img(self) -> None:
-        img_ins = self.utils.get_img_input(allow_multiple_prompts=True)
+        img_ins = self.utils.get_input(FileType.IMG, allow_multiple_prompts=True)
         if not img_ins:
             print("Aborted...")
             return
+        elif img_ins is str:
+            img_in = img_ins
+        else:
+            img_in = img_ins[0]
 
-        pdf_out = self.utils.get_pdf_output(img_ins[0])
-        if pdf_out == "q":
-            print("Aborted...")
-            return
+        pdf_out = self.utils.get_output(img_in, output_dirname="Pdf_from_img", output_file_extension=".pdf")
 
         print("Wait a moment...")
-        if len(img_ins) > 1:
-            resolution = self.get_resolution_for_img(img_ins)
+        if img_ins is list and len(img_ins) > 1:
+            resolution = self._get_resolution_for_img(img_ins)
         else:
-            resolution = self.utils.get_img_resolution(img_ins[0])
+            resolution = self.utils.get_img_resolution(img_in)
 
         err = self.utils.img_to_pdf(img_ins, pdf_out, resolution)
         if err != 0:
             print(f"Error converting {img_ins}\nAborted...")
             return
 
-    def get_resolution_for_img(self, img_ins: list[str]) -> tuple[int, int]:
+    def _get_resolution_for_img(self, img_ins: list[str]) -> tuple[int, int]:
         # change this... incorporate in func above, or in utils func
         img_ins_heights = [
             self.utils.get_img_resolution(img_in, only_height=True)
@@ -326,35 +308,29 @@ class Pdf:
         return self.utils.get_img_resolution(smallest_img)
 
     def convert_to_img(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
 
-        pdf_name = os.path.splitext(os.path.basename(str(pdf_in)))[0]
-        pdf_dir = os.path.dirname(str(pdf_in))
+        img_out = self.utils.get_output(
+            pdf_in, output_dirname="Img_from_pdf", output_file_extension==".png"
+        )
 
-        # create output dir in utils
-        out_dir = os.path.join(pdf_dir, "Output_" + pdf_name)
-        while os.path.isdir(out_dir):
-            out_dir += "_"
-        os.mkdir(out_dir)
-
-        img_out = f"{out_dir}/{pdf_name}"
         self.utils.pdf_to_img(pdf_in, img_out)
 
     def change_pdf_title(self) -> None:
-        pdf_in = self.utils.get_pdf_input()
-        if pdf_in == "q":
+        pdf_in = self.utils.get_input(FileType.PDF)
+        if not pdf_in:
             print("Aborted...")
             return
 
-        pdf_out = self.utils.get_pdf_output(pdf_in)
-        if pdf_in == "q":
-            print("Aborted...")
-            return
+        pdf_out = self.utils.get_output(pdf_in, output_dirname="New_title")
 
         new_title = input("Enter the new title for the pdf: ")
+        if new_title == "q":
+            print("Aborted...")
+            return
 
         err = self.utils.change_pdf_title(pdf_in, pdf_out, new_title)
         if err != 0:

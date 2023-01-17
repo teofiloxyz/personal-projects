@@ -215,8 +215,8 @@ class Utils:
         cmd = f'exiftool -Title="{new_title}" "{pdf_in}" -out "{pdf_out}"'
         return self._run_cmd(cmd)
 
-    def open_txt(self, txt: str) -> int:
-        cmd = f"nvim {txt}"
+    def open_in_vim(self, file_path: str) -> int:
+        cmd = f"nvim {file_path}"
         return self._run_cmd(cmd)
 
     @staticmethod
