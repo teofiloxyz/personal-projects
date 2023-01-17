@@ -1,4 +1,3 @@
-import os
 import math
 from getpass import getpass
 from typing import Optional
@@ -248,33 +247,31 @@ class Pdf:
             print("Invalid answer")
 
     def ocr(self) -> None:
-        # still needs fixing
         pdf_in = self.utils.get_input(FileType.PDF)
         if not pdf_in:
             print("Aborted...")
             return
 
         img_out = self.utils.get_output(
-            pdf_in, output_dirname="OCR'ed", output_file_extension==".png"
+            pdf_in, output_dirname="OCR'ed", output_file_extension=".png"
         )
 
         self.utils.pdf_to_img(pdf_in, img_out)
 
-        for n, img in enumerate(sorted(os.listdir(img_dir)), 1):
-            img = os.path.join(img_dir, img)
-            self.utils.ocr_img(img, img)
-            txt = img + ".txt"
-            with open(txt, "r") as tx:
-                page = tx.readlines()
-            with open(txt_final, "a") as tx:
-                tx.write("\n" + "-" * 40 + f"[PAGE {n}]" + "-" * 40 + "\n\n")
-                tx.writelines(page)
+        txt_out = img_out[0] + ".txt"
+        with open(txt_out, "w") as f:
+            for n, img in enumerate(sorted(img_out), 1):
+                text = self.utils.get_text_from_img(img)
+                f.write("\n" + "-" * 40 + f"[PAGE {n}]" + "-" * 40 + "\n\n")
+                f.writelines(text)
 
         if input(":: Do you want to open the txt? [Y/n] ") in ("", "Y", "y"):
-            self.utils.open_in_vim(txt_final)
+            self.utils.open_in_vim(txt_out)
 
     def convert_from_img(self) -> None:
-        img_ins = self.utils.get_input(FileType.IMG, allow_multiple_prompts=True)
+        img_ins = self.utils.get_input(
+            FileType.IMG, allow_multiple_prompts=True
+        )
         if not img_ins:
             print("Aborted...")
             return
@@ -283,7 +280,9 @@ class Pdf:
         else:
             img_in = img_ins[0]
 
-        pdf_out = self.utils.get_output(img_in, output_dirname="Pdf_from_img", output_file_extension=".pdf")
+        pdf_out = self.utils.get_output(
+            img_in, output_dirname="Pdf_from_img", output_file_extension=".pdf"
+        )
 
         print("Wait a moment...")
         if img_ins is list and len(img_ins) > 1:
@@ -314,7 +313,7 @@ class Pdf:
             return
 
         img_out = self.utils.get_output(
-            pdf_in, output_dirname="Img_from_pdf", output_file_extension==".png"
+            pdf_in, output_dirname="Img_from_pdf", output_file_extension=".png"
         )
 
         self.utils.pdf_to_img(pdf_in, img_out)

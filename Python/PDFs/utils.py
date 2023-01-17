@@ -1,5 +1,7 @@
 import os
 import subprocess
+import pytesseract
+from PIL import Image
 from enum import Enum, auto
 from typing import Optional
 
@@ -205,9 +207,11 @@ class Utils:
             capture_output=True,
         ).stdout.decode("utf-8")
 
-    def ocr_img(self, img_in: str, txt_out: str) -> int:
-        cmd = f"tesseract {img_in} {txt_out}"
-        return self._run_cmd(cmd)
+    def get_text_from_img(self, img_path: str) -> str:
+        """Get img in grayscale, then get its text"""
+
+        img = Image.open(img_path).convert("L")
+        return pytesseract.image_to_string(img)
 
     def change_pdf_title(
         self, pdf_in: str, pdf_out: str, new_title: str

@@ -23,7 +23,7 @@ def open_menu() -> None:
         "o": (pdf.ocr, "read PDF with OCR"),
         "ip": (pdf.convert_from_img, "convert images into PDF"),
         "pi": (pdf.convert_to_img, "convert PDF into images"),
-        "t": (pdf.change_pdf_title, "change pdf title (not filename)"),
+        "t": (pdf.change_pdf_title, "change pdf title (not the filename)"),
     }
     gmenu(title, keys)
 
