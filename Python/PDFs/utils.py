@@ -24,12 +24,16 @@ class Utils:
         accept_dirs: bool = False,
         allow_multiple_prompts: bool = False,
     ) -> Optional[str | list[str]]:
-        if accept_dirs:
-            return self._get_input_from_dir(file_type.get_file_ext())
-        elif allow_multiple_prompts:
+        if allow_multiple_prompts:
             return self._get_multiple_inputs(file_type.get_file_ext())
-        else:
-            return self._get_single_input(file_type.get_file_ext())
+        elif accept_dirs:
+            prompt = input("Enter the file or directory of files path: ")
+            if os.path.isdir(prompt):
+                return self._get_input_from_dir(
+                    file_type.get_file_ext(), prompt
+                )
+            return self._get_single_input(file_type.get_file_ext(), prompt)
+        return self._get_single_input(file_type.get_file_ext())
 
     def get_output(
         self,
@@ -38,7 +42,7 @@ class Utils:
         output_file_extension: str | None = None,
     ) -> str | list[str]:
         output_dir = self._create_output_dir(input_path, output_dirname)
-        if input_path is str:
+        if isinstance(input_path, str):
             return self._get_single_output(
                 input_path, output_dir, output_file_extension
             )
@@ -46,25 +50,6 @@ class Utils:
             return self._get_multiple_outputs(
                 input_path, output_dir, output_file_extension
             )
-
-    @staticmethod
-    def _get_input_from_dir(file_extensions: str | tuple) -> Optional[list]:
-        """Prompts for a directory path and
-        returns all files with the specified extension(s)"""
-
-        prompt = input("Enter the directory path: ")
-        if os.path.isdir(prompt):
-            return [
-                os.path.join(root_dirs_files[0], file)
-                for root_dirs_files in os.walk(prompt)
-                for file in root_dirs_files[2]
-                if file.endswith(file_extensions)
-            ]
-        elif prompt == "q":
-            return None
-        else:
-            print(f"{prompt} is not a valid directory")
-            return None
 
     @staticmethod
     def _get_multiple_inputs(file_extensions: str | tuple) -> Optional[list]:
@@ -88,11 +73,36 @@ class Utils:
         return input_files
 
     @staticmethod
-    def _get_single_input(file_extensions: str | tuple) -> Optional[str]:
+    def _get_input_from_dir(
+        file_extensions: str | tuple, prompt: str | None = None
+    ) -> Optional[list]:
+        """Prompts for a directory path and
+        returns all files with the specified extension(s)"""
+
+        if not prompt:
+            prompt = input("Enter the directory path: ")
+        if os.path.isdir(prompt):
+            return [
+                os.path.join(root_dirs_files[0], file)
+                for root_dirs_files in os.walk(prompt)
+                for file in root_dirs_files[2]
+                if file.endswith(file_extensions)
+            ]
+        elif prompt == "q":
+            return None
+        else:
+            print(f"{prompt} is not a valid directory")
+            return None
+
+    @staticmethod
+    def _get_single_input(
+        file_extensions: str | tuple, prompt: str | None = None
+    ) -> Optional[str]:
         """Prompts for a single file path and
         returns the path if it has the specified extension(s)"""
 
-        prompt = input(f"Enter the {file_extensions} input path: ")
+        if not prompt:
+            prompt = input(f"Enter the file input path: ")
         if prompt == "q":
             return None
         if not prompt.endswith(file_extensions):
@@ -134,7 +144,7 @@ class Utils:
     def _create_output_dir(
         input_path: str | list[str], output_dirname: str
     ) -> str:
-        if input_path is list:
+        if isinstance(input_path, list):
             input_path = input_path[0]
         input_dir = os.path.dirname(input_path)
         output_dir = os.path.join(input_dir, output_dirname)
@@ -153,7 +163,9 @@ class Utils:
         return int(
             subprocess.run(
                 ["qpdf", "--show-npages", pdf_in], capture_output=True
-            ).stdout.decode("utf-8")
+            )
+            .stdout.decode("utf-8")
+            .rstrip()
         )
 
     @staticmethod
@@ -162,6 +174,14 @@ class Utils:
             print(f"PDF only has {pdf_total_pages} pages")
             return False
         return True
+
+    @staticmethod
+    def get_dirname(file_path: str) -> str:
+        return os.path.dirname(file_path)
+
+    @staticmethod
+    def get_dirfiles(dir_path: str) -> list[str]:
+        return [os.path.join(dir_path, file) for file in os.listdir(dir_path)]
 
     def compress_pdf(self, pdf_in: str, pdf_out: str, compress_opt: str) -> int:
         cmd = f"ps2pdf -dPDFSETTINGS=/{compress_opt} {pdf_in} {pdf_out}"
@@ -193,7 +213,7 @@ class Utils:
         return self._run_cmd(cmd)
 
     def pdf_to_img(self, pdf_in: str, img_out: str) -> int:
-        cmd = f"pdftoppm -png {pdf_in} {img_out}"
+        cmd = f'pdftoppm -png "{pdf_in}" "{img_out}"'
         return self._run_cmd(cmd)
 
     def img_to_pdf(self, img_ins: str, pdf_out: str, resolution: str) -> int:
@@ -219,13 +239,12 @@ class Utils:
         cmd = f'exiftool -Title="{new_title}" "{pdf_in}" -out "{pdf_out}"'
         return self._run_cmd(cmd)
 
-    def open_in_vim(self, file_path: str) -> int:
-        cmd = f"nvim {file_path}"
-        return self._run_cmd(cmd)
+    def open_in_vim(self, file_path: str) -> None:
+        cmd = f'nvim "{file_path}"'
+        subprocess.run(cmd, shell=True)
 
     @staticmethod
     def _run_cmd(cmd: str) -> int:
-        print("Wait a moment...")
         return subprocess.call(
             cmd,
             shell=True,
