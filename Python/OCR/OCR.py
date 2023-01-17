@@ -3,18 +3,14 @@
 
 import time
 import subprocess
+import pytesseract
+from PIL import Image
 
 
 NOW = time.strftime("%Y-%m-%d_%H:%M:%S")
 IMG_PATH = f"/tmp/python_OCR_{NOW}.png"
 TXT_PATH = f"/tmp/python_OCR_{NOW}"
-LANGUAGE = None  # "por"/"eng"/... default -> eng
-
-
-def main() -> None:
-    take_screenshot()
-    read_img_with_ocr()
-    open_txt_output()
+LANGUAGE = "eng"  # "por"/"eng"/...
 
 
 def take_screenshot() -> None:
@@ -22,14 +18,20 @@ def take_screenshot() -> None:
 
 
 def read_img_with_ocr() -> None:
-    cmd = f"tesseract {IMG_PATH} {TXT_PATH}"
-    if LANGUAGE is not None:
-        cmd += f" -l {LANGUAGE}"
-    subprocess.run(cmd, shell=True)
+    img = Image.open(IMG_PATH).convert("L")
+    text = pytesseract.image_to_string(img, lang=LANGUAGE)
+    with open(f"{TXT_PATH}.txt", "w") as f:
+        f.write(text)
 
 
 def open_txt_output() -> None:
     subprocess.run(["alacritty", "-e", "nvim", f"{TXT_PATH}.txt"])
+
+
+def main() -> None:
+    take_screenshot()
+    read_img_with_ocr()
+    open_txt_output()
 
 
 if __name__ == "__main__":
