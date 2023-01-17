@@ -1,7 +1,6 @@
 import pandas as pd
 
 import os
-import subprocess
 import sqlite3
 
 
@@ -20,7 +19,7 @@ class Database:
         self.db_con.close()
 
     def setup_database(self) -> None:
-        subprocess.run(["touch", self.db_path])
+        open(self.db_path, "x")
         self.connect()
         self.cursor.execute(
             "CREATE TABLE transactions(transaction_id "
@@ -39,102 +38,101 @@ class Database:
         self.db_con.commit()
         self.disconnect()
 
-    class Query:
-        def __init__(self) -> None:
-            self.db = Database()
-            self.db_con, self.cursor = self.db.connect()
 
-        def get_categories(self) -> list:
-            self.cursor.execute(f"SELECT DISTINCT category FROM expenses")
-            categories = self.cursor.fetchall()
-            self.db.disconnect()
-            return [category[0] for category in categories]
+class Query:
+    def __init__(self) -> None:
+        self.db = Database()
+        self.db_con, self.cursor = self.db.connect()
 
-        def get_transaction_from_id(self, tid: int) -> tuple:
-            self.cursor.execute(
-                f"SELECT * FROM transactions WHERE transaction_id = {tid}"
-            )
-            transaction = self.cursor.fetchone()
-            self.db.disconnect()
-            return transaction
+    def get_categories(self) -> list:
+        self.cursor.execute(f"SELECT DISTINCT category FROM expenses")
+        categories = self.cursor.fetchall()
+        self.db.disconnect()
+        return [category[0] for category in categories]
 
-        def get_last_transaction(self) -> tuple:
-            self.cursor.execute(
-                "SELECT * FROM transactions ORDER BY "
-                "transaction_id DESC LIMIT 1"
-            )
-            transaction = self.cursor.fetchone()
-            self.db.disconnect()
-            return transaction
+    def get_transaction_from_id(self, tid: int) -> tuple:
+        self.cursor.execute(
+            f"SELECT * FROM transactions WHERE transaction_id = {tid}"
+        )
+        transaction = self.cursor.fetchone()
+        self.db.disconnect()
+        return transaction
 
-        def create_df_with_transactions(
-            self,
-            selection: str = "*",
-        ) -> pd.DataFrame:
-            db_query = (
-                f"SELECT {selection} FROM transactions LEFT JOIN expenses "
-                "USING(transaction_id)"
-            )
-            return self.create_df(db_query)
+    def get_last_transaction(self) -> tuple:
+        self.cursor.execute(
+            "SELECT * FROM transactions ORDER BY " "transaction_id DESC LIMIT 1"
+        )
+        transaction = self.cursor.fetchone()
+        self.db.disconnect()
+        return transaction
 
-        def create_df_with_revenue(
-            self,
-            selection: str = "*",
-        ) -> pd.DataFrame:
-            db_query = (
-                f"SELECT {selection} FROM transactions "
-                'WHERE trn_type = "Revenue"'
-            )
-            return self.create_df(db_query)
+    def create_df_with_transactions(
+        self,
+        selection: str = "*",
+    ) -> pd.DataFrame:
+        db_query = (
+            f"SELECT {selection} FROM transactions LEFT JOIN expenses "
+            "USING(transaction_id)"
+        )
+        return self.create_df(db_query)
 
-        def create_df_with_expenses(
-            self,
-            selection: str = "*",
-        ) -> pd.DataFrame:
-            db_query = (
-                f"SELECT {selection} FROM transactions LEFT JOIN expenses "
-                'USING(transaction_id) WHERE trn_type = "Expense"'
-            )
-            return self.create_df(db_query)
+    def create_df_with_revenue(
+        self,
+        selection: str = "*",
+    ) -> pd.DataFrame:
+        db_query = (
+            f"SELECT {selection} FROM transactions "
+            'WHERE trn_type = "Revenue"'
+        )
+        return self.create_df(db_query)
 
-        def create_df(self, db_query: str) -> pd.DataFrame:
-            df = pd.read_sql(db_query, self.db_con)
-            self.db.disconnect()
-            return df
+    def create_df_with_expenses(
+        self,
+        selection: str = "*",
+    ) -> pd.DataFrame:
+        db_query = (
+            f"SELECT {selection} FROM transactions LEFT JOIN expenses "
+            'USING(transaction_id) WHERE trn_type = "Expense"'
+        )
+        return self.create_df(db_query)
 
-    class Edit:
-        def __init__(self) -> None:
-            self.db = Database()
-            self.db_con, self.cursor = self.db.connect()
+    def create_df(self, db_query: str) -> pd.DataFrame:
+        df = pd.read_sql(db_query, self.db_con)
+        self.db.disconnect()
+        return df
 
-        def add_transaction(self, entry: tuple) -> None:
-            db_cmd = (
-                "INSERT INTO transactions (time, "
-                f"trn_type, amount, note) VALUES {entry}"
-            )
-            self.execute(db_cmd)
 
-        def remove_transaction(
-            self, trn_id: int, is_expense: bool = False
-        ) -> None:
-            """Infelizmente DELETE ON CASCADE ñ está a resultar; improve"""
+class Edit:
+    def __init__(self) -> None:
+        self.db = Database()
+        self.db_con, self.cursor = self.db.connect()
 
-            if is_expense:
-                db_cmd = f"DELETE FROM expenses WHERE transaction_id = {trn_id}"
-                self.cursor.execute(db_cmd)
-                self.db_con.commit()
+    def add_transaction(self, entry: tuple) -> None:
+        db_cmd = (
+            "INSERT INTO transactions (time, "
+            f"trn_type, amount, note) VALUES {entry}"
+        )
+        self.execute(db_cmd)
 
-            db_cmd = f"DELETE FROM transactions WHERE transaction_id = {trn_id}"
-            self.execute(db_cmd)
+    def remove_transaction(self, trn_id: int, is_expense: bool = False) -> None:
+        """Infelizmente DELETE ON CASCADE ñ está a resultar; improve"""
 
-        def add_expense(self, category: str, trn_id: str) -> None:
-            db_cmd = (
-                "INSERT INTO expenses (transaction_id, "
-                f"category) VALUES {trn_id, category}"
-            )
-            self.execute(db_cmd)
-
-        def execute(self, db_cmd: str) -> None:
+        if is_expense:
+            db_cmd = f"DELETE FROM expenses WHERE transaction_id = {trn_id}"
             self.cursor.execute(db_cmd)
             self.db_con.commit()
-            self.db.disconnect()
+
+        db_cmd = f"DELETE FROM transactions WHERE transaction_id = {trn_id}"
+        self.execute(db_cmd)
+
+    def add_expense(self, category: str, trn_id: str) -> None:
+        db_cmd = (
+            "INSERT INTO expenses (transaction_id, "
+            f"category) VALUES {trn_id, category}"
+        )
+        self.execute(db_cmd)
+
+    def execute(self, db_cmd: str) -> None:
+        self.cursor.execute(db_cmd)
+        self.db_con.commit()
+        self.db.disconnect()
