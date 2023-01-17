@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 
-class Utils:
+class Date:
     def get_date_now(self, date_format: str = "%Y-%m-%d") -> str:
         return datetime.now().strftime(date_format)
 
@@ -43,6 +43,8 @@ class Utils:
         date_strp = self.get_date_strp(date_string, date_format)
         return datetime.strftime(date_strp + delta, "%Y-%m-%d")
 
+
+class Utils:
     @staticmethod
     def get_val_as_currency(amount: float) -> str:
         if amount >= 0:
