@@ -10,61 +10,57 @@ class Database:
         if not os.path.isfile(self.db_path):
             self._setup_database()
 
-    def connect(self) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
+    def __enter__(self) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
         self.db_con = sqlite3.connect(self.db_path)
         self.cursor = self.db_con.cursor()
         return self.db_con, self.cursor
 
-    def disconnect(self) -> None:
+    def __exit__(self, *args) -> None:
         self.db_con.close()
 
     def _setup_database(self) -> None:
         open(self.db_path, "x")
-        self.connect()
-        self.cursor.execute(
-            "CREATE TABLE transactions(transaction_id "
-            "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL "
-            "UNIQUE, time TEXT NOT NULL, trn_type TEXT "
-            "NOT NULL, amount REAL NOT NULL, note TEXT)"
-        )
-        """Eu sei que podia ficar tudo numa tabela com category NULL
-        Faço assim somente pela experiência de usar foreign key"""
-        self.cursor.execute(
-            "CREATE TABLE expenses(transaction_id "
-            "INTEGER, category TEXT NOT NULL, "
-            "FOREIGN KEY(transaction_id) "
-            "REFERENCES transactions(transaction_id))"
-        )
-        self.db_con.commit()
-        self.disconnect()
+        with self as (db_con, cursor):
+            cursor.execute(
+                "CREATE TABLE transactions(transaction_id "
+                "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL "
+                "UNIQUE, time TEXT NOT NULL, trn_type TEXT "
+                "NOT NULL, amount REAL NOT NULL, note TEXT)"
+            )
+            """Eu sei que podia ficar tudo numa tabela com category NULL
+            Faço assim somente pela experiência de usar foreign key"""
+            cursor.execute(
+                "CREATE TABLE expenses(transaction_id "
+                "INTEGER, category TEXT NOT NULL, "
+                "FOREIGN KEY(transaction_id) "
+                "REFERENCES transactions(transaction_id))"
+            )
+            db_con.commit()
 
 
 class Query:
     def __init__(self) -> None:
         self.db = Database()
-        self.db_con, self.cursor = self.db.connect()
 
     def get_categories(self) -> list:
-        self.cursor.execute(f"SELECT DISTINCT category FROM expenses")
-        categories = self.cursor.fetchall()
-        self.db.disconnect()
-        return [category[0] for category in categories]
+        with self.db as (_, cursor):
+            cursor.execute(f"SELECT DISTINCT category FROM expenses")
+            return [category[0] for category in cursor.fetchall()]
 
     def get_transaction_from_id(self, tid: int) -> tuple:
-        self.cursor.execute(
-            f"SELECT * FROM transactions WHERE transaction_id = {tid}"
-        )
-        transaction = self.cursor.fetchone()
-        self.db.disconnect()
-        return transaction
+        with self.db as (_, cursor):
+            cursor.execute(
+                f"SELECT * FROM transactions WHERE transaction_id = {tid}"
+            )
+            return cursor.fetchone()
 
     def get_last_transaction(self) -> tuple:
-        self.cursor.execute(
-            "SELECT * FROM transactions ORDER BY " "transaction_id DESC LIMIT 1"
-        )
-        transaction = self.cursor.fetchone()
-        self.db.disconnect()
-        return transaction
+        with self.db as (_, cursor):
+            cursor.execute(
+                "SELECT * FROM transactions ORDER BY "
+                "transaction_id DESC LIMIT 1"
+            )
+            return cursor.fetchone()
 
     def create_df_with_transactions(
         self,
@@ -102,15 +98,13 @@ class Query:
         print(f"Export done")
 
     def _create_df(self, db_query: str) -> pd.DataFrame:
-        df = pd.read_sql(db_query, self.db_con)
-        self.db.disconnect()
-        return df
+        with self.db as (db_con, _):
+            return pd.read_sql(db_query, db_con)
 
 
 class Edit:
     def __init__(self) -> None:
         self.db = Database()
-        self.db_con, self.cursor = self.db.connect()
 
     def add_transaction(self, entry: tuple) -> None:
         db_cmd = (
@@ -124,8 +118,9 @@ class Edit:
 
         if is_expense:
             db_cmd = f"DELETE FROM expenses WHERE transaction_id = {trn_id}"
-            self.cursor.execute(db_cmd)
-            self.db_con.commit()
+            with self.db as (db_con, cursor):
+                cursor.execute(db_cmd)
+                db_con.commit()
 
         db_cmd = f"DELETE FROM transactions WHERE transaction_id = {trn_id}"
         self._execute(db_cmd)
@@ -138,6 +133,6 @@ class Edit:
         self._execute(db_cmd)
 
     def _execute(self, db_cmd: str) -> None:
-        self.cursor.execute(db_cmd)
-        self.db_con.commit()
-        self.db.disconnect()
+        with self.db as (db_con, cursor):
+            cursor.execute(db_cmd)
+            db_con.commit()
