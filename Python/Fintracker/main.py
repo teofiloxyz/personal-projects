@@ -9,7 +9,6 @@ from Tfuncs import gmenu
 from transactions import Transactions
 from balance import Balance
 from charts import Charts
-from csvfile import CSVFile
 
 
 def main() -> None:
@@ -20,7 +19,6 @@ def open_menu() -> None:
     tra = Transactions()
     bal = Balance()
     cht = Charts()
-    csv = CSVFile()
     title = "Fintracker-Menu"
     keys = {
         "ls": (
@@ -41,7 +39,7 @@ def open_menu() -> None:
         "rm": (tra.remove, "remove transaction from database"),
         "ed": (bal.edit, "edit balance statement"),
         "ch": (cht.show, "select and show charts"),
-        "ex": (csv.export_csv, "export database transactions to CSV file"),
+        "ex": (tra.export_to_csv, "export database transactions to CSV file"),
     }
     extra_func = tra.show_opening_message
     gmenu(title, keys, extra_func)

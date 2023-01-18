@@ -8,7 +8,7 @@ class Database:
     def __init__(self) -> None:
         self.db_path = "fintracker.db"
         if not os.path.isfile(self.db_path):
-            self.setup_database()
+            self._setup_database()
 
     def connect(self) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
         self.db_con = sqlite3.connect(self.db_path)
@@ -18,7 +18,7 @@ class Database:
     def disconnect(self) -> None:
         self.db_con.close()
 
-    def setup_database(self) -> None:
+    def _setup_database(self) -> None:
         open(self.db_path, "x")
         self.connect()
         self.cursor.execute(
@@ -74,7 +74,7 @@ class Query:
             f"SELECT {selection} FROM transactions LEFT JOIN expenses "
             "USING(transaction_id)"
         )
-        return self.create_df(db_query)
+        return self._create_df(db_query)
 
     def create_df_with_revenue(
         self,
@@ -84,7 +84,7 @@ class Query:
             f"SELECT {selection} FROM transactions "
             'WHERE trn_type = "Revenue"'
         )
-        return self.create_df(db_query)
+        return self._create_df(db_query)
 
     def create_df_with_expenses(
         self,
@@ -94,9 +94,14 @@ class Query:
             f"SELECT {selection} FROM transactions LEFT JOIN expenses "
             'USING(transaction_id) WHERE trn_type = "Expense"'
         )
-        return self.create_df(db_query)
+        return self._create_df(db_query)
 
-    def create_df(self, db_query: str) -> pd.DataFrame:
+    def export_transactions_to_csv(self, csv_output: str) -> None:
+        df = self.create_df_with_transactions()
+        df.to_csv(csv_output, encoding="utf-8", index=False)
+        print(f"Export done")
+
+    def _create_df(self, db_query: str) -> pd.DataFrame:
         df = pd.read_sql(db_query, self.db_con)
         self.db.disconnect()
         return df
@@ -112,7 +117,7 @@ class Edit:
             "INSERT INTO transactions (time, "
             f"trn_type, amount, note) VALUES {entry}"
         )
-        self.execute(db_cmd)
+        self._execute(db_cmd)
 
     def remove_transaction(self, trn_id: int, is_expense: bool = False) -> None:
         """Infelizmente DELETE ON CASCADE ñ está a resultar; improve"""
@@ -123,16 +128,16 @@ class Edit:
             self.db_con.commit()
 
         db_cmd = f"DELETE FROM transactions WHERE transaction_id = {trn_id}"
-        self.execute(db_cmd)
+        self._execute(db_cmd)
 
     def add_expense(self, category: str, trn_id: str) -> None:
         db_cmd = (
             "INSERT INTO expenses (transaction_id, "
             f"category) VALUES {trn_id, category}"
         )
-        self.execute(db_cmd)
+        self._execute(db_cmd)
 
-    def execute(self, db_cmd: str) -> None:
+    def _execute(self, db_cmd: str) -> None:
         self.cursor.execute(db_cmd)
         self.db_con.commit()
         self.db.disconnect()

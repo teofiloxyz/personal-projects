@@ -267,3 +267,10 @@ class Transactions:
             Fintracker.balance[category][item] = item_val - amount
         else:
             Fintracker.balance[category][item] = item_val + amount
+
+    def export_csv(self) -> None:
+        csv_output = input("Enter csv output path: ")
+        if csv_output == "q":
+            print("Aborted...")
+            return
+        self.database.Query().export_transactions_to_csv(csv_output)
