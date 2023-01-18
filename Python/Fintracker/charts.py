@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import Utils
-from database import Database
+from utils import Date
+from database import Query
 
 
 class Charts:
-    utils = Utils()
-    database = Database()
+    date = Date()
+    db_query = Query()
 
     def show(self) -> None:
         plt.style.use("dark_background")
@@ -38,10 +38,10 @@ class Charts:
                 continue
 
     def show_pie_chart_expenses_cat(self) -> None:
-        df = self.database.Query().create_df_with_expenses(
+        df = self.db_query.create_df_with_expenses(
             selection="SUBSTR(time, 1, 10) as date, amount, category"
         )
-        date_limit = self.utils.get_date_limit(days=30)
+        date_limit = self.date.get_date_limit(days=30)
         df = df.loc[df["date"] > date_limit]
         categories_list = df["category"].unique().tolist()
         amounts_list = list()
@@ -59,14 +59,14 @@ class Charts:
     def show_time_chart_by_trn_type(self, trn_type: str) -> None:
         print(f"Showing {trn_type} chart...")
         if trn_type == "Expenses":
-            df = self.database.Query().create_df_with_expenses(
+            df = self.db_query.create_df_with_expenses(
                 selection="SUBSTR(time, 1, 10) as date, amount"
             )
         else:
-            df = self.database.Query().create_df_with_revenue(
+            df = self.db_query.create_df_with_revenue(
                 selection="SUBSTR(time, 1, 10) as date, amount"
             )
-        date_limit = self.utils.get_date_limit(days=30)
+        date_limit = self.date.get_date_limit(days=30)
         df = df.loc[df["date"] > date_limit].groupby("date")["amount"].sum()
 
         df.plot(x="date", y="amount", kind="line")

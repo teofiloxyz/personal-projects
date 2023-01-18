@@ -4,13 +4,15 @@ from tabulate import tabulate
 
 import re
 
-from utils import Utils, Fintracker
-from database import Database
+from fintracker import Fintracker
+from utils import Utils, Date
+from database import Query, Edit
 
 
 class Transactions:
-    utils = Utils()
-    database = Database()
+    fintracker = Fintracker()
+    utils, date = Utils(), Date()
+    db_query, db_edit = Query(), Edit()
 
     def show_opening_message(self) -> None:
         self.check_for_new_auto_transactions()
@@ -25,25 +27,27 @@ class Transactions:
     def auto_transactions(self) -> list:
         """Posso adicionar expenses também"""
         message = list()
-        for title, income in Fintracker.auto_transactions["incomes"].items():
-            if not self.utils.date_is_due(income["expected_date"]):
+        for title, income in self.fintracker.auto_transactions[
+            "incomes"
+        ].items():
+            if not self.date.date_is_due(income["expected_date"]):
                 continue
 
-            now = self.utils.get_date_now("%Y-%m-%d %H:%M:%S")
+            now = self.date.get_date_now("%Y-%m-%d %H:%M:%S")
             amount = income["expected_amount"]
             entry = now, "Revenue", amount, title
             self.add_entry(entry)
 
-            delta = self.utils.get_date_delta(income["recurrence"])
-            new_date = self.utils.add_delta_to_date(
+            delta = self.date.get_date_delta(income["recurrence"])
+            new_date = self.date.add_delta_to_date(
                 now, delta, date_format="%Y-%m-%d %H:%M:%S"
             )
-            Fintracker.auto_transactions["incomes"][title][
+            self.fintracker.auto_transactions["incomes"][title][
                 "expected_date"
             ] = new_date
             # O dinheiro ganho aumenta a rubrica cash do balanço
-            Fintracker.balance["assets"]["cash"] += amount
-            self.utils.save()
+            self.fintracker.balance["assets"]["cash"] += amount
+            self.fintracker.save()
 
             message.append(
                 f"{self.utils.get_val_as_currency(amount)} from {title} was added!"
@@ -63,7 +67,7 @@ class Transactions:
     def get_balance_negative_items(self) -> list[str]:
         return [
             item
-            for category in Fintracker.balance.values()
+            for category in self.fintracker.balance.values()
             for item, amount in category.items()
             if amount < 0
         ]
@@ -78,9 +82,9 @@ class Transactions:
         )
 
     def show_summary(self) -> None:
-        df = self.database.Query().create_df_with_transactions()
+        df = self.db_query.create_df_with_transactions()
         days, date_format = (1, 7, 30), "%Y-%m-%d"
-        timespan = [self.utils.get_date_limit(day, date_format) for day in days]
+        timespan = [self.date.get_date_limit(day, date_format) for day in days]
 
         revenue = [self.get_trns_sum(df, time, "Revenue") for time in timespan]
         expenses = [self.get_trns_sum(df, time, "Expense") for time in timespan]
@@ -105,17 +109,17 @@ class Transactions:
 
     def show(self, option: str, timespan: str) -> None:
         try:
-            date_limit = self.utils.get_date_limit(int(timespan))
+            date_limit = self.date.get_date_limit(int(timespan))
         except ValueError:
             print("Must enter an integer...")
             return
 
         if option == "expenses":
-            df = self.database.Query().create_df_with_expenses()
+            df = self.db_query.create_df_with_expenses()
         elif option == "revenue":
-            df = self.database.Query().create_df_with_revenue()
+            df = self.db_query.create_df_with_revenue()
         else:
-            df = self.database.Query().create_df_with_transactions()
+            df = self.db_query.create_df_with_transactions()
 
         df = df.loc[df["time"] > date_limit]
         print(df.to_string(index=False))
@@ -140,7 +144,7 @@ class Transactions:
             break
 
         if trn_type == "Expense":
-            categories = self.database.Query().get_categories()
+            categories = self.db_query.get_categories()
             category = self.choose_expense_category(categories)
             if category == "q":
                 print("Aborting...")
@@ -153,7 +157,7 @@ class Transactions:
 
         self.change_balance_cash_amount(trn_type, amount)
 
-        now = self.utils.get_date_now("%Y-%m-%d %H:%M:%S")
+        now = self.date.get_date_now("%Y-%m-%d %H:%M:%S")
         entry = now, trn_type, amount, note
         self.add_entry(entry)
         if trn_type == "Expense":
@@ -185,20 +189,20 @@ class Transactions:
 
     def change_balance_cash_amount(self, trn_type: str, amount: float) -> None:
         if trn_type == "Expense":
-            Fintracker.balance["assets"]["cash"] -= amount
+            self.fintracker.balance["assets"]["cash"] -= amount
         else:
-            Fintracker.balance["assets"]["cash"] += amount
-        self.utils.save()
+            self.fintracker.balance["assets"]["cash"] += amount
+        self.fintracker.save()
 
     def add_entry(self, entry: tuple) -> None:
-        self.database.Edit().add_transaction(entry)
+        self.db_edit.add_transaction(entry)
 
     def add_expense_entry(self, category: str) -> None:
-        trn_id = self.database.Query().get_last_transaction()[0]
-        self.database.Edit().add_expense(category, trn_id)
+        trn_id = self.db_query.get_last_transaction()[0]
+        self.db_edit.add_expense(category, trn_id)
 
     def remove(self) -> None:
-        df = self.database.Query().create_df_with_transactions()
+        df = self.db_query.create_df_with_transactions()
         print(df.to_string(index=False))
 
         while True:
@@ -227,7 +231,7 @@ class Transactions:
                 print(f"Can't process '{tid}', try again...")
                 return
 
-            transaction = self.database.Query().get_transaction_from_id(tid)
+            transaction = self.db_query.get_transaction_from_id(tid)
             if transaction is None:
                 print(f"Transaction with id '{tid}' not found on database!")
                 return
@@ -237,20 +241,20 @@ class Transactions:
     def remove_entry(self, transaction: tuple) -> None:
         tid, _, trn_type, amount, note = transaction
         if trn_type == "Expense":
-            self.database.Edit().remove_transaction(tid, is_expense=True)
-            Fintracker.balance["assets"]["cash"] += amount
+            self.db_edit.remove_transaction(tid, is_expense=True)
+            self.fintracker.balance["assets"]["cash"] += amount
         elif trn_type == "Revenue":
-            self.database.Edit().remove_transaction(tid)
-            Fintracker.balance["assets"]["cash"] -= amount
+            self.db_edit.remove_transaction(tid)
+            self.fintracker.balance["assets"]["cash"] -= amount
         elif trn_type == "Balance":
-            self.database.Edit().remove_transaction(tid)
+            self.db_edit.remove_transaction(tid)
             item_1 = re.sub(" [-+][la]:.*$", "", note)
             self.change_balance_item(item_1, amount)
             item_2 = note.replace(item_1, "").strip()
             # if not isolated balance transaction, change to be reversed
             if item_2 != "":
                 self.change_balance_item(item_2, amount)
-        self.utils.save()
+        self.fintracker.save()
 
     def change_balance_item(self, entry: str, amount: float) -> None:
         category = "assets" if entry[1] == "a" else "liabilities"
@@ -258,19 +262,19 @@ class Transactions:
         operation = entry[0]
 
         item_val = (
-            Fintracker.balance[category][item]
-            if item in Fintracker.balance[category].keys()
+            self.fintracker.balance[category][item]
+            if item in self.fintracker.balance[category].keys()
             else 0
         )
         if operation == "+":
             # Reversed bc removed transaction
-            Fintracker.balance[category][item] = item_val - amount
+            self.fintracker.balance[category][item] = item_val - amount
         else:
-            Fintracker.balance[category][item] = item_val + amount
+            self.fintracker.balance[category][item] = item_val + amount
 
     def export_csv(self) -> None:
         csv_output = input("Enter csv output path: ")
         if csv_output == "q":
             print("Aborted...")
             return
-        self.database.Query().export_transactions_to_csv(csv_output)
+        self.db_query.export_transactions_to_csv(csv_output)
