@@ -7,6 +7,7 @@ class Fintracker:
             "auto_transactions.json"
         )
         self.balance: dict = Utils().load_json("balance.json")
+        self.assets, self.liabilities = self.balance.values()
 
     def save(self) -> None:
         Utils().write_json("auto_transactions.json", self.auto_transactions)
