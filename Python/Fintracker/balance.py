@@ -12,11 +12,11 @@ from transactions import Transactions
 
 
 class CategoryType(Enum):
-    ASSETS = "assets"
-    LIABILITIES = "liabilities"
+    ASSETS = "Assets"
+    LIABILITIES = "Liabilities"
 
     def singular(self) -> str:
-        SINGULAR = {"assets": "asset", "liabilities": "liability"}
+        SINGULAR = {"Assets": "Asset", "Liabilities": "Liability"}
         return SINGULAR[self.value]
 
 
