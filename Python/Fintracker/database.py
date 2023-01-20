@@ -42,7 +42,7 @@ class Query:
     def __init__(self) -> None:
         self.db = Database()
 
-    def get_categories(self) -> list:
+    def get_expense_categories(self) -> list:
         query = "SELECT DISTINCT category FROM expenses"
         return [category[0] for category in self._create_df(query).values]
 
@@ -89,11 +89,16 @@ class Query:
     def export_transactions_to_csv(self, csv_output: str) -> None:
         df = self.create_df_with_transactions()
         df.to_csv(csv_output, encoding="utf-8", index=False)
-        print(f"Export done")
 
     def _create_df(self, db_query: str) -> pd.DataFrame:
         with self.db as (db_con, _):
             return pd.read_sql(db_query, db_con)
+
+    @staticmethod
+    def get_sum(df: pd.DataFrame, time: str, trn_type: str) -> int:
+        return (
+            df[(df["time"] > time) & (df["trn_type"] == trn_type)].sum().amount
+        )
 
 
 class Edit:
@@ -107,23 +112,19 @@ class Edit:
         )
         self._execute(db_cmd)
 
-    def remove_transaction(self, trn_id: int, is_expense: bool = False) -> None:
-        """Infelizmente DELETE ON CASCADE ñ está a resultar"""
-
-        if is_expense:
-            self.remove_expense(trn_id)
-        db_cmd = f"DELETE FROM transactions WHERE transaction_id = {trn_id}"
+    def remove_transaction(self, tid: int) -> None:
+        db_cmd = f"DELETE FROM transactions WHERE transaction_id = {tid}"
         self._execute(db_cmd)
 
-    def add_expense(self, category: str, trn_id: str) -> None:
+    def add_expense(self, category: str, tid: int) -> None:
         db_cmd = (
             "INSERT INTO expenses (transaction_id, "
-            f"category) VALUES {trn_id, category}"
+            f"category) VALUES {tid, category}"
         )
         self._execute(db_cmd)
 
-    def remove_expense(self, trn_id: int) -> None:
-        db_cmd = f"DELETE FROM expenses WHERE transaction_id = {trn_id}"
+    def remove_expense(self, tid: int) -> None:
+        db_cmd = f"DELETE FROM expenses WHERE transaction_id = {tid}"
         self._execute(db_cmd)
 
     def _execute(self, db_cmd: str) -> None:

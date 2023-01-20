@@ -1,12 +1,12 @@
-from Tfuncs import fcol, ffmt
 from tabulate import tabulate
 
+import re
 from typing import Optional
 from enum import Enum
 
 from fintracker import Fintracker
+from database import Edit
 from utils import Utils, Date
-from transactions import Transactions
 
 # Still needs a lot of work
 
@@ -38,8 +38,7 @@ class BalanceCategory:
         category.append(
             (
                 self.total_category_title,
-                self.utils.get_val_as_currency(self.get_total_value())
-                + ffmt.reset,
+                self.utils.get_val_as_currency(self.get_total_value()),
             )
         )
         return category
@@ -99,7 +98,6 @@ class Assets(BalanceCategory):
         self.utils = Utils()
         self.category = Fintracker().assets
         self.category_title = CategoryType.ASSETS
-        self.total_category_title = f"{ffmt.bold}{fcol.green}Total Assets"
 
 
 class Liabilities(BalanceCategory):
@@ -107,13 +105,11 @@ class Liabilities(BalanceCategory):
         self.utils = Utils()
         self.category = Fintracker().liabilities
         self.category_title = CategoryType.LIABILITIES
-        self.total_category_title = f"{ffmt.bold}{fcol.red}Total Liabilities"
 
 
 class Balance:
     fintracker, assets, liabilities = Fintracker(), Assets(), Liabilities()
     utils, date = Utils(), Date()
-    transactions = Transactions()
 
     def show(self) -> None:
         assets = self.assets.get_items_as_currency()
@@ -124,16 +120,12 @@ class Balance:
         liabilities_total_value = self.liabilities.get_total_value()
         balance_total_value = assets_total_value - liabilities_total_value
         balance.append(
-            (
-                f"{ffmt.bold}Balance",
-                self.utils.get_val_as_currency(balance_total_value)
-                + ffmt.reset,
-            )
+            ("Balance", self.utils.get_val_as_currency(balance_total_value))
         )
 
         table = tabulate(
             balance,
-            headers=(f"{ffmt.bold}{fcol.cyan}Item", f"Amount{ffmt.reset}"),
+            headers=("Item", "Amount"),
             tablefmt="fancy_grid",
             stralign="center",
         )
@@ -196,14 +188,14 @@ class Balance:
         else:
             self.liabilities.category[item] = item_val + val_diff
 
-        now = self.date.get_date_now(date_format="%Y-%m-%d %H:%M:%S")
+        now = self.date.get_now(date_format="%Y-%m-%d %H:%M:%S")
         entry = now, "Balance", abs(val_diff), description
-        self.transactions.add_entry(entry)
+        Edit().add_transaction(entry)
         # improve save
         self.fintracker.save()
-        self.transactions.check_for_balance_negative_items()
+        self.check_for_balance_negative_items()
 
-    def _pick_balance_item(
+    def _pick_item(
         self, question: str, can_cancel: bool = False
     ) -> Optional[tuple]:
         while True:
@@ -275,3 +267,45 @@ class Balance:
         if category_2 != "":  # In case of isolated
             description += f" {item_2_opr}{category_2[0]}:{item_2}"
         return description
+
+    def check_for_negative_items(self) -> None:
+        balance_negative_items = self.get_balance_negative_items()
+        if len(balance_negative_items) > 0:
+            self.show_balance_negative_items(balance_negative_items)
+
+    def get_negative_items(self) -> list[str]:
+        return [
+            item
+            for category in self.fintracker.balance.values()
+            for item, amount in category.items()
+            if amount < 0
+        ]
+
+    def change_cash_amount(self, amount: float) -> None:
+        self.fintracker.balance["assets"]["cash"] += amount
+
+    def change_item_amount(self, entry: tuple) -> None:
+        # item_1 = re.sub(" [-+][la]:.*$", "", note)
+        # self.balance.change_item_amount(item_1)
+        # item_2 = note.replace(item_1, "").strip()
+        ## if not isolated balance transaction, change to be reversed
+        # if item_2 != "":
+        #    self.balance.change_item_amount(item_2)
+        category = "assets" if entry[1] == "a" else "liabilities"
+        item = entry[3:]
+        operation = entry[0]
+
+        item_val = (
+            self.fintracker.balance[category][item]
+            if item in self.fintracker.balance[category].keys()
+            else 0
+        )
+        if operation == "+":
+            # Reversed bc removed transaction
+            self.fintracker.balance[category][item] = item_val - amount
+        else:
+            self.fintracker.balance[category][item] = item_val + amount
+
+    def __exit__(self) -> None:
+        # self.fintracker.save()
+        self.check_for_negative_items()

@@ -1,14 +1,22 @@
 {
-    "incomes": {
-        "salary": {
-            "expected_date": "2023-02-01",
-            "recurrence": "monthly",
-            "expected_amount": 1000
-        },
-        "side hustle": {
-            "expected_date": "2023-01-14",
-            "recurrence": "weekly",
-            "expected_amount": 150
-        }
+"salary": {
+        "expected_date": "2023-02-26",
+        "recurrence": "monthly",
+        "expected_amount": 1000
+    },
+"side hustle": {
+        "expected_date": "2023-02-03",
+        "recurrence": "weekly",
+        "expected_amount": 150
+    },
+"rent": {
+        "expected_date": "2023-02-05",
+        "recurrence": "monthly",
+        "expected_amount": -500
+    },
+"health insurance": {
+        "expected_date": "2023-02-26",
+        "recurrence": "monthly",
+        "expected_amount": -50
     }
 }
