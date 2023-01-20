@@ -42,7 +42,7 @@ class Date:
 
 class Utils:
     @staticmethod
-    def get_val_as_currency(amount: float) -> str:
+    def as_currency(amount: float) -> str:
         if amount >= 0:
             return "€ {:,.2f}".format(amount)
         else:

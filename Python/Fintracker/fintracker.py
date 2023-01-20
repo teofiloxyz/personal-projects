@@ -1,3 +1,5 @@
+from tabulate import tabulate
+
 from utils import Utils
 
 
@@ -7,7 +9,6 @@ class Fintracker:
             "auto_transactions.json"
         )
         self.balance: dict = Utils().load_json("balance.json")
-        self.assets, self.liabilities = self.balance.values()
 
     def save(self) -> None:
         Utils().write_json("auto_transactions.json", self.auto_transactions)
@@ -38,6 +39,15 @@ class Messages:
 
         table = tabulate(
             summary, headers="keys", tablefmt="fancy_grid", stralign="center"
+        )
+        print(table)
+
+    def show_balance(self, balance) -> None:
+        table = tabulate(
+            balance,
+            headers=("Item", "Amount"),
+            tablefmt="fancy_grid",
+            stralign="center",
         )
         print(table)
 
