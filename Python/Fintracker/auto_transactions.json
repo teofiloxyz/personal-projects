@@ -12,11 +12,13 @@
 "rent": {
         "expected_date": "2023-02-05",
         "recurrence": "monthly",
+        "category": "housing",
         "expected_amount": -500
     },
 "health insurance": {
         "expected_date": "2023-02-26",
         "recurrence": "monthly",
+        "category": "insurance",
         "expected_amount": -50
     }
 }

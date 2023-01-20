@@ -243,7 +243,7 @@ class AutoTransactions:
         self._add_to_database(entry)
         if trn_type == TransactionType.EXPENSE:
             # Has to be after adding transaction
-            expense_category = transaction["recurrence"]
+            expense_category = transaction["category"].capitalize()
             self.expenses.add_to_database(expense_category)
 
         self.balance.change_cash_amount(amount)
