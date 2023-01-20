@@ -6,17 +6,14 @@ Também guarda o balanço, e é possível editá-lo."""
 
 from Tfuncs import Menu
 
-from fintracker import Messages
 from transactions import Transactions, TransactionType, Charts
 from balance import Balance
 
 
 def main() -> None:
     transactions, balance, charts = Transactions(), Balance(), Charts()
-    messages = Messages()
     menu = Menu(
-        title="Fintracker-Menu",
-        beginning_func=messages.show_opening_message,
+        title="Fintracker-Menu", beginning_func=transactions.show_summary
     )
 
     menu.add_option(
@@ -46,7 +43,11 @@ def main() -> None:
         help="show past # (default 30) days balance editions",
     )
     menu.add_option(key="b", func=balance.show, help="show balance statement")
-    menu.add_option(key="sm", func=messages.show_summary, help="show summary")
+    menu.add_option(
+        key="sm",
+        func=transactions.show_summary,
+        help="show transactions summary",
+    )
     menu.add_option(
         key="ad", func=transactions.add, help="add transaction to database"
     )

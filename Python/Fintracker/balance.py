@@ -2,7 +2,7 @@ import re
 from enum import Enum
 from typing import Optional
 
-from fintracker import Fintracker
+from fintracker import Fintracker, Report
 from database import Edit
 from utils import Utils, Date
 
@@ -74,7 +74,7 @@ class Liabilities(AssetsLiabilities):
 
 
 class Balance:
-    fintracker = Fintracker()
+    fintracker, report = Fintracker(), Report()
     assets, liabilities = Assets(), Liabilities()
     utils, date = Utils(), Date()
 
@@ -97,7 +97,7 @@ class Balance:
         balance_total = assets_total - liabilities_total
         balance.append(("Balance", self.utils.as_currency(balance_total)))
 
-        self.fintracker.show_balance(balance)
+        self.report.show_balance(balance)
 
     def edit(self) -> None:
         balance_items = self._get_balance_items()
@@ -263,7 +263,7 @@ class Balance:
     def _check_for_negative_items(self) -> None:
         negative_items = self._get_negative_items()
         if len(negative_items) > 0:
-            self.fintracker.show_balance_negative_items(negative_items)
+            self.report.show_balance_negative_items(negative_items)
 
     def _get_balance_items(self) -> tuple[dict, dict]:
         return self.assets.get_items(), self.liabilities.get_items()

@@ -1,10 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
 from enum import Enum
 from typing import Optional
 
-from fintracker import Fintracker
+from fintracker import Fintracker, Report
 from balance import Balance
 from database import Query, Edit
 from utils import Utils, Date
@@ -18,6 +15,7 @@ class TransactionType(Enum):
 
 class Transactions:
     def __init__(self) -> None:
+        self.report = Report()
         self.expenses = Expenses()
         self.balance = Balance()
         self.query_db, self.edit_db = Query(), Edit()
@@ -37,6 +35,26 @@ class Transactions:
 
         df = df.loc[df["time"] > date_limit]
         print(df.to_string(index=False))
+
+    def show_summary(self) -> None:
+        df = self.query_db.create_df_with_transactions()
+        days, date_format = (1, 7, 30), "%Y-%m-%d"
+        timespan = [self.date.get_limit(day, date_format) for day in days]
+
+        revenue = [
+            self.query_db.get_sum(df, time, "Revenue") for time in timespan
+        ]
+        expenses = [
+            self.query_db.get_sum(df, time, "Expense") for time in timespan
+        ]
+        balance = [(revenue[i] - expenses[i]) for i in range(len(revenue))]
+        summary = {
+            "Timespan": ["Last 24 hours", "Last 7 days", "Last 30 days"],
+            "Revenue": [self.utils.as_currency(val) for val in revenue],
+            "Expenses": [self.utils.as_currency(val) for val in expenses],
+            "Balance": [self.utils.as_currency(val) for val in balance],
+        }
+        self.report.show_transactions_summary(summary)
 
     def add(self) -> None:
         prompt_amount = self._get_amount()
@@ -190,7 +208,7 @@ class Expenses:
 
 
 class AutoTransactions:
-    fintracker = Fintracker()
+    fintracker, report = Fintracker(), Report()
     transactions = Transactions()
     balance = Balance()
     edit_db = Edit()
@@ -204,7 +222,7 @@ class AutoTransactions:
         for title, transaction in new.items():
             self._add(title, transaction)
             self._update_expected_date(title, transaction)
-            # self.fintracker.show()
+        self.report.show_new_autotransactions(list(new.keys()))
 
     def _get_new(self) -> dict:
         new = dict()
@@ -237,72 +255,3 @@ class AutoTransactions:
         delta = self.date.get_delta(transaction["recurrence"])
         new_date = self.date.add_delta(transaction["expected_date"], delta)
         self.fintracker.auto_transactions[title]["expected_date"] = new_date
-
-
-class Charts:
-    date = Date()
-    db_query = Query()
-
-    def show(self) -> None:
-        plt.style.use("dark_background")
-        options = {
-            "1": (
-                "Revenue of last 30 days",
-                lambda: self.show_time_chart_by_trn_type("Revenue"),
-            ),
-            "2": (
-                "Expenses of last 30 days",
-                lambda: self.show_time_chart_by_trn_type("Expenses"),
-            ),
-            "3": (
-                "Category percentage of expenses of last 30 days",
-                self.show_pie_chart_expenses_cat,
-            ),
-        }
-        while True:
-            [print(f"[{n}] {option[0]}") for n, option in options.items()]
-            selection = input("\nEnter the chart option: ")
-            if selection == "q":
-                print("Aborting...")
-                return
-            try:
-                options[selection][1]()
-                break
-            except KeyError:
-                continue
-
-    def show_pie_chart_expenses_cat(self) -> None:
-        df = self.db_query.create_df_with_expenses(
-            selection="SUBSTR(time, 1, 10) as date, amount, category"
-        )
-        date_limit = self.date.get_limit(days=30)
-        df = df.loc[df["date"] > date_limit]
-        categories_list = df["category"].unique().tolist()
-        amounts_list = list()
-        for category in categories_list:
-            amount = df.loc[df["category"] == category]["amount"].sum()
-            amounts_list.append(amount)
-
-        plt.pie(
-            np.array(amounts_list),
-            labels=categories_list,
-            autopct="%1.1f%%",
-        )
-        plt.show()
-
-    def show_time_chart_by_trn_type(self, trn_type: str) -> None:
-        print(f"Showing {trn_type} chart...")
-        if trn_type == "Expenses":
-            df = self.db_query.create_df_with_expenses(
-                selection="SUBSTR(time, 1, 10) as date, amount"
-            )
-        else:
-            df = self.db_query.create_df_with_revenue(
-                selection="SUBSTR(time, 1, 10) as date, amount"
-            )
-        date_limit = self.date.get_limit(days=30)
-        df = df.loc[df["date"] > date_limit].groupby("date")["amount"].sum()
-
-        df.plot(x="date", y="amount", kind="line")
-        plt.legend(title=trn_type)
-        plt.show()
