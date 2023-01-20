@@ -6,37 +6,47 @@ Também guarda o balanço, e é possível editá-lo."""
 
 from Tfuncs import Menu
 
-from transactions import Transactions
+from fintracker import Messages
+from transactions import Transactions, TransactionType, Charts
 from balance import Balance
-from charts import Charts
 
 
 def main() -> None:
     transactions, balance, charts = Transactions(), Balance(), Charts()
+    messages = Messages()
     menu = Menu(
         title="Fintracker-Menu",
-        beginning_func=transactions.show_opening_message,
+        beginning_func=messages.show_opening_message,
     )
 
     menu.add_option(
         key="ls",
-        func=lambda timespan=30: transactions.show("all", timespan),
+        func=lambda timespan=30: transactions.show(timespan),
         help="show past # (default 30) days transactions",
     )
     menu.add_option(
         key="lse",
-        func=lambda timespan=30: transactions.show("expenses", timespan),
+        func=lambda timespan=30: transactions.show(
+            timespan, TransactionType.EXPENSE
+        ),
         help="show past # (default 30) days expenses",
     )
     menu.add_option(
         key="lsr",
-        func=lambda timespan=30: transactions.show("revenue", timespan),
+        func=lambda timespan=30: transactions.show(
+            timespan, TransactionType.REVENUE
+        ),
         help="show past # (default 30) days revenue",
     )
-    menu.add_option(key="lsb", func=balance.show, help="show balance statement")
     menu.add_option(
-        key="sm", func=transactions.show_summary, help="show summary"
+        key="lsb",
+        func=lambda timespan=30: transactions.show(
+            timespan, TransactionType.BALANCE
+        ),
+        help="show past # (default 30) days balance editions",
     )
+    menu.add_option(key="b", func=balance.show, help="show balance statement")
+    menu.add_option(key="sm", func=messages.show_summary, help="show summary")
     menu.add_option(
         key="ad", func=transactions.add, help="add transaction to database"
     )
@@ -49,7 +59,7 @@ def main() -> None:
     menu.add_option(key="ch", func=charts.show, help="select and show charts")
     menu.add_option(
         key="ex",
-        func=transactions.export_csv,
+        func=transactions.export_to_csv,
         help="export database transactions to CSV file",
     )
 
