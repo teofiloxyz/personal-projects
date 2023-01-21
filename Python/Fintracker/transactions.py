@@ -22,22 +22,30 @@ class Transactions:
         self.utils, self.date = Utils(), Date()
 
     def show(
-        self, timespan: int, option: TransactionType | None = None
+        self, timespan: int, trn_type: TransactionType | None = None
     ) -> None:
         date_limit = self.date.get_limit(timespan)
 
-        if option == TransactionType.EXPENSE:
-            df = self.query_db.create_df_with_expenses()
-        elif option == TransactionType.REVENUE:
-            df = self.query_db.create_df_with_revenue()
+        if trn_type == TransactionType.EXPENSE:
+            df = self.query_db.get_df_with_transactions(
+                include_categories=True, filter_trn_type=trn_type.value
+            )
+        elif trn_type == TransactionType.REVENUE:
+            df = self.query_db.get_df_with_transactions(
+                filter_trn_type=trn_type.value
+            )
+        elif trn_type == TransactionType.BALANCE:
+            df = self.query_db.get_df_with_transactions(
+                filter_trn_type=trn_type.value
+            )
         else:
-            df = self.query_db.create_df_with_transactions()
+            df = self.query_db.get_df_with_transactions(include_categories=True)
 
         df = df.loc[df["time"] > date_limit]
         print(df.to_string(index=False))
 
     def show_summary(self) -> None:
-        df = self.query_db.create_df_with_transactions()
+        df = self.query_db.get_df_with_transactions()
         days, date_format = (1, 7, 30), "%Y-%m-%d"
         timespan = [self.date.get_limit(day, date_format) for day in days]
 
@@ -47,12 +55,12 @@ class Transactions:
         expenses = [
             self.query_db.get_sum(df, time, "Expense") for time in timespan
         ]
-        balance = [(revenue[i] - expenses[i]) for i in range(len(revenue))]
+        net = [(revenue[i] - expenses[i]) for i in range(len(revenue))]
         summary = {
             "Timespan": ["Last 24 hours", "Last 7 days", "Last 30 days"],
             "Revenue": [self.utils.as_currency(val) for val in revenue],
             "Expenses": [self.utils.as_currency(val) for val in expenses],
-            "Balance": [self.utils.as_currency(val) for val in balance],
+            "Net": [self.utils.as_currency(val) for val in net],
         }
         self.report.show_transactions_summary(summary)
 
@@ -92,7 +100,6 @@ class Transactions:
                 "+100.55 if revenue): "
             )
             if prompt == "q":
-                print("Aborting...")
                 return None
             try:
                 round(float(prompt), 2)
@@ -154,21 +161,21 @@ class Transactions:
         return transactions
 
     def _remove_from_database(self, transaction: tuple) -> None:
-        tid, _, trn_type, amount, _ = transaction
+        tid, _, trn_type, amount, note = transaction
         self.edit_db.remove_transaction(tid)
 
         if trn_type == TransactionType.BALANCE.value:
-            self.balance.change_item_amount(transaction)
-        if trn_type == TransactionType.EXPENSE.value:
+            self.balance.revert_items_amount(note, amount)
+        elif trn_type == TransactionType.EXPENSE.value:
             self.expenses.remove_from_database(tid)
-            self.balance.change_cash_amount(-amount)
-        else:
             self.balance.change_cash_amount(amount)
+        else:
+            self.balance.change_cash_amount(-amount)
 
     def export_to_csv(self) -> None:
         csv_output = input("Enter csv output path: ")
         if csv_output == "q":
-            print("Aborted...")
+            print("Aborting...")
             return
         self.query_db.export_transactions_to_csv(csv_output)
 
@@ -222,6 +229,7 @@ class AutoTransactions:
         for title, transaction in new.items():
             self._add(title, transaction)
             self._update_expected_date(title, transaction)
+        self.save()
         self.report.show_new_autotransactions(list(new.keys()))
 
     def _get_new(self) -> dict:
@@ -255,3 +263,6 @@ class AutoTransactions:
         delta = self.date.get_delta(transaction["recurrence"])
         new_date = self.date.add_delta(transaction["expected_date"], delta)
         self.fintracker.auto_transactions[title]["expected_date"] = new_date
+
+    def save(self) -> None:
+        self.fintracker.save_auto_transactions()

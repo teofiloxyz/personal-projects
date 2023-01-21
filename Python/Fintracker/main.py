@@ -2,16 +2,16 @@
 """ Fintracker (ou personal finances tracker) é um menu simples,
 onde se registam todas as transações efetuadas.
 Também guarda o balanço, e é possível editá-lo."""
-# Still needs some refactoring
 
 from Tfuncs import Menu
 
-from transactions import Transactions, TransactionType, Charts
+from fintracker import Report
+from transactions import Transactions, TransactionType
 from balance import Balance
 
 
 def main() -> None:
-    transactions, balance, charts = Transactions(), Balance(), Charts()
+    transactions, balance, report = Transactions(), Balance(), Report()
     menu = Menu(
         title="Fintracker-Menu", beginning_func=transactions.show_summary
     )
@@ -57,7 +57,9 @@ def main() -> None:
         help="remove transaction from database",
     )
     menu.add_option(key="ed", func=balance.edit, help="edit balance statement")
-    menu.add_option(key="ch", func=charts.show, help="select and show charts")
+    menu.add_option(
+        key="ch", func=report.Charts().show, help="select and show charts"
+    )
     menu.add_option(
         key="ex",
         func=transactions.export_to_csv,

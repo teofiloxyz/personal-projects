@@ -13,13 +13,16 @@ class Fintracker:
         )
         self.balance: dict = Utils().load_json("balance.json")
 
-    def save(self) -> None:
+    def save_auto_transactions(self) -> None:
         Utils().write_json("auto_transactions.json", self.auto_transactions)
-        Utils().write_json("balance.json", self.balance)
+
+    def save_balance(self, balance: dict) -> None:
+        Utils().write_json("balance.json", balance)
 
 
 class Report:
     def show_transactions_summary(self, summary: dict) -> None:
+        print("Transactions Summary:")
         table = tabulate(
             summary, headers="keys", tablefmt="fancy_grid", stralign="center"
         )
@@ -41,12 +44,11 @@ class Report:
         )
         print(table)
 
-    def show_balance_negative_items(
-        self, balance_negative_items: list[str]
-    ) -> None:
-        for item in balance_negative_items:
-            print(f"{item.capitalize()} is negative!")
-        print("Please edit the balance statement!\n")
+    def show_negative_item(self, item: str, amount: float) -> None:
+        print(
+            f"{item} is negative: {Utils().as_currency(amount)}"
+            "\nPlease edit the balance statement!\n"
+        )
 
     class Charts:
         date = Date()
@@ -81,8 +83,10 @@ class Report:
                     continue
 
         def show_pie_chart_expenses_cat(self) -> None:
-            df = self.db_query.create_df_with_expenses(
-                selection="SUBSTR(time, 1, 10) as date, amount, category"
+            df = self.db_query.get_df_with_transactions(
+                selection="SUBSTR(time, 1, 10) as date, amount, category",
+                include_categories=True,
+                filter_trn_type="Expense",
             )
             date_limit = self.date.get_limit(days=30)
             df = df.loc[df["date"] > date_limit]
@@ -101,13 +105,15 @@ class Report:
 
         def show_time_chart_by_trn_type(self, trn_type: str) -> None:
             print(f"Showing {trn_type} chart...")
-            if trn_type == "Expenses":
-                df = self.db_query.create_df_with_expenses(
-                    selection="SUBSTR(time, 1, 10) as date, amount"
+            if trn_type == "Expense":
+                df = self.db_query.get_df_with_transactions(
+                    selection="SUBSTR(time, 1, 10) as date, amount",
+                    filter_trn_type="Expenses",
                 )
             else:
-                df = self.db_query.create_df_with_revenue(
-                    selection="SUBSTR(time, 1, 10) as date, amount"
+                df = self.db_query.get_df_with_transactions(
+                    selection="SUBSTR(time, 1, 10) as date, amount",
+                    filter_trn_type="Revenue",
                 )
             date_limit = self.date.get_limit(days=30)
             df = df.loc[df["date"] > date_limit].groupby("date")["amount"].sum()

@@ -56,38 +56,21 @@ class Query:
         )
         return self._create_df(query).values[0]
 
-    def create_df_with_transactions(
+    def get_df_with_transactions(
         self,
         selection: str = "*",
+        include_categories: bool = False,
+        filter_trn_type: str = "",
     ) -> pd.DataFrame:
-        query = (
-            f"SELECT {selection} FROM transactions LEFT JOIN expenses "
-            "USING(transaction_id)"
-        )
-        return self._create_df(query)
-
-    def create_df_with_revenue(
-        self,
-        selection: str = "*",
-    ) -> pd.DataFrame:
-        query = (
-            f"SELECT {selection} FROM transactions "
-            'WHERE trn_type = "Revenue"'
-        )
-        return self._create_df(query)
-
-    def create_df_with_expenses(
-        self,
-        selection: str = "*",
-    ) -> pd.DataFrame:
-        query = (
-            f"SELECT {selection} FROM transactions LEFT JOIN expenses "
-            'USING(transaction_id) WHERE trn_type = "Expense"'
-        )
+        query = f"SELECT {selection} FROM transactions"
+        if include_categories:
+            query += " LEFT JOIN expenses USING(transaction_id)"
+        if filter_trn_type != "":
+            query += f' WHERE trn_type = "{filter_trn_type}"'
         return self._create_df(query)
 
     def export_transactions_to_csv(self, csv_output: str) -> None:
-        df = self.create_df_with_transactions()
+        df = self.get_df_with_transactions(include_categories=True)
         df.to_csv(csv_output, encoding="utf-8", index=False)
 
     def _create_df(self, db_query: str) -> pd.DataFrame:
