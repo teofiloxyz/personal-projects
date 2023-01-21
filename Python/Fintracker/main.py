@@ -5,20 +5,26 @@ Também guarda o balanço, e é possível editá-lo."""
 
 from Tfuncs import Menu
 
-from fintracker import Report
-from transactions import Transactions, TransactionType
+from transactions import Transactions, TransactionType, AutoTransactions
 from balance import Balance
+from fintracker import Report
+
+transactions, autotransactions = Transactions(), AutoTransactions()
+balance = Balance()
+report = Report()
+
+
+def opening() -> None:
+    autotransactions.check_for_new()
+    transactions.show_summary()
 
 
 def main() -> None:
-    transactions, balance, report = Transactions(), Balance(), Report()
-    menu = Menu(
-        title="Fintracker-Menu", beginning_func=transactions.show_summary
-    )
+    menu = Menu(title="Fintracker-Menu", beginning_func=opening)
 
     menu.add_option(
-        key="ls",
-        func=lambda timespan=30: transactions.show(timespan),
+        key="ls",  # need int() because of menu custom arg input
+        func=lambda timespan=30: transactions.show(int(timespan)),
         help="show past # (default 30) days transactions",
     )
     menu.add_option(

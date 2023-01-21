@@ -1,10 +1,12 @@
 from enum import Enum
 from typing import Optional
 
-from fintracker import Fintracker, Report
 from balance import Balance
 from database import Query, Edit
+from fintracker import Fintracker, Report
 from utils import Utils, Date
+
+# AutoTransactions could use some refactoring
 
 
 class TransactionType(Enum):
@@ -226,17 +228,28 @@ class AutoTransactions:
         new = self._get_new()
         if not new:
             return
-        for title, transaction in new.items():
-            self._add(title, transaction)
-            self._update_expected_date(title, transaction)
+        for title, transactions in new.items():
+            if len(transactions) == 0:
+                continue
+            for transaction in transactions:
+                self._add(title, transaction)
+            self._update_expected_date(title, transactions[-1])
         self.save()
-        self.report.show_new_autotransactions(list(new.keys()))
+        self.report.show_new_autotransactions(new)
 
     def _get_new(self) -> dict:
         new = dict()
         for title, info in self.fintracker.auto_transactions.items():
-            if self.date.is_due(info["expected_date"]):
-                new[title] = info
+            expected_date = info["expected_date"]
+            transactions = list()
+            while self.date.is_due(expected_date):
+                transaction = dict(info)
+                transaction["expected_date"] = expected_date
+                transactions.append(transaction)
+                delta = self.date.get_delta(info["recurrence"])
+                expected_date = self.date.add_delta(expected_date, delta)
+            if len(transactions) > 0:
+                new[title] = transactions
         return new
 
     def _add(self, title: str, transaction: dict) -> None:
@@ -247,10 +260,10 @@ class AutoTransactions:
         else:
             trn_type = TransactionType.REVENUE
 
-        entry = time, trn_type.value, abs(amount), title
+        entry = time, trn_type.value, abs(amount), title.capitalize()
         self._add_to_database(entry)
         if trn_type == TransactionType.EXPENSE:
-            # Has to be after adding transaction
+            # Has to be after adding transaction bc of tid
             expense_category = transaction["category"].capitalize()
             self.expenses.add_to_database(expense_category)
 

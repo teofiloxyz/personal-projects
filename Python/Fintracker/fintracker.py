@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
-from utils import Utils, Date
 from database import Query
+from utils import Utils, Date
 
 
 class Fintracker:
@@ -28,11 +28,13 @@ class Report:
         )
         print(table)
 
-    def show_new_autotransactions(
-        self, new_autotransactions: list[str]
-    ) -> None:
+    def show_new_autotransactions(self, new_autotransactions: dict) -> None:
         print("New Auto-transactions:")
-        print("\n".join(new_autotransactions))
+        for title, transactions in new_autotransactions.items():
+            for transaction in transactions:
+                date = transaction["expected_date"]
+                amount = Utils().as_currency(transaction["expected_amount"])
+                print(f"{date}: {title.capitalize()}: {amount}")
         print()
 
     def show_balance(self, balance) -> None:

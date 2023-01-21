@@ -2,8 +2,8 @@ import re
 from enum import Enum
 from typing import Optional
 
-from fintracker import Fintracker, Report
 from database import Edit
+from fintracker import Fintracker, Report
 from utils import Utils, Date
 
 # Balance.edit method and related methods still need refactoring and testing
