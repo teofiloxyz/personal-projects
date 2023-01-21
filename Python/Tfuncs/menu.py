@@ -1,4 +1,4 @@
-# CLI Menu utilizado em diversos scripts
+# CLI Menu genérico
 
 import random
 from typing import Callable
@@ -45,6 +45,8 @@ class Menu:
         self.options = dict()
 
     def add_option(self, key: str, func: Callable, help: str) -> None:
+        if key in self.options.keys():
+            raise KeyError("Key already exists...")
         self.options[key] = Option(key, func, help)
 
     def start(self) -> None:
@@ -114,6 +116,6 @@ class Menu:
     def _get_help_dialog(self) -> str:
         help_dialog = "\n" + self.MISC_FMT + "OPTIONS:" + self.RESET + "\n"
         for option in self.options.values():
-            help_dialog += f"{option.key}: {option.help}\n"
-        help_dialog += f"q: Quit\n"
+            help_dialog += f"{option.key}: {option.help.capitalize()}\n"
+        help_dialog += f"q: Quit"
         return help_dialog
