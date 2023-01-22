@@ -7,7 +7,6 @@ import argparse
 
 from playlist import Playlist
 from youtube import Youtube
-from csvfile import CSVFile
 
 
 def handle_cmd_args() -> argparse.Namespace:
@@ -103,14 +102,9 @@ def open_menu() -> None:
         help="Download from txt file with titles and/or links",
     )
     menu.add_option(
-        key="xc",
-        func=lambda: CSVFile().export_csv(),
+        key="c",
+        func=lambda: pl("playlist").csv_file(),
         help="Export playlist (or archive) to CSV",
-    )
-    menu.add_option(
-        key="ic",
-        func=lambda: CSVFile().import_csv(),
-        help="Import playlist (or archive) from CSV",
     )
 
     menu.start()

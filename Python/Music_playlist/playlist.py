@@ -163,6 +163,16 @@ class Playlist:
             print("Aborted...")
             return
 
+    def csv_file(self, operation: str) -> None:
+        playlist = input(f"Choose [p]laylist or [a]rchive to {operation}: ")
+        if playlist == "p":
+            self.playlist = "playlist"
+        elif playlist == "a":
+            self.playlist = "archive"
+        else:
+            print("Aborted...")
+            return
+
     class SelectMusic:
         def __init__(self, playlist: str) -> None:
             self.playlist = playlist

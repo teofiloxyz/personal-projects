@@ -20,29 +20,23 @@ class Database:
 
     def _create_playlist_table(self, playlist: str) -> None:
         self.cursor.execute(
-            f"CREATE TABLE {playlist}(music_id "
-            "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL "
-            "UNIQUE, date_added TEXT NOT NULL, title TEXT "
-            "NOT NULL UNIQUE, ytb_code TEXT NOT NULL UNIQUE, "
+            f"CREATE TABLE {playlist}(music_id INTEGER PRIMARY KEY "
+            "AUTOINCREMENT NOT NULL UNIQUE, date_added TEXT NOT NULL, "
+            "title TEXT NOT NULL UNIQUE, ytb_code TEXT NOT NULL UNIQUE, "
             "genre TEXT NOT NULL)"
         )
         self.db_con.commit()
 
-    def reset_table(self, playlist: str) -> None:
-        with self as (self.db_con, self.cursor):
-            self.cursor.execute(f"DROP TABLE {playlist}")
-            self.db_con.commit()
-            self._create_playlist_table(playlist)
+    def _create_genres_table(self) -> None:
+        self.cursor.execute("CREATE TABLE genres(genre TEXT NOT NULL UNIQUE)")
+        self.db_con.commit()
 
     def _setup_database(self) -> None:
         open(self.db_path, "x")
         with self as (self.db_con, self.cursor):
             self._create_playlist_table("playlist")
             self._create_playlist_table("archive")
-            self.cursor.execute(
-                "CREATE TABLE genres(genre TEXT NOT NULL UNIQUE)"
-            )
-            self.db_con.commit()
+            self._create_genres_table()
 
 
 class Query:
@@ -78,8 +72,14 @@ class Query:
         result = self._create_df(query).values
         if not result:
             return False
-        print(f"Already have that youtube code on the {playlist}")
         return True
+
+    def export_transactions_to_csv(
+        self, playlist: str, csv_output: str
+    ) -> None:
+        query = f"SELECT * FROM {playlist}"
+        df = self._create_df(query)
+        df.to_csv(csv_output, encoding="utf-8", index=False)
 
     def _create_df(self, db_query: str) -> pd.DataFrame:
         with self.db as (db_con, _):
@@ -112,6 +112,11 @@ class Edit:
             f'UPDATE {playlist} SET {column}="{new_name}" WHERE title="{title}"'
         )
         self._execute(db_cmd)
+
+    def import_csv(self, playlist: str, csv_input: str) -> None:
+        df = pd.read_csv(csv_input)
+        with self.db as (db_con, _):
+            df.to_sql(playlist, db_con, if_exists="replace")
 
     def _execute(self, db_cmd: str) -> None:
         with self.db as (db_con, cursor):
