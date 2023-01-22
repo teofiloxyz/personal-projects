@@ -1,25 +1,24 @@
 import pandas as pd
 
 import os
-import subprocess
 import sqlite3
 
 
 class Database:
     def __init__(self) -> None:
-        self.db_path = "path/to/db"
+        self.db_path = "music_playlist.db"
         if not os.path.isfile(self.db_path):
-            self.setup_database()
+            self._setup_database()
 
-    def connect(self) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
+    def __enter__(self) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
         self.db_con = sqlite3.connect(self.db_path)
         self.cursor = self.db_con.cursor()
         return self.db_con, self.cursor
 
-    def disconnect(self) -> None:
+    def __exit__(self, *args) -> None:
         self.db_con.close()
 
-    def create_table(self, playlist: str) -> None:
+    def _create_playlist_table(self, playlist: str) -> None:
         self.cursor.execute(
             f"CREATE TABLE {playlist}(music_id "
             "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL "
@@ -30,119 +29,91 @@ class Database:
         self.db_con.commit()
 
     def reset_table(self, playlist: str) -> None:
-        self.connect()
-        self.cursor.execute(f"DROP TABLE {playlist}")
-        self.db_con.commit()
-        self.create_table(playlist)
-        self.disconnect()
+        with self as (self.db_con, self.cursor):
+            self.cursor.execute(f"DROP TABLE {playlist}")
+            self.db_con.commit()
+            self._create_playlist_table(playlist)
 
-    def setup_database(self) -> None:
-        subprocess.run(["touch", self.db_path])
-        self.connect()
-        self.create_table("playlist")
-        self.create_table("archive")
-        self.cursor.execute("CREATE TABLE genres(genre TEXT NOT NULL UNIQUE)")
-        self.db_con.commit()
-        self.disconnect()
-
-    class Query:
-        def __init__(self) -> None:
-            self.db = Database()
-            self.db_con, self.cursor = self.db.connect()
-
-        def create_df(self, playlist: str, selection: str) -> pd.DataFrame:
-            df = pd.read_sql(
-                f"SELECT {selection} FROM {playlist} ORDER BY music_id",
-                self.db_con,
-            )
-            self.db.disconnect()
-            return df
-
-        def get_title_with_search(
-            self, playlist: str, column: str, search: str
-        ) -> tuple:
+    def _setup_database(self) -> None:
+        open(self.db_path, "x")
+        with self as (self.db_con, self.cursor):
+            self._create_playlist_table("playlist")
+            self._create_playlist_table("archive")
             self.cursor.execute(
-                f'SELECT title FROM {playlist} WHERE {column} like "%{search}%"'
-            )
-            result = tuple([title[0] for title in self.cursor.fetchall()])
-            self.db.disconnect()
-            return result
-
-        def get_selection_with_title(
-            self, playlist: str, selection: str, title: str
-        ) -> tuple:
-            self.cursor.execute(
-                f'SELECT {selection} FROM {playlist} WHERE title="{title}"'
-            )
-            result = self.cursor.fetchone()
-            self.db.disconnect()
-            return result
-
-        def get_all_titles(self, playlist: str) -> tuple:
-            self.cursor.execute(f"SELECT title FROM {playlist}")
-            result = tuple([title[0] for title in self.cursor.fetchall()])
-            self.db.disconnect()
-            return result
-
-        def get_all_genres(self) -> tuple:
-            self.cursor.execute("SELECT genre FROM genres")
-            genres = tuple([genre[0] for genre in self.cursor.fetchall()])
-            self.db.disconnect()
-            return genres
-
-        def get_title_with_id(self, playlist: str, music_id: int) -> str:
-            self.cursor.execute(
-                f"SELECT title FROM {playlist} WHERE music_id={music_id}"
-            )
-            result = self.cursor.fetchone()
-            self.db.disconnect()
-            return result
-
-        def check_if_link_exists(self, playlist: str, ytb_code: str) -> bool:
-            self.cursor.execute(
-                f'SELECT * FROM {playlist} WHERE ytb_code="{ytb_code}"'
-            )
-            result = self.cursor.fetchone()
-            self.db.disconnect()
-            if result is None:
-                return False
-            print(f"Already have that youtube code on the {playlist}")
-            return True
-
-    class Edit:
-        def __init__(self) -> None:
-            self.db = Database()
-            self.db_con, self.cursor = self.db.connect()
-
-        def add(self, playlist: str, entry: tuple, title: str) -> None:
-            self.cursor.execute(
-                f"INSERT INTO {playlist} (date_added, title, "
-                f"ytb_code, genre) VALUES {entry}"
+                "CREATE TABLE genres(genre TEXT NOT NULL UNIQUE)"
             )
             self.db_con.commit()
-            print(f'"{title}" added to the {playlist}!')
-            self.db.disconnect()
 
-        def add_genre(self, genre: str) -> None:
-            self.cursor.execute(
-                f'INSERT INTO genres (genre) VALUES ("{genre}")'
-            )
-            self.db_con.commit()
-            print(f'"{genre}" saved to genres!')
-            self.db.disconnect()
 
-        def remove(self, playlist: str, title: str) -> None:
-            self.cursor.execute(f'DELETE FROM {playlist} WHERE title="{title}"')
-            self.db_con.commit()
-            print(f'"{title}" removed from the {playlist}!')
-            self.db.disconnect()
+class Query:
+    def __init__(self) -> None:
+        self.db = Database()
 
-        def update(
-            self, playlist: str, column: str, new_name: str, title: str
-        ) -> None:
-            self.cursor.execute(
-                f'UPDATE {playlist} SET {column}="{new_name}"'
-                f'WHERE title="{title}"'
-            )
-            self.db_con.commit()
-            self.db.disconnect()
+    def get_all_titles(self, playlist: str) -> list:
+        query = f"SELECT title FROM {playlist}"
+        return [title[0] for title in self._create_df(query).values]
+
+    def get_all_genres(self) -> list:
+        query = "SELECT genre FROM genres"
+        return [genre[0] for genre in self._create_df(query).values]
+
+    def get_title_with_search(
+        self, playlist: str, column: str, search: str
+    ) -> list:
+        query = f'SELECT title FROM {playlist} WHERE {column} like "%{search}%"'
+        return [title[0] for title in self._create_df(query).values]
+
+    def get_title_with_id(self, playlist: str, music_id: int) -> str:
+        query = f"SELECT title FROM {playlist} WHERE music_id={music_id}"
+        return self._create_df(query).values[0]
+
+    def get_selection_with_title(
+        self, playlist: str, selection: str, title: str
+    ) -> list:
+        query = f'SELECT {selection} FROM {playlist} WHERE title="{title}"'
+        return self._create_df(query).values[0]
+
+    def check_if_link_exists(self, playlist: str, ytb_code: str) -> bool:
+        query = f'SELECT * FROM {playlist} WHERE ytb_code="{ytb_code}"'
+        result = self._create_df(query).values
+        if not result:
+            return False
+        print(f"Already have that youtube code on the {playlist}")
+        return True
+
+    def _create_df(self, db_query: str) -> pd.DataFrame:
+        with self.db as (db_con, _):
+            return pd.read_sql(db_query, db_con)
+
+
+class Edit:
+    def __init__(self) -> None:
+        self.db = Database()
+
+    def add_music(self, playlist: str, entry: tuple) -> None:
+        db_cmd = (
+            f"INSERT INTO {playlist} (date_added, title, "
+            f"ytb_code, genre) VALUES {entry}"
+        )
+        self._execute(db_cmd)
+
+    def add_genre(self, genre: str) -> None:
+        db_cmd = f'INSERT INTO genres (genre) VALUES ("{genre}")'
+        self._execute(db_cmd)
+
+    def remove_music(self, playlist: str, title: str) -> None:
+        db_cmd = f'DELETE FROM {playlist} WHERE title="{title}"'
+        self._execute(db_cmd)
+
+    def update_playlist(
+        self, playlist: str, column: str, new_name: str, title: str
+    ) -> None:
+        db_cmd = (
+            f'UPDATE {playlist} SET {column}="{new_name}" WHERE title="{title}"'
+        )
+        self._execute(db_cmd)
+
+    def _execute(self, db_cmd: str) -> None:
+        with self.db as (db_con, cursor):
+            cursor.execute(db_cmd)
+            db_con.commit()
