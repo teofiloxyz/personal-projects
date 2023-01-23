@@ -1,13 +1,13 @@
-from Tfuncs import inpt
 from youtube_search import YoutubeSearch
 
 import os
 import subprocess
+from typing import Optional
 
 
 class Youtube:
     @staticmethod
-    def get_title(ytb_code: str) -> str:
+    def get_title(ytb_code: str) -> Optional[str]:
         print("Getting title...")
         cmd = f"yt-dlp --get-title https://youtu.be/{ytb_code}".split()
         title = subprocess.run(cmd, capture_output=True).stdout.decode("utf-8")[
@@ -15,7 +15,7 @@ class Youtube:
         ]
         if title.startswith("ERROR:") or title == "":
             print("Problem getting title...\nAborting...")
-            return "q"
+            return None
         return title
 
     def download(
@@ -53,9 +53,7 @@ class Youtube:
                 ytb_code = search[0]["id"]
             return ytb_code
 
-        txt = inpt.files(
-            question="Enter the txt file full path: ", extensions="txt"
-        )
+        txt = input("Enter the txt file full path: ")
         output_dir = "path/to/output_dir"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)

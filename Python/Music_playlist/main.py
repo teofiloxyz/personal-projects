@@ -5,7 +5,7 @@ from Tfuncs import Menu
 
 import argparse
 
-from playlist import Playlist
+from playlist import Playlist, PlaylistType
 from youtube import Youtube
 
 
@@ -15,8 +15,8 @@ def handle_cmd_args() -> argparse.Namespace:
         "-l",
         "--playlist",
         help="playlist",
-        choices=("playlist", "archive"),
-        default="playlist",
+        choices=("active", "archive"),
+        default="active",
     )
     ex_args = parser.add_mutually_exclusive_group()
     ex_args.add_argument(
@@ -30,81 +30,84 @@ def handle_cmd_args() -> argparse.Namespace:
 
 
 def open_menu() -> None:
-    pl = Playlist
+    active = Playlist(PlaylistType.ACTIVE)
+    archive = Playlist(PlaylistType.ARCHIVE)
     menu = Menu(title="Music-Playlist-Menu")
 
     menu.add_option(
         key="p",
-        func=lambda: pl("playlist").play(),
-        help="Play music from playlist",
+        func=active.play,
+        help="Play music from active playlist",
     )
     menu.add_option(
         key="pa",
-        func=lambda: pl("archive").play(),
+        func=archive.play,
         help="Play music from archive",
     )
     menu.add_option(
         key="ad",
-        func=lambda: pl("playlist").add(),
-        help="Add music to playlist",
+        func=active.add,
+        help="Add music to active playlist",
     )
     menu.add_option(
         key="rm",
-        func=lambda: pl("playlist").remove(),
-        help="Remove music from playlist that goes to archive",
+        func=active.remove,
+        help="Remove music from active playlist that goes to archive",
     )
     menu.add_option(
-        key="ada", func=lambda: pl("archive").add(), help="Add music to archive"
+        key="ada",
+        func=archive.add,
+        help="Add music to archive",
     )
     menu.add_option(
         key="rma",
-        func=lambda: pl("archive").remove(),
+        func=archive.remove,
         help="Remove music from archive",
     )
     menu.add_option(
         key="rc",
-        func=lambda: pl("archive").recover_arc(),
+        func=archive.recover_arc,
         help="Recover music from archive",
     )
     menu.add_option(
         key="ed",
-        func=lambda: pl("playlist").edit_entry(),
-        help="Edit title or genre of a music from playlist",
+        func=active.edit_entry,
+        help="Edit title or genre of a music from active playlist",
     )
     menu.add_option(
         key="eda",
-        func=lambda: pl("archive").edit_entry(),
+        func=archive.edit_entry,
         help="Edit title or genre of a music from archive",
     )
     menu.add_option(
         key="ls",
-        func=lambda: pl("playlist").show("titles"),
-        help="Show playlist titles",
+        func=lambda: active.show("titles"),
+        help="Show active playlist titles",
     )
     menu.add_option(
         key="la",
-        func=lambda: pl("playlist").show("all"),
-        help="Show all columns from playlist",
+        func=lambda: active.show("all"),
+        help="Show all columns from active playlist",
     )
     menu.add_option(
         key="lsa",
-        func=lambda: pl("archive").show("titles"),
+        func=lambda: archive.show("titles"),
         help="Show archive titles",
     )
     menu.add_option(
         key="laa",
-        func=lambda: pl("archive").show("all"),
+        func=lambda: archive.show("all"),
         help="Show all columns from archive",
     )
     menu.add_option(
-        key="d",
-        func=lambda: Youtube().download_from_txt(),
-        help="Download from txt file with titles and/or links",
+        key="xc",
+        func=active.export_to_csv_file,
+        help="Export playlist to CSV",
     )
     menu.add_option(
-        key="c",
-        func=lambda: pl("playlist").csv_file(),
-        help="Export playlist (or archive) to CSV",
+        key="d",
+        func=Youtube().download_from_txt,
+        help="Download from txt file with titles and/or links",
     )
 
     menu.start()
@@ -112,10 +115,15 @@ def open_menu() -> None:
 
 def main() -> None:
     args = handle_cmd_args()
-    if not args.play:
-        Playlist(args.playlist).play(query=" ".join(args.play))
-    elif not args.add:
-        Playlist(args.playlist).add(ytb_code=args.add)
+    if args.playlist == "active":
+        playlist = PlaylistType.ACTIVE
+    else:
+        playlist = PlaylistType.ARCHIVE
+
+    if args.play:
+        Playlist(playlist).play(query=" ".join(args.play))
+    elif args.add:
+        Playlist(playlist).add(ytb_code=args.add)
     else:
         open_menu()
 

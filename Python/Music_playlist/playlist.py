@@ -1,16 +1,22 @@
 import os
 import subprocess
 from datetime import datetime
+from enum import Enum
 
 from database import Query, Edit
 from youtube import Youtube
 
 
+class PlaylistType(Enum):
+    ACTIVE = "active"
+    ARCHIVE = "archive"
+
+
 class Playlist:
-    def __init__(self, playlist: str) -> None:
+    def __init__(self, playlist: PlaylistType) -> None:
         self.query_db, self.edit_db = Query(), Edit()
-        self.music_path = "music_dir"
         self.playlist = playlist
+        self.music_path = "music_dir"
 
     def show(self, mode: str) -> None:
         selection = "*" if mode == "all" else "music_id, title"
