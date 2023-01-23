@@ -43,6 +43,10 @@ class Query:
     def __init__(self) -> None:
         self.db = Database()
 
+    def get_all_music(self, playlist: str, selection: str) -> pd.DataFrame:
+        query = f"SELECT {selection} FROM {playlist}"
+        return self._create_df(query)
+
     def get_all_titles(self, playlist: str) -> list:
         query = f"SELECT title FROM {playlist}"
         return [title[0] for title in self._create_df(query).values]
