@@ -27,19 +27,14 @@ class Database:
         )
         self.db_con.commit()
 
-    def _create_genres_table(self) -> None:
-        self.cursor.execute("CREATE TABLE genres(genre TEXT NOT NULL UNIQUE)")
-        self.db_con.commit()
-
     def _setup_database(self) -> None:
         open(self.db_path, "x")
         with self as (self.db_con, self.cursor):
             self._create_playlist_table("playlist")
             self._create_playlist_table("archive")
-            self._create_genres_table()
 
 
-class Query:
+class Query:  # there are some similarities
     def __init__(self) -> None:
         self.db = Database()
 
@@ -52,7 +47,7 @@ class Query:
         return [title[0] for title in self._create_df(query).values]
 
     def get_all_genres(self) -> list:
-        query = "SELECT genre FROM genres"
+        query = "SELECT DISTINCT genre FROM playlist"
         return [genre[0] for genre in self._create_df(query).values]
 
     def get_title_with_search(
@@ -99,10 +94,6 @@ class Edit:
             f"INSERT INTO {playlist} (date_added, title, "
             f"ytb_code, genre) VALUES {entry}"
         )
-        self._execute(db_cmd)
-
-    def add_genre(self, genre: str) -> None:
-        db_cmd = f'INSERT INTO genres (genre) VALUES ("{genre}")'
         self._execute(db_cmd)
 
     def remove_music(self, playlist: str, title: str) -> None:

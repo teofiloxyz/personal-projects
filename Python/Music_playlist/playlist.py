@@ -159,7 +159,7 @@ class Playlist:
                 self.playlist, "genre", title
             )[0]
             print(f"Current genre: {genre}")
-            new_genre = self.Utils().pick_genre()
+            new_genre = self.pick_genre()
             self.edit_db.update_playlist(
                 self.playlist, "genre", new_genre, title
             )
@@ -330,5 +330,4 @@ class Playlist:
             except (ValueError, IndexError):
                 # Custom genre
                 ans_genres.append(genre.capitalize())
-                Edit().add_genre(genre.capitalize())
         return "|".join(ans_genres)
