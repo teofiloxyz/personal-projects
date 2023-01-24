@@ -1,5 +1,3 @@
-from Tfuncs import fcol, ffmt
-
 from notifs import Notif, Urgency
 from utils import Utils, Date
 
@@ -12,20 +10,20 @@ class History:
         notifs_hist = sorted(self.notifs_history, key=lambda x: x[0].date)
         for day_notifs in notifs_hist:
             day = day_notifs[0].date
-            print(f"\n{ffmt.bold}{day}{ffmt.reset}")
+            print(day)
             self.print_all_notifs(day_notifs)
 
     def print_all_notifs(self, notifs: list[Notif]) -> None:
         for notif in notifs:
             urgency_color = self.get_urgency_color(notif.urgency)
             row = f"{notif.hour} - {notif.title}: {notif.message}"
-            print(urgency_color + row + ffmt.reset)
+            print(urgency_color + row + "\033[0m")
 
     def get_urgency_color(self, urgency: Urgency) -> str:
         urgency_colors = {
-            Urgency.LOW: fcol.green,
-            Urgency.NORMAL: fcol.yellow,
-            Urgency.CRITICAL: fcol.red,
+            Urgency.LOW: "\033[32m",  # green
+            Urgency.NORMAL: "\033[33m",  # yellow
+            Urgency.CRITICAL: "\033[31m",  # red
         }
         return urgency_colors[urgency]
 
@@ -35,7 +33,7 @@ class History:
             return
 
         unseen_notifs = self.utils.get_unseen_notifs()
-        print(f"{ffmt.bold}{fcol.red}NEW:{ffmt.reset}")
+        print("NEW:")
         self.print_all_notifs(unseen_notifs)
 
         if resend_notifs:

@@ -4,7 +4,7 @@ import subprocess
 import pickle
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from typing import Generator
+from typing import Optional, Generator
 
 from notifs import Notif, ScheduledNotif, Urgency
 
@@ -106,6 +106,12 @@ class Utils:
 
 
 class Date:
+    def prompt_date(self, *args) -> Optional[str]:
+        pass
+
+    def prompt_hour(self, *args) -> Optional[str]:
+        pass
+
     def get_date_now(self, date_format: str = "%Y-%m-%d %H:%M:%S") -> str:
         return datetime.now().strftime(date_format)
 

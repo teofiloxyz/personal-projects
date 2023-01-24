@@ -1,4 +1,4 @@
-from Tfuncs import qst, rofi
+from Tfuncs import rofi
 
 from notifs import ScheduledNotif
 from utils import Utils, Date
@@ -60,13 +60,13 @@ class Scheduled:
             "Enter the date for the notification (e.g.: 12-1-21; 27 = "
             "27-curr.M-curr.Y)"
         )
-        return qst.get_date(
+        return self.date.prompt_date(
             question, date_type="%Y-%m-%d", answer=date, use_rofi=use_rofi
         )
 
     def get_notif_hour(self, hour: str | None, use_rofi: bool) -> str:
         question = "Enter the hour of the event (e.g.: 9-35; 9 = 9-00)"
-        return qst.get_hour(
+        return self.date.prompt_hour(
             question, hour_type="%H:%M:%S", answer=hour, use_rofi=use_rofi
         )
 
