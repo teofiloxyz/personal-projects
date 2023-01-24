@@ -1,4 +1,4 @@
-from Tfuncs import rofi
+from Tfuncs import Rofi
 
 from notifs import ScheduledNotif
 from utils import Utils, Date
@@ -6,6 +6,7 @@ from utils import Utils, Date
 
 class Scheduled:
     utils, date = Utils(), Date()
+    rofi = Rofi()
     notifs = utils.get_scheduled_notifs()
 
     def show(self, days_limit: int, show_index: bool = False) -> None:
@@ -52,7 +53,9 @@ class Scheduled:
             return message
         question = "Enter the message of the notification"
         return (
-            rofi.simple_prompt(question) if use_rofi else input(question + ": ")
+            self.rofi.simple_prompt(question)
+            if use_rofi
+            else input(question + ": ")
         )
 
     def get_notif_date(self, date: str | None, use_rofi: bool) -> str:
@@ -87,7 +90,7 @@ class Scheduled:
             f"New notification '{notif.message}' on {notif.date} "
             f"at {notif.hour} added!"
         )
-        rofi.message(msg) if use_rofi else print(msg)
+        self.rofi.message_box(msg) if use_rofi else print(msg)
 
     def remove_notif(self) -> None:
         self.show(days_limit=365, show_index=True)
