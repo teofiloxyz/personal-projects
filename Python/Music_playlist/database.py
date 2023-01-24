@@ -34,11 +34,15 @@ class Database:
             self._create_playlist_table("archive")
 
 
-class Query:  # there are some similarities
+class Query:  # there are some similarities; improve
     def __init__(self) -> None:
         self.db = Database()
 
-    def get_all_music(self, playlist: str, selection: str) -> pd.DataFrame:
+    def get_all_music(self, playlist: str, selection: str) -> list:
+        query = f"SELECT {selection} FROM {playlist}"
+        return [tuple(row) for row in self._create_df(query).values]
+
+    def get_music_df(self, playlist: str, selection: str) -> pd.DataFrame:
         query = f"SELECT {selection} FROM {playlist}"
         return self._create_df(query)
 
@@ -46,18 +50,25 @@ class Query:  # there are some similarities
         query = f"SELECT title FROM {playlist}"
         return [title[0] for title in self._create_df(query).values]
 
-    def get_all_genres(self) -> list:
-        query = "SELECT DISTINCT genre FROM playlist"
-        return [genre[0] for genre in self._create_df(query).values]
+    def get_all_unique_genres(self, playlist: str) -> list:
+        query = f"SELECT DISTINCT genre FROM {playlist}"
+        gen_entries = [genre[0] for genre in self._create_df(query).values]
+        # Need to do this because of, for example "Pop|Rock"...
+        genres = [
+            genre
+            for genres in [gen_entry.split("|") for gen_entry in gen_entries]
+            for genre in genres
+        ]
+        return list(set(genres))
 
-    def get_title_with_search(
+    def get_music_with_search(
         self, playlist: str, column: str, search: str
     ) -> list:
-        query = f'SELECT title FROM {playlist} WHERE {column} like "%{search}%"'
-        return [title[0] for title in self._create_df(query).values]
+        query = f'SELECT * FROM {playlist} WHERE {column} like "%{search}%"'
+        return [tuple(row) for row in self._create_df(query).values]
 
-    def get_title_with_id(self, playlist: str, music_id: int) -> str:
-        query = f"SELECT title FROM {playlist} WHERE music_id={music_id}"
+    def get_music_with_id(self, playlist: str, music_id: int) -> list:
+        query = f"SELECT * FROM {playlist} WHERE music_id={music_id}"
         return self._create_df(query).values[0]
 
     def get_selection_with_title(
@@ -69,9 +80,9 @@ class Query:  # there are some similarities
     def check_if_link_exists(self, playlist: str, ytb_code: str) -> bool:
         query = f'SELECT * FROM {playlist} WHERE ytb_code="{ytb_code}"'
         result = self._create_df(query).values
-        if not result:
-            return False
-        return True
+        if result.any():
+            return True
+        return False
 
     def export_transactions_to_csv(
         self, playlist: str, csv_output: str
@@ -101,7 +112,7 @@ class Edit:
         self._execute(db_cmd)
 
     def update_playlist(
-        self, playlist: str, column: str, new_name: str, title: str
+        self, playlist: str, column: str, title: str, new_name: str
     ) -> None:
         db_cmd = (
             f'UPDATE {playlist} SET {column}="{new_name}" WHERE title="{title}"'

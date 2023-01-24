@@ -6,8 +6,7 @@ from typing import Optional
 
 
 class Youtube:
-    @staticmethod
-    def get_title(ytb_code: str) -> Optional[str]:
+    def get_title(self, ytb_code: str) -> Optional[str]:
         print("Getting title...")
         cmd = f"yt-dlp --get-title https://youtu.be/{ytb_code}".split()
         title = subprocess.run(cmd, capture_output=True).stdout.decode("utf-8")[
@@ -20,11 +19,11 @@ class Youtube:
 
     def download(
         self,
-        ytb_code: str,
         output_dir: str,
-        title: (str | None) = None,
+        ytb_code: str,
+        title: Optional[str] = None,
         mp3_output: bool = False,
-    ) -> (int | None):
+    ) -> int:
         print("Downloading...")
         if title is None:
             output_path = f"{output_dir}/%(title)s.%(ext)s"
@@ -37,10 +36,7 @@ class Youtube:
         )
         if mp3_output:
             cmd += " --audio-format mp3"
-        err = subprocess.call(cmd, shell=True, stdout=subprocess.DEVNULL)
-        if err != 0:
-            print("Error downloading...\nAborting...")
-            return err
+        return subprocess.call(cmd, shell=True, stdout=subprocess.DEVNULL)
 
     def download_from_txt(self) -> None:
         def get_ytb_code(entry: str) -> str:

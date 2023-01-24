@@ -5,7 +5,7 @@ from Tfuncs import Menu
 
 import argparse
 
-from playlist import Playlist, PlaylistType
+from playlist import Active, Archive, ShowMode
 from youtube import Youtube
 
 
@@ -30,8 +30,7 @@ def handle_cmd_args() -> argparse.Namespace:
 
 
 def open_menu() -> None:
-    active = Playlist(PlaylistType.ACTIVE)
-    archive = Playlist(PlaylistType.ARCHIVE)
+    active, archive = Active(), Archive()
     menu = Menu(title="Music-Playlist-Menu")
 
     menu.add_option(
@@ -66,37 +65,37 @@ def open_menu() -> None:
     )
     menu.add_option(
         key="rc",
-        func=archive.recover_arc,
+        func=archive.recover,
         help="Recover music from archive",
     )
     menu.add_option(
         key="ed",
-        func=active.edit_entry,
+        func=active.edit_music,
         help="Edit title or genre of a music from active playlist",
     )
     menu.add_option(
         key="eda",
-        func=archive.edit_entry,
+        func=archive.edit_music,
         help="Edit title or genre of a music from archive",
     )
     menu.add_option(
         key="ls",
-        func=lambda: active.show("titles"),
+        func=lambda: active.show(ShowMode.TITLES),
         help="Show active playlist titles",
     )
     menu.add_option(
         key="la",
-        func=lambda: active.show("all"),
+        func=lambda: active.show(ShowMode.ALL),
         help="Show all columns from active playlist",
     )
     menu.add_option(
         key="lsa",
-        func=lambda: archive.show("titles"),
+        func=lambda: archive.show(ShowMode.TITLES),
         help="Show archive titles",
     )
     menu.add_option(
         key="laa",
-        func=lambda: archive.show("all"),
+        func=lambda: archive.show(ShowMode.ALL),
         help="Show all columns from archive",
     )
     menu.add_option(
@@ -116,14 +115,14 @@ def open_menu() -> None:
 def main() -> None:
     args = handle_cmd_args()
     if args.playlist == "active":
-        playlist = PlaylistType.ACTIVE
+        playlist = Active()
     else:
-        playlist = PlaylistType.ARCHIVE
+        playlist = Archive()
 
     if args.play:
-        Playlist(playlist).play(query=" ".join(args.play))
+        playlist.play(query=" ".join(args.play))
     elif args.add:
-        Playlist(playlist).add(ytb_code=args.add)
+        playlist.add(ytb_code=args.add)
     else:
         open_menu()
 
