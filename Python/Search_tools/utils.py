@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 
@@ -16,5 +17,23 @@ class Utils:
         return option, entry
 
     @staticmethod
+    def run_cmd(cmd: str) -> int:
+        return subprocess.call(cmd, shell=True)
+
+    @staticmethod
     def run_cmd_on_new_shell(cmd: str) -> None:
         subprocess.Popen(cmd, shell=True, start_new_session=True)
+
+    @staticmethod
+    def run_cmd_and_get_output(cmd: str) -> str:
+        return (
+            subprocess.run(cmd, shell=True, capture_output=True)
+            .stdout.decode("utf-8")
+            .strip()
+        )
+
+    @staticmethod
+    def check_if_is_dir(path: str) -> bool:
+        if os.path.isdir(path):
+            return True
+        return False
