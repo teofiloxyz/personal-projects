@@ -1,5 +1,4 @@
-#!/usr/bin/python3
-# still need refactoring!
+# still needs refactoring!
 
 from youtube_search import YoutubeSearch
 

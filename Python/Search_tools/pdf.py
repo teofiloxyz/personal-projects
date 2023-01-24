@@ -1,10 +1,8 @@
-#!/usr/bin/python3
-
 from Tfuncs import rofi
 
 import os
 import subprocess
-import fitz  # need PyMuPDF module installed
+import fitz  # needs PyMuPDF module installed
 
 
 class Pdf:

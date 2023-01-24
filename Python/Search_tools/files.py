@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # Search file or folder by title
 
 from Tfuncs import rofi

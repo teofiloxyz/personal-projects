@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-
-
 class Utils:
     @staticmethod
     def divide_arg(cmd_arg: str, options: dict) -> tuple | None:
