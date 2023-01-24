@@ -37,3 +37,7 @@ class Utils:
         if os.path.isdir(path):
             return True
         return False
+
+    @staticmethod
+    def get_basename(path: str) -> str:
+        return os.path.basename(path)

@@ -1,90 +1,79 @@
-from Tfuncs import rofi
-
-import os
-import subprocess
+from Tfuncs import Rofi
 
 from utils import Utils
 
 
 class Code:
     utils = Utils()
+    rofi = Rofi()
     options = {"python": ("python_path", ".py"), "bash": ("bash_path", ".sh")}
 
-    def main(self, cmd_arg: str) -> None:
-        code_info, entry = self.utils.divide_arg(cmd_arg, self.options)
+    def main(self, cmd_query: str) -> None:
+        divided_cmd_query = self.utils.divide_cmd_query(cmd_query, self.options)
+        if not divided_cmd_query:
+            return
+        code_info, query = divided_cmd_query
         code_dir, extension = code_info
 
         files = self.get_files(code_dir, extension)
-        results = dict()
-        for file in files:
-            file_results = self.search_entry_in_file(file, entry)
-            if len(results) == 0:
-                continue
-            results[file] = file_results
+        results = {
+            file: self.search_query_in_file(file, query)
+            for file in files
+            if len(self.search_query_in_file(file, query)) != 0
+        }
         if len(results) == 0:
-            rofi.message(f"Didn't find any line of code with '{entry}'")
+            self.rofi.message_box(
+                f"Didn't find any line of code with '{query}'"
+            )
             return
 
-        dmenu_list = self.create_dmenu_list(results)
-        choice = self.choose_with_rofi_dmenu(dmenu_list)
-        if choice == "":
+        dmenu = self.create_dmenu_with_results(results)
+        choice = self.choose_with_rofi_dmenu(dmenu)
+        if not choice:
             return
         file, line = self.process_choice(choice, results)
         self.open_choice_in_vim(file, line)
 
     def get_files(self, dir_path: str, extension: str) -> list[str]:
-        # put in utils
-        cmd = (
-            f"fd --hidden --extension {extension} --ignore-case "
-            f"--full-path {dir_path}"
-        )
-        return (
-            subprocess.run(cmd, shell=True, capture_output=True)
-            .stdout.decode("utf-8")
-            .split("\n")[:-1]
-        )
+        cmd = f'find {dir_path} -iname "*{extension}" -print'
+        output = self.utils.run_cmd_and_get_output(cmd)
+        return output.split("\n")
 
     def get_file_lines(self, file: str) -> list[str]:
         with open(file, "r") as f:
             return f.readlines()
 
-    def search_entry_in_file(self, file: str, entry: str) -> list[tuple]:
-        results = list()
+    def search_query_in_file(self, file: str, query: str) -> list[tuple]:
         lines = self.get_file_lines(file)
-        for n, line in enumerate(lines, 1):
-            if entry.lower() not in line.lower():
-                continue
-            line = " ".join(line.split())  # bc of indentation
-            results.append((n, line))
-        return results
+        return [
+            (n, " ".join(line.split()))
+            for n, line in enumerate(lines, 1)
+            if query.lower() in line.lower()
+        ]
 
-    def create_dmenu_list(
+    def create_dmenu_with_results(
         self, results: dict[str, list[tuple[str, str]]]
     ) -> list[str]:
         return [
-            f"{result[1]} -> {os.path.basename(file)}: {result[0]}"
+            f"{line} -> {self.utils.get_basename(file)}: {line_num}"
             for file, file_results in results.items()
-            for result in file_results
+            for line_num, line in file_results
         ]
 
     def choose_with_rofi_dmenu(self, dmenu: list) -> str:
-        # put in utils
         prompt = "Choose which one to open in vim"
-        return rofi.custom_dmenu(prompt, dmenu)
+        return self.rofi.custom_dmenu(prompt, dmenu)
 
     def process_choice(self, choice: str, results: dict) -> tuple[str, str]:
-        line, file = choice.split(" -> ")[-2], ""
-        file_basename, line_num = choice.split(" -> ")[-1].split(": ")
+        line, file_basename_line_num = choice.split(" -> ")
+        file_basename, line_num = file_basename_line_num.split(": ")
+
         for result in results.values():
-            if (
-                result[0] == line
-                and result[1].endswith(file_basename)
-                and str(result[2]) == line_num
-            ):
-                file = result[1]
-                break
-        return file, line_num
+            result_file_basename = self.utils.get_basename(result[1])
+            result = (result[0], result_file_basename, result[2])
+            if result == (line, file_basename, line_num):
+                return result[1], line_num
 
     def open_choice_in_vim(self, file: str, line: str) -> None:
         cmd = f"alacritty -e nvim +{line} {file}"
-        subprocess.run(cmd, shell=True)
+        self.utils.run_cmd(cmd)
