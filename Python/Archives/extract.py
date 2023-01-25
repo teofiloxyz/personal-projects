@@ -1,5 +1,4 @@
-#!/usr/bin/python3
-# Still need refactoring
+# Still needs refactoring
 
 from Tfuncs import ffmt, fcol
 

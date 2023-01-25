@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # Needs tweaking and testing
 
 import os
