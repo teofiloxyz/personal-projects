@@ -3,37 +3,45 @@
 de forma rápida, simples e organizada"""
 # The whole script still needs work
 
+import os
 import argparse
 
 from compress import Compress
 from extract import Extract
 
 
-def main() -> None:
-    compress_in, extract_in = cmd()
-    if compress_in is not None:
-        Compress().main(compress_in)
-    elif extract_in is not None:
-        Extract().main(extract_in)
-
-
-def cmd() -> tuple:
+def handle_cmd_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Archives manager")
-    ex_args = parser.add_mutually_exclusive_group()
+    ex_args = parser.add_mutually_exclusive_group(required=True)
     ex_args.add_argument(
         "-c",
         "--compress",
         help="compress input",
-        nargs=1,
+        nargs=argparse.REMAINDER,
     )
     ex_args.add_argument(
         "-e",
         "--extract",
         help="extract input",
-        nargs=1,
+        nargs=argparse.REMAINDER,
     )
-    args = parser.parse_args()
-    return args.compress, args.extract, args.add
+    return parser.parse_args()
+
+
+def get_all_files_including_hidden() -> list[str]:
+    return [file for file in os.listdir()]
+
+
+def main() -> None:
+    args = handle_cmd_args()
+    input_files = args.compress or args.extract
+    if input_files == ["."]:
+        input_files = get_all_files_including_hidden()
+
+    if args.compress:
+        Compress(input_files).main()
+    elif args.extract:
+        Extract(input_files).main()
 
 
 if __name__ == "__main__":
