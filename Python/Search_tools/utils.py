@@ -41,3 +41,7 @@ class Utils:
     @staticmethod
     def get_basename(path: str) -> str:
         return os.path.basename(path)
+
+    @staticmethod
+    def get_dirname(path: str) -> str:
+        return os.path.dirname(path)

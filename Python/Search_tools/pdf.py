@@ -1,81 +1,81 @@
-from Tfuncs import rofi
+import fitz  # PyMuPDF module
+import pytesseract
+from PIL import Image
+from Tfuncs import Rofi
 
-import os
-import subprocess
+import tempfile
+from typing import Optional
 
-# import fitz  # needs PyMuPDF module installed
+from utils import Utils
 
 
 class Pdf:
-    def main(self, entry: str) -> None:
-        search_dir = self.get_search_dir()
-        if search_dir == "q":
-            rofi.message("Aborted...")
+    rofi = Rofi()
+    utils = Utils()
+
+    def main(self, query: str) -> None:
+        search_dir = self._get_search_dir()
+        if not search_dir:
+            self.rofi.message_box("Aborted...")
             return
 
-        files = self.get_files(search_dir)
+        files = self._get_files(search_dir)
         if len(files) == 0:
-            rofi.message("Didn't found any pdf file in the provided directory")
+            self.rofi.message_box(
+                "Didn't found any pdf file in the provided directory"
+            )
             return
 
-        number_of_pages = self.get_number_of_pages(files)
-        self.get_message_of_search(files, number_of_pages)
+        total_number_of_pages = sum(
+            [self._get_number_of_pages(file) for file in files]
+        )
+        message = self._get_message_of_search(files, total_number_of_pages)
+        self.rofi.message_box(message)
 
-        output_dir = self.create_output_dir()
-        results = dict()
-        for file in files:
-            file_results = self.search_entry_in_file(file, entry, output_dir)
-            if len(file_results) == 0:
-                continue
-            results[file] = file_results
+        output_dir = self._create_output_dir()
+        results = {
+            file: file_results
+            for file, file_results in [
+                (file, self._search_entry_in_file(file, query, output_dir))
+                for file in files
+            ]
+            if len(file_results) > 0
+        }
+
         if len(results) == 0:
-            rofi.message(f"Didn't find any pdf file with '{entry}'")
+            self.rofi.message_box(f"Didn't find any pdf file with '{query}'")
             return
 
-        dmenu_list = self.create_dmenu_list(results)
-        choice = self.choose_with_rofi_dmenu(dmenu_list)
+        dmenu = self._create_dmenu_from_results(results)
+        choice = self._choose_with_rofi_dmenu(dmenu)
         if choice == "":
             return
-        file, page = self.process_choice(choice, results)
-        self.open_choice(file, page)
+        file, page = self._process_choice(choice, results)
+        self._open_choice(file, page)
 
-    def get_search_dir(self) -> str:
-        prompt = rofi.simple_prompt("Enter the directory to search")
-        if not os.path.isdir(prompt):
-            return "q"
+    def _get_search_dir(self) -> Optional[str]:
+        prompt = self.rofi.simple_prompt("Enter the directory to search")
+        if not self.utils.check_if_is_dir(prompt):
+            return None
         return prompt
 
-    def get_files(self, search_dir: str) -> list[str]:
-        cmd = (
-            "fd --hidden --absolute-path --type file --extension pdf "
-            f"--base-directory {search_dir}"
-        )
-        return (
-            subprocess.run(cmd, shell=True, capture_output=True)
-            .stdout.decode("utf-8")
-            .split("\n")[:-1]
-        )
+    def _get_files(self, search_dir: str) -> list[str]:
+        cmd = f'find {search_dir} -iname "*.pdf" -print'
+        output = self.utils.run_cmd_and_get_output(cmd)
+        return output.split("\n")
 
-    def get_number_of_pages(self, files: list[str]) -> int:
-        total_pages = 0
-        for file in files:
-            cmd = f"qpdf --show-npages {file}"
-            page_num = subprocess.run(
-                cmd, shell=True, capture_output=True
-            ).stdout.decode("utf-8")
-            if page_num == "":
-                rofi.message(f"Cannot access {file} is it encrypted?")
-                files.remove(file)
-                continue
-            total_pages += int(page_num)
-        return total_pages
+    def _get_number_of_pages(self, file_path: str) -> int:
+        cmd = f"qpdf --show-npages {file_path}"
+        page_num = self.utils.run_cmd_and_get_output(cmd)
+        if page_num == "":
+            self.rofi.message_box(f"Cannot access {file_path} is it encrypted?")
+            return 0
+        return int(page_num)
 
-    def get_message_of_search(
+    def _get_message_of_search(
         self, files: list[str], number_of_pages: int
-    ) -> None:
-        message = (
-            f"Found {len(files)} pdf files in the provided " "directory.\n"
-        )
+    ) -> str:
+        message = f"Found {len(files)} pdf files in the provided directory.\n"
         message += f"Total number of pages is {number_of_pages}\n"
         if 100 >= number_of_pages > 25:
             message += "Search might take a while."
@@ -83,60 +83,53 @@ class Pdf:
             message += "Search might take a long time."
         else:
             message += "Search should be quick."
-        rofi.message(message)
+        return message
 
-    def create_output_dir(self) -> str:
-        output_dir = "/tmp/search_util_PDF/"
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
-        return output_dir
+    def _create_output_dir(self) -> str:
+        return tempfile.gettempdir()
 
-    def search_entry_in_file(
-        self, file: str, entry: str, output_dir: str
+    def _search_entry_in_file(
+        self, file: str, query: str, output_dir: str
     ) -> list[tuple]:
         results = list()
         pdf = fitz.open(file)
         for page_num, page in enumerate(pdf, 1):
             lines = page.get_text()
             if lines == "":
-                img = self.get_img_from_page(file, output_dir, str(page_num))
-                txt = self.get_txt_from_img(img)
-                lines = self.get_file_lines(txt)
+                img = self._get_img_from_page(file, output_dir, str(page_num))
+                lines = self._get_text_from_img(img)
             for line in lines:
-                if entry.lower() in line.lower():
+                if query.lower() in line.lower():
                     line = " ".join(line.split())  # bc of indentation
                     results.append((page_num, line))
         return results
 
-    def get_img_from_page(
+    def _get_img_from_page(
         self, file: str, output_dir: str, page_num: str
     ) -> str:
         cmd = f"pdftoppm -f {page_num} -l {page_num} -png {file} {output_dir}"
-        subprocess.run(cmd, shell=True)
+        self.utils.run_cmd(cmd)
         return f"{output_dir}/-{page_num}.png"
 
-    def get_txt_from_img(self, img_file: str, language: str = "por") -> str:
-        cmd = f"tesseract {img_file} {img_file} -l {language}"
-        subprocess.run(cmd, shell=True)
-        return f"{img_file}.txt"
+    def _get_text_from_img(self, img_path: str, language: str = "por") -> list:
+        """Get img in grayscale, then get its text"""
 
-    def get_file_lines(self, file: str) -> list[str]:
-        with open(file, "r") as f:
-            return f.readlines()
+        img = Image.open(img_path).convert("L")
+        return pytesseract.image_to_string(img, lang=language)
 
-    def create_dmenu_list(self, results: dict) -> list[str]:
+    def _create_dmenu_from_results(self, results: dict) -> list[str]:
         return [
             f"Page {result[1]} in "
-            f"...{os.path.dirname(result[0]).split('/')[-1]}/"
-            f"{os.path.basename(result[0])}"
+            f"...{self.utils.get_dirname(result[0]).split('/')[-1]}/"
+            f"{self.utils.get_basename(result[0])}"
             for result in results.values()
         ]
 
-    def choose_with_rofi_dmenu(self, dmenu: list) -> str:
+    def _choose_with_rofi_dmenu(self, dmenu: list) -> str:
         prompt = "Choose which one to open"
-        return rofi.custom_dmenu(prompt, dmenu)
+        return self.rofi.custom_dmenu(prompt, dmenu)
 
-    def process_choice(self, choice: str, results: dict) -> tuple[str, str]:
+    def _process_choice(self, choice: str, results: dict) -> tuple[str, str]:
         page, file = choice.split(" in ...")
         page = page.split("Page ")[-1]
         for result in results.values():
@@ -145,6 +138,6 @@ class Pdf:
                 break
         return file, page
 
-    def open_choice(self, file: str, page: str) -> None:
+    def _open_choice(self, file: str, page: str) -> None:
         cmd = f"mupdf {file} {page}"
-        subprocess.Popen(cmd, shell=True, start_new_session=True)
+        self.utils.run_cmd_on_new_shell(cmd)
