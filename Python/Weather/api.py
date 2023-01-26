@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """Public-APIs: https://github.com/public-apis/public-apis
 Script API docs:
 https://www.weatherbit.io/api/weather-forecast-minutely

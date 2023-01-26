@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from Tfuncs import gmenu
+from Tfuncs import Menu
 
 import argparse
 
@@ -8,15 +8,7 @@ from weather import Weather
 from api import API
 
 
-def main() -> None:
-    update = cmd()
-    if update:
-        API().update_cache()
-    else:
-        open_menu()
-
-
-def cmd() -> tuple:
+def handle_cmd_args() -> tuple:
     parser = argparse.ArgumentParser(description="Weather")
     parser.add_argument(
         "-u",
@@ -29,18 +21,39 @@ def cmd() -> tuple:
 
 
 def open_menu() -> None:
-    we = Weather()
-    title = "Weather-Menu"
-    keys = {
-        "ls": (lambda: we.show("essential"), "show weather info"),
-        "la": (lambda: we.show("all"), "show all weather info"),
-        "r": (we.refresh, "refresh all weather info"),
-        "a": (we.show_weather_alerts, "show weather alerts"),
-        "c": (we.beachcam, "open beachcam on the browser"),
-        "i": (we.ipma, "open ipma on the browser"),
-    }
-    extra_func = lambda: we.show("essential", show_alerts=True)
-    gmenu(title, keys, extra_func)
+    weather = Weather()
+    menu = Menu(
+        title="Weather-Menu", beginning_func=lambda: weather.show("essential")
+    )
+
+    menu.add_option(
+        key="ls",
+        func=lambda: weather.show("essential"),
+        help="show weather info",
+    )
+    menu.add_option(
+        key="la", func=lambda: weather.show("all"), help="show all weather info"
+    )
+    menu.add_option(
+        key="r", func=weather.refresh, help="refresh all weather info"
+    )
+    menu.add_option(
+        key="a", func=weather.show_weather_alerts, help="show weather alerts"
+    )
+    menu.add_option(key="i", func=weather.ipma, help="open ipma on the browser")
+    menu.add_option(
+        key="c", func=weather.beachcam, help="open beachcam on the browser"
+    )
+
+    menu.start()
+
+
+def main() -> None:
+    update = handle_cmd_args()
+    if update:
+        API().update_cache()
+    else:
+        open_menu()
 
 
 if __name__ == "__main__":
