@@ -14,12 +14,49 @@ class Utils:
         return False
 
     @staticmethod
+    def check_if_path_is_absolute(path: str) -> bool:
+        return os.path.isabs(path)
+
+    @staticmethod
+    def get_abs_path_with_cwd(path: str) -> str:
+        cwd = os.getcwd()
+        return os.path.join(cwd, path)
+
+    @staticmethod
+    def chdir(path: str) -> None:
+        os.chdir(path)
+
+    @staticmethod
+    def mkdir(dir_path: str) -> None:
+        os.mkdir(dir_path)
+
+    @staticmethod
+    def rename(path: str, new_path: str) -> None:
+        os.rename(path, new_path)
+
+    @staticmethod
+    def join_path(base_path: str, ext_path: str) -> str:
+        return os.path.join(base_path, ext_path)
+
+    @staticmethod
+    def get_basename(path: str) -> str:
+        return os.path.basename(path)
+
+    @staticmethod
+    def splitext(basename: str) -> tuple[str, str]:
+        return os.path.splitext(basename)
+
+    @staticmethod
     def get_output_name_in_cwd(input_files: list) -> str:
         cwd = os.getcwd()
         if len(input_files) == 1:
             basename = os.path.basename(input_files[0])
             return os.path.join(cwd, basename)
         return os.path.join(cwd, "Compressed")
+
+    @staticmethod
+    def get_extraction_dir_path_in_cwd(input_name: str) -> str:
+        return os.path.join(os.getcwd(), "Extracted_" + input_name)
 
     @staticmethod
     def get_dir_contents(dir_path: str) -> list[str]:

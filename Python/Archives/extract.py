@@ -1,126 +1,102 @@
-# Still needs refactoring
-
-from Tfuncs import ffmt, fcol
-
-import os
-import subprocess
-
 from utils import Utils
+
+ARCHIVE_TYPES_MAP = {
+    ".tar.xz": "tar xvf",
+    ".tar.gz": "tar xvzf",
+    ".tar.bz2": "tar xvjf",
+    ".tar.zst": "tar xvf",
+    ".tar": "tar xvf",
+    ".xz": "xz --decompress --keep --verbose",
+    ".gz": "gunzip --decompress --keep --verbose",
+    ".bz2": "bunzip2 --decompress --keep --verbose",
+    ".zst": "zstd --decompress --keep --verbose",
+    ".rar": "unrar x",
+    ".tbz2": "tar xvjf",
+    ".tgz": "tar xvzf",
+    ".zip": "unzip",
+    ".Z": "uncompress",
+    ".7z": "7z x",
+}
 
 
 class Extract:
-    def __init__(self) -> None:
+    def __init__(self, input_files: list[str]) -> None:
         self.utils = Utils()
-        self.arc_types = {
-            ".tar.xz": "tar xvf",
-            ".tar.gz": "tar xvzf",
-            ".tar.bz2": "tar xvjf",
-            ".tar.zst": "tar xvf",
-            ".tar": "tar xvf",
-            ".xz": "xz --decompress --keep --verbose",
-            ".gz": "gunzip --decompress --keep --verbose",
-            ".bz2": "bunzip2 --decompress --keep --verbose",
-            ".zst": "zstd --decompress --keep --verbose",
-            ".rar": "unrar x",
-            ".tbz2": "tar xvjf",
-            ".tgz": "tar xvzf",
-            ".zip": "unzip",
-            ".Z": "uncompress",
-            ".7z": "7z x",
-        }
+        self.input_files = input_files
 
-    def main(self, input_file: str) -> None:
-        input_is_entire_folder = self.utils.check_input(input_file)
-        if not input_is_entire_folder:
-            basename_noext, extension = self.slice_input_name(input_file)
-            self.check_file_extension(input_file, extension)
-            extraction_dir = self.create_extraction_dir(
-                input_file, basename_noext
-            )
-            input_on_extraction_dir = self.move_to_extraction_dir(
+    def main(self) -> None:
+        for input_file in self.input_files:
+            input_file = self._get_absolute_path(input_file)
+            input_name, input_ext = self._slice_input_name(input_file)
+            if not self._check_if_ext_is_supported(input_ext):
+                print(f"Don't know how to extract '{input_name}{input_ext}'")
+                continue
+
+            extraction_dir = self._create_extraction_dir(input_name)
+            input_file_on_extraction_dir = self._move_to_extraction_dir(
                 input_file, extraction_dir
             )
-            self.extract_input(input_file, input_on_extraction_dir, extension)
-            self.move_from_extraction_dir(input_file, input_on_extraction_dir)
-            self.open_ranger_on_extraction_dir(extraction_dir)
-            return
-
-        input_files = [
-            os.path.join(os.getcwd(), file)
-            for file in os.listdir(os.getcwd())
-            if os.path.splitext(file)[1] in self.arc_types.keys()
-        ]
-        for input_file in input_files:
-            basename_noext, extension = self.slice_input_name(input_file)
-            self.check_file_extension(input_file, extension)
-            extraction_dir = self.create_extraction_dir(
-                input_file, basename_noext
+            self._run_extraction(
+                input_file, input_file_on_extraction_dir, input_ext
             )
-            input_on_extraction_dir = self.move_to_extraction_dir(
-                input_file, extraction_dir
+            self._move_from_extraction_dir(
+                input_file, input_file_on_extraction_dir
             )
-            self.extract_input(input_file, input_on_extraction_dir, extension)
-            self.move_from_extraction_dir(input_file, input_on_extraction_dir)
 
-    def slice_input_name(self, input_file: str) -> tuple:
+    def _get_absolute_path(self, input_file: str) -> str:
+        if not self.utils.check_if_path_is_absolute(input_file):
+            input_file = self.utils.get_abs_path_with_cwd(input_file)
+        return input_file
+
+    def _slice_input_name(self, input_file: str) -> tuple:
         """Tem mesmo que ser assim, pq splitext separa a última ext"""
 
-        basename = os.path.basename(input_file)
+        basename = self.utils.get_basename(input_file)
         if ".tar." in basename:
-            basename, last_ext = os.path.splitext(basename)
-            basename_noext, extension = os.path.splitext(basename)
-            extension += last_ext
+            return self._slice_tar_ext(basename)
         else:
-            basename_noext, extension = os.path.splitext(basename)
-        return basename_noext, extension
+            return self.utils.splitext(basename)
 
-    def check_file_extension(self, input_file: str, extension: str) -> None:
-        if extension not in self.arc_types.keys():
-            self.utils.error(f"Don't know how to extract '{input_file}'")
+    def _slice_tar_ext(self, basename: str) -> tuple[str, str]:
+        basename, last_ext = self.utils.splitext(basename)
+        name, extension = self.utils.splitext(basename)
+        extension += last_ext
+        return name, extension
 
-    def create_extraction_dir(
-        self, input_file: str, basename_noext: str
-    ) -> str:
-        input_dir = os.path.dirname(input_file)
-        extraction_dir = os.path.join(input_dir, "Extracted_" + basename_noext)
-        while os.path.isdir(extraction_dir):
-            extraction_dir += "_"
+    def _check_if_ext_is_supported(self, extension: str) -> bool:
+        if extension in ARCHIVE_TYPES_MAP.keys():
+            return True
+        return False
 
-        os.mkdir(extraction_dir)
+    def _create_extraction_dir(self, input_name: str) -> str:
+        extraction_dir = self.utils.get_extraction_dir_path_in_cwd(input_name)
+        extraction_dir = self.utils.process_output_dir_name(extraction_dir)
+        self.utils.mkdir(extraction_dir)
         return extraction_dir
 
-    def move_to_extraction_dir(
+    def _move_to_extraction_dir(
         self, input_file: str, extraction_dir: str
     ) -> str:
-        basename = os.path.basename(input_file)
-        input_on_extraction_dir = os.path.join(extraction_dir, basename)
-        os.rename(input_file, input_on_extraction_dir)
-        os.chdir(extraction_dir)
-        return input_on_extraction_dir
+        input_basename = self.utils.get_basename(input_file)
+        input_file_on_extraction_dir = self.utils.join_path(
+            extraction_dir, input_basename
+        )
 
-    def extract_input(
-        self, input_file: str, input_on_extraction_dir: str, extension: str
+        self.utils.rename(input_file, input_file_on_extraction_dir)
+        self.utils.chdir(extraction_dir)
+        return input_file_on_extraction_dir
+
+    def _run_extraction(
+        self, input_file: str, input_file_on_extraction_dir: str, extension: str
     ) -> None:
-        print(f"\n{ffmt.bold}{fcol.blue}Extracting {input_file}{ffmt.reset}")
-
-        cmd = self.arc_types[extension] + " " + input_on_extraction_dir
-        err = subprocess.call(cmd, shell=True)
+        print(f"\nExtracting {input_file}")
+        cmd = ARCHIVE_TYPES_MAP[extension] + " " + input_file_on_extraction_dir
+        err = self.utils.run_cmd(cmd)
         if err != 0:
-            self.utils.error(f"Couldn't extract {input_file}")
+            print(f"Couldn't extract {input_file}")
 
-    def move_from_extraction_dir(
-        self, input_file: str, input_on_extraction_dir: str
+    def _move_from_extraction_dir(
+        self, input_file: str, input_file_on_extraction_dir: str
     ) -> None:
-        os.rename(input_on_extraction_dir, input_file)
-        os.chdir("..")
-
-    def open_ranger_on_extraction_dir(self, extraction_dir: str) -> None:
-        if not input(":: Open ranger on the extraction folder? [Y/n] ") in (
-            "",
-            "y",
-            "Y",
-        ):
-            return
-
-        cmd = f"alacritty -e ranger {extraction_dir}"
-        subprocess.Popen(cmd, shell=True, start_new_session=True)
+        self.utils.rename(input_file_on_extraction_dir, input_file)
+        self.utils.chdir("..")

@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 """Manager de arquivos (CLI): comprime e extrai,
 de forma rápida, simples e organizada"""
-# The whole script still needs work
 
 import os
 import argparse
