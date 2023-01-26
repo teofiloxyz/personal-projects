@@ -8,7 +8,38 @@ https://www.weatherbit.io/api/weather-current"""
 import json
 import pickle
 import requests
-from datetime import datetime
+from dataclasses import dataclass
+
+
+@dataclass
+class CurrentWeather:
+    last_update: str
+    location: str
+    curr_temp: float
+    curr_ftemp: float
+    alerts: str
+
+
+@dataclass
+class ForecastWeather:
+    date: str
+    weather: str
+    max_temp: float
+    min_temp: float
+    rain_prob: float
+    rain_size: float
+    wind_spd: float
+    hmd_prctg: float
+    cld_prctg: float
+    uv_index: float
+    sunrise: str
+    sunset: str
+
+
+@dataclass
+class WeatherCache:
+    current_weather: CurrentWeather
+    forecast_weather: list[ForecastWeather]
 
 
 class API:
@@ -26,64 +57,51 @@ class API:
         )
 
     def update_cache(self) -> None:
-        self.get_info()
-        self.select_info()
-        self.update_file()
+        self._get_info()
+        weather_cache = self._select_info()
+        self._update_file(weather_cache)
 
-    def get_info(self) -> None:
+    def _get_info(self) -> None:
         current_weather_data = requests.get(self.current_weather_url).text
+        forecast_weather_data = requests.get(self.forecast_weather_url).text
+
         self.current_weather_data = json.loads(current_weather_data)["data"][0]
         self.weather_alerts = json.loads(current_weather_data)["alerts"]
-        forecast_weather_data = requests.get(self.forecast_weather_url).text
         self.forecast_weather_data = json.loads(forecast_weather_data)["data"]
 
-    def select_info(self) -> None:
-        self.current_weather_info, self.forecast_weather_info = {}, []
+    def _select_info(self) -> WeatherCache:
+        current_weather = self._get_current_weather()
+        forecast_weather = [
+            self._get_forecast_weather(day)
+            for day in self.forecast_weather_data
+        ]
+        return WeatherCache(current_weather, forecast_weather)
 
-        self.current_weather_info["last_update"] = self.current_weather_data[
-            "ob_time"
-        ]
-        self.current_weather_info["location"] = self.current_weather_data[
-            "city_name"
-        ]
-        self.current_weather_info["curr_temp"] = self.current_weather_data[
-            "temp"
-        ]
-        self.current_weather_info["curr_ftemp"] = self.current_weather_data[
-            "app_temp"
-        ]
+    def _get_current_weather(self) -> CurrentWeather:
+        return CurrentWeather(
+            last_update=self.current_weather_data["ob_time"],
+            location=self.current_weather_data["city_name"],
+            curr_temp=self.current_weather_data["temp"],
+            curr_ftemp=self.current_weather_data["app_temp"],
+            alerts=self.weather_alerts,
+        )
 
-        for day in self.forecast_weather_data:
-            entry = {}
-            entry["date"] = day["valid_date"]
-            date = datetime.strptime(day["valid_date"], "%Y-%m-%d")
-            entry["week_day"] = datetime.strftime(date, "%A")
-            entry["weather"] = day["weather"]["description"]
-            entry["max_temp"] = day["max_temp"]
-            entry["min_temp"] = day["min_temp"]
-            entry["rain_prob"] = day["pop"]
-            entry["rain_size"] = round(day["precip"], 2)
-            entry["wind_spd"] = day["wind_spd"]
-            entry["hmd_prctg"] = day["rh"]
-            entry["cld_prctg"] = day["clouds"]
-            entry["uv_index"] = day["uv"]
-            sunrise = day["sunrise_ts"]
-            entry["sunrise"] = datetime.fromtimestamp(sunrise).strftime(
-                "%H:%M:%S"
-            )
-            sunset = day["sunset_ts"]
-            entry["sunset"] = datetime.fromtimestamp(sunset).strftime(
-                "%H:%M:%S"
-            )
-            self.forecast_weather_info.append(entry)
+    def _get_forecast_weather(self, day: dict) -> ForecastWeather:
+        return ForecastWeather(
+            date=day["valid_date"],
+            weather=day["weather"]["description"],
+            max_temp=day["max_temp"],
+            min_temp=day["min_temp"],
+            rain_prob=day["pop"],
+            rain_size=round(day["precip"], 2),
+            wind_spd=day["wind_spd"],
+            hmd_prctg=day["rh"],
+            cld_prctg=day["clouds"],
+            uv_index=day["uv"],
+            sunrise=day["sunrise_ts"],
+            sunset=day["sunset_ts"],
+        )
 
-    def update_file(self) -> None:
+    def _update_file(self, weather_cache: WeatherCache) -> None:
         with open(self.weather_cache_path, "wb") as wc:
-            pickle.dump(
-                [
-                    self.current_weather_info,
-                    self.forecast_weather_info,
-                    self.weather_alerts,
-                ],
-                wc,
-            )
+            pickle.dump(weather_cache, wc)
