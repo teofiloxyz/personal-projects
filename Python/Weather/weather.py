@@ -1,15 +1,21 @@
-import subprocess
 import pickle
+import subprocess
+from enum import Enum, auto
 
 from api import API
+
+
+class ShowMode(Enum):
+    ALL = auto()
+    ESSENTIAL = auto()
 
 
 class Weather:
     def __init__(self) -> None:
         self.info_cache_path = "?"
-        self.load_cache()
+        self._load_cache()
 
-    def load_cache(self) -> None:
+    def _load_cache(self) -> None:
         with open(self.info_cache_path, "rb") as wc:
             (
                 self.current_weather_info,
@@ -17,11 +23,11 @@ class Weather:
                 self.weather_alerts,
             ) = pickle.load(wc)
 
-    def show(self, mode: str, show_alerts: bool = False) -> None:
+    def show(self, mode: ShowMode) -> None:
         """Could use some refactoring"""
 
         cw, fw = self.current_weather_info, self.forecast_weather_info
-        if mode == "essential":
+        if mode == ShowMode.ESSENTIAL:
             print("DAY\tMAX\tMIN\tRAIN%\tRAINº\tWIND\tCLD%\tUV")
             for n, day in enumerate(fw, 1):
                 print(
@@ -58,17 +64,13 @@ class Weather:
                 f'{cw["last_update"]} ({cw["location"]})'
             )
 
-        if show_alerts:
-            self.show_weather_alerts()
-
     def refresh(self) -> None:
-        api = API()
-        api.update_cache()
-        self.load_cache()
-        self.show("essential", show_alerts=True)
+        API().update_cache()
+        self._load_cache()
+        self.show(ShowMode.ESSENTIAL)
 
     def show_weather_alerts(self) -> None:
-        self.load_cache()
+        self._load_cache()
 
         if len(self.weather_alerts) == 0:
             print("No weather alerts.")
@@ -78,14 +80,14 @@ class Weather:
 
     def beachcam(self) -> None:
         url = '"https://beachcam.meo.pt/livecams/?"'
-        self.open_on_browser(url)
+        self._open_url_on_browser(url)
         exit()
 
     def ipma(self) -> None:
         url = '"https://www.ipma.pt/en/otempo/prev.localidade.hora/#?'
-        self.open_on_browser(url)
+        self._open_url_on_browser(url)
         exit()
 
-    def open_on_browser(self, url: str) -> None:
+    def _open_url_on_browser(self, url: str) -> None:
         cmd = "firefox --new-tab --url " + url
         subprocess.Popen(cmd, shell=True, start_new_session=True)

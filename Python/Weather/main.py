@@ -4,7 +4,7 @@ from Tfuncs import Menu
 
 import argparse
 
-from weather import Weather
+from weather import Weather, ShowMode
 from api import API
 
 
@@ -23,16 +23,19 @@ def handle_cmd_args() -> tuple:
 def open_menu() -> None:
     weather = Weather()
     menu = Menu(
-        title="Weather-Menu", beginning_func=lambda: weather.show("essential")
+        title="Weather-Menu",
+        beginning_func=lambda: weather.show(ShowMode.ESSENTIAL),
     )
 
     menu.add_option(
         key="ls",
-        func=lambda: weather.show("essential"),
+        func=lambda: weather.show(ShowMode.ESSENTIAL),
         help="show weather info",
     )
     menu.add_option(
-        key="la", func=lambda: weather.show("all"), help="show all weather info"
+        key="la",
+        func=lambda: weather.show(ShowMode.ALL),
+        help="show all weather info",
     )
     menu.add_option(
         key="r", func=weather.refresh, help="refresh all weather info"
