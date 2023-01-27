@@ -2,7 +2,7 @@ import pickle
 import subprocess
 from enum import Enum, auto
 
-from api import API
+from api import API, CurrentWeather, ForecastWeather
 
 
 class ShowMode(Enum):
@@ -17,52 +17,48 @@ class Weather:
 
     def _load_cache(self) -> None:
         with open(self.info_cache_path, "rb") as wc:
-            (
-                self.current_weather_info,
-                self.forecast_weather_info,
-                self.weather_alerts,
-            ) = pickle.load(wc)
+            (self.weather_cache,) = pickle.load(wc)
 
-    def show(self, mode: ShowMode) -> None:
-        """Could use some refactoring"""
+    def show(self, show_mode: ShowMode) -> None:
+        current_weather = self.weather_cache.current_weather
+        forecast_weather = self.weather_cache.forecast_weather
 
-        cw, fw = self.current_weather_info, self.forecast_weather_info
-        if mode == ShowMode.ESSENTIAL:
+        self._print_header(show_mode)
+        if show_mode == ShowMode.ESSENTIAL:
+            self._print_forecast_weather(forecast_weather, show_mode)
+        else:
+            self._print_forecast_weather(forecast_weather, show_mode)
+        self._print_current_weather(current_weather)
+
+    def _print_header(self, show_mode: ShowMode) -> None:
+        if show_mode == ShowMode.ESSENTIAL:
             print("DAY\tMAX\tMIN\tRAIN%\tRAINº\tWIND\tCLD%\tUV")
-            for n, day in enumerate(fw, 1):
-                print(
-                    f'{day["week_day"][:3]},{day["date"][-2:]}\t'
-                    f'{day["max_temp"]}º\t{day["min_temp"]}º\t'
-                    f'{day["rain_prob"]}\t{day["rain_size"]}\t'
-                    f'{day["wind_spd"]}\t'
-                    f'{day["cld_prctg"]}\t{day["uv_index"]}\t'
-                )
-                if n == 7:
-                    break
-            print(
-                f'\nCurrent temperature: {cw["curr_temp"]}º '
-                f'({cw["curr_ftemp"]}º felt)\nLast update: '
-                f'{cw["last_update"]} ({cw["location"]})'
-            )
         else:
             print(
-                "DAY\tMAX\tMIN\tRAIN%\tRAINº\tWIND\tHUM%\tCLD%\tUV\tSUNRISE"
-                "\t\tSUNSET\t\tDESCRIPTION"
+                "DAY\tMAX\tMIN\tRAIN%\tRAINº\tWIND\tHUM%\tCLD%\tUV\t"
+                "SUNRISE\t\tSUNSET\t\tDESCRIPTION"
             )
-            for day in fw:
-                print(
-                    f'{day["week_day"][:3]},{day["date"][-2:]}\t'
-                    f'{day["max_temp"]}º\t{day["min_temp"]}º\t'
-                    f'{day["rain_prob"]}\t{day["rain_size"]}\t'
-                    f'{day["wind_spd"]}\t{day["hmd_prctg"]}\t'
-                    f'{day["cld_prctg"]}\t{day["uv_index"]}\t'
-                    f'{day["sunrise"]}\t{day["sunset"]}\t\t{day["weather"]}'
-                )
+
+    def _print_forecast_weather(
+        self, forecast_weather: list[ForecastWeather], show_mode: ShowMode
+    ) -> None:
+        n = 7 if show_mode == ShowMode.ESSENTIAL else None
+        for day in forecast_weather[:n]:
             print(
-                f'\nCurrent temperature: {cw["curr_temp"]}º '
-                f'({cw["curr_ftemp"]}º felt)\nLast update: '
-                f'{cw["last_update"]} ({cw["location"]})'
+                f"{day.date}\t{day.max_temp}º\t{day.min_temp}º\t"
+                f"{day.rain_prob}\t{day.rain_size}\t{day.wind_spd}\t"
+                f"{day.hmd_prctg}\t{day.cld_prctg}\t{day.uv_index}\t"
             )
+            if show_mode == ShowMode.ESSENTIAL:
+                continue
+            print(f"{day.sunrise}\t{day.sunset}\t\t{day.weather}")
+
+    def _print_current_weather(self, current_weather: CurrentWeather) -> None:
+        print(
+            f"\nCurrent temperature: {current_weather.curr_temp}º "
+            f"({current_weather.curr_ftemp}º felt)\nLast update: "
+            f"{current_weather.last_update} ({current_weather.location})"
+        )
 
     def refresh(self) -> None:
         API().update_cache()
@@ -71,12 +67,13 @@ class Weather:
 
     def show_weather_alerts(self) -> None:
         self._load_cache()
+        weather_alerts = self.weather_cache.current_weather.weather_alerts
 
-        if len(self.weather_alerts) == 0:
+        if len(weather_alerts) == 0:
             print("No weather alerts.")
             return
 
-        [print(alert) for alert in self.weather_alerts]
+        [print(alert) for alert in weather_alerts]
 
     def beachcam(self) -> None:
         url = '"https://beachcam.meo.pt/livecams/?"'
