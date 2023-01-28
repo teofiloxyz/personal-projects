@@ -1,34 +1,50 @@
 #!/usr/bin/python3
-# Menu para editar databases
-# Need a bit of tweaking and renaming
+# Menu para gerir databases
 
-from Tfuncs import gmenu
+from Tfuncs import Menu
 
-from menu import Menu
+from db_manager import DBManager
 
 
 def main() -> None:
-    open_menu()
+    manager = DBManager()
+    menu = Menu(title="Databases-Menu")
 
+    menu.add_option(
+        key="ls", func=manager.show_db_tab, help="show database table"
+    )
+    menu.add_option(
+        key="ad",
+        func=manager.add_entry_to_db_tab,
+        help="add entry to a database table",
+    )
+    menu.add_option(
+        key="rm",
+        func=manager.remove_entry_from_db_tab,
+        help="remove entry from database table",
+    )
+    menu.add_option(
+        key="dc",
+        func=manager.db_tab_to_csv,
+        help="export database table to csv",
+    )
+    menu.add_option(
+        key="cd",
+        func=manager.csv_to_db_tab,
+        help="import database table from csv",
+    )
+    menu.add_option(
+        key="adt", func=manager.create_db_tab, help="create new database table"
+    )
+    menu.add_option(
+        key="rmt", func=manager.remove_db_tab, help="remove database table"
+    )
+    menu.add_option(
+        key="add", func=manager.create_db, help="create new database"
+    )
+    menu.add_option(key="rmd", func=manager.remove_db, help="remove database")
 
-def open_menu() -> None:
-    menu = Menu()
-    title = "Databases-Menu"
-    keys = {
-        "ls": (menu.show_db_tab, "show database table"),
-        "ad": (menu.add_entry_to_db_tab, "add entry to a database table"),
-        "rm": (
-            menu.remove_entry_from_db_tab,
-            "remove entry from database table",
-        ),
-        "dc": (menu.db_tab_to_csv, "export database table to csv"),
-        "cd": (menu.csv_to_db_tab, "import database table from csv"),
-        "adt": (menu.create_db_tab, "create new database table"),
-        "rmt": (menu.remove_db_tab, "remove database table"),
-        "add": (menu.create_db, "create new database"),
-        "rmd": (menu.remove_db, "remove database"),
-    }
-    gmenu(title, keys)
+    menu.start()
 
 
 if __name__ == "__main__":
