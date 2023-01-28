@@ -3,17 +3,21 @@
 Logs(var(contains journal)); Cleans broken symlinks(except on /run, /proc),
 worthless files/folders and orphaned packages; Run this as root"""
 
+# could improve with inheritance (Cache, History and Logs)
+
+from datetime import datetime
+
 from utils import Utils
+
+TODAY = datetime.now().strftime("%Y-%m-%d")
+ARCS_DIR_PATH = "arcs_dir"
 
 
 class Cache:
-    def __init__(self, today: str, arcs_dir: str) -> None:
-        self.today = today
-        self.arcs_dir = arcs_dir
-        self.utils = Utils()
+    def __init__(self) -> None:
         self.cache_info = {
             "user": {
-                "cache_dir": os.path.expanduser("~/.cache"),
+                "cache_dir": Utils.get_user_path("~/.cache"),
                 "exceptions": ("exception_1", "exception_2", "exception_3"),
             },
             "root": {
@@ -25,199 +29,155 @@ class Cache:
                 "exceptions": ("exception_1", "exception_2", "exception_3"),
             },
         }
+        self.arcs_cache_dir = Utils.path_join(ARCS_DIR_PATH, "Cache")
 
     def manage(self) -> None:
-        tmp_dir = self.create_tmp_folders()
-        [
-            self.move_to_tmp_folder(
-                info["cache_dir"], info["tmp_dir"], info["exceptions"]
-            )
-            for info in self.cache_info.values()
-        ]
-        self.create_cache_archive(tmp_dir)
-        self.delete_old_arcs_if_needed()
+        all_files = self._get_all_files()
+        err = self._create_cache_archive(all_files)
+        if err != 0:
+            print("Error archiving cache files, not removing...")
+            return
+        self._remove_cache(all_files)
+        self._delete_old_arcs_if_needed()
 
-    def create_tmp_folders(self) -> str:
-        tmp_dir = f"/tmp/cache_management_{self.today}"
-        self.cache_info["user"]["tmp_dir"] = f"{tmp_dir}/user_cache"
-        self.cache_info["root"]["tmp_dir"] = f"{tmp_dir}/root_cache"
-        self.cache_info["var"]["tmp_dir"] = f"{tmp_dir}/var_cache"
-
-        [
-            self.utils.create_folder(info["tmp_dir"])
-            for info in self.cache_info.values()
-        ]
-        return tmp_dir
-
-    def move_to_tmp_folder(
-        self, cache_dir: str, tmp_dir: str, cache_exceptions: tuple[str]
-    ) -> None:
-        if os.listdir(cache_dir) != 0:
-            [
-                self.utils.move_file_or_folder(
-                    os.path.join(cache_dir, file_or_dir), tmp_dir
-                )
-                for file_or_dir in os.listdir(cache_dir)
-                if file_or_dir not in cache_exceptions
+    def _get_all_files(self) -> dict[str, list]:
+        all_files = {}
+        for name, info in self.cache_info.items():
+            dir_files = Utils.get_all_files_in_dir(info["cache_dir"])
+            selected_files = [
+                file for file in dir_files if file not in info["exceptions"]
             ]
+            all_files[name] = selected_files
+        return all_files
 
-    def create_cache_archive(self, tmp_dir: str) -> None:
-        arc_dst = os.path.join(self.arcs_dir, f"Cache/{self.today}.tar")
+    def _create_cache_archive(self, all_files: dict[str, list]) -> int:
+        input_paths = self._get_inputs_for_archive(all_files)
+        output_path = Utils.path_join(self.arcs_cache_dir, f"{TODAY}.tar")
+        return Utils.create_archive(input_paths, output_path, compress=False)
 
-        # Ñ é necessário compressão pq ñ fará grande diferença em cache files
-        self.utils.create_archive(tmp_dir, arc_dst, compress=False)
-        self.utils.remove_folder(tmp_dir)
+    def _get_inputs_for_archive(self, all_files: dict[str, list]) -> list:
+        """Makes folder inside the achive for every type of cache dir"""
 
-    def delete_old_arcs_if_needed(self) -> None:
-        archives_max_mb = int("<number>")
-        while self.utils.check_dir_size_mb(self.arcs_dir) > archives_max_mb:
-            oldest_file = self.utils.get_oldest_file(self.arcs_dir, ".tar")
-            self.utils.remove_file(oldest_file)
+        return [
+            f"--transform='s|^|{name}/|'" + file
+            for name, files in all_files.items()
+            for file in files
+        ]
+
+    def _remove_cache(self, all_files: dict[str, list]) -> None:
+        [
+            Utils.remove_file(file)
+            for files in all_files.values()
+            for file in files
+        ]
+
+    def _delete_old_arcs_if_needed(self) -> None:
+        archives_max_mb = 4000
+        while Utils.check_dir_size_mb(self.arcs_cache_dir) > archives_max_mb:
+            oldest_file = Utils.get_oldest_file(self.arcs_cache_dir, ".tar")
+            Utils.remove_file(oldest_file)
 
 
 class History:
-    def __init__(self, today: str, arcs_dir: str) -> None:
-        self.today = today
-        self.arcs_dir = arcs_dir
-        self.utils = Utils()
+    def __init__(self) -> None:
         self.history_info = {
-            "user": {
-                "hist_files": ("hist_1", "hist_2", "hist_3"),
-            },
-            "root": {
-                "hist_files": ("hist_1", "hist_2", "hist_3"),
-            },
+            "user": ("hist_file_1", "hist_file_2", "hist_file_3"),
+            "root": ("hist_file_1", "hist_file_2", "hist_file_3"),
         }
+        self.arcs_history_dir = Utils.path_join(ARCS_DIR_PATH, "History")
 
     def manage(self) -> None:
-        tmp_dir = self.create_tmp_folders()
-        [
-            self.move_to_tmp_folder(
-                info["hist_files"],
-                info["tmp_dir"],
-            )
-            for info in self.history_info.values()
-        ]
-        self.create_history_archive(tmp_dir)
+        err = self._create_history_archive()
+        if err != 0:
+            print("Error compressing history files, not removing...")
+            return
+        self._remove_history()
 
-    def create_tmp_folders(self) -> str:
-        tmp_dir = f"/tmp/history_management_{self.today}"
-        self.history_info["user"]["tmp_dir"] = f"{tmp_dir}/user"
-        self.history_info["root"]["tmp_dir"] = f"{tmp_dir}/root"
-        [
-            self.utils.create_folder(info["tmp_dir"])
-            for info in self.history_info.values()
-        ]
-        return tmp_dir
+    def _create_history_archive(self) -> int:
+        input_paths = self._get_inputs_for_archive()
+        output_path = Utils.path_join(self.arcs_history_dir, f"{TODAY}.tar.xz")
+        return Utils.create_archive(input_paths, output_path)
 
-    def move_to_tmp_folder(self, hist_files: tuple[str], tmp_dir: str) -> None:
-        [
-            self.utils.move_file_or_folder(file, tmp_dir)
-            for file in hist_files
-            if os.path.isfile(file)
+    def _get_inputs_for_archive(self) -> list:
+        """Makes folder inside the achive for every type of hist_file"""
+
+        return [
+            f"--transform='s|^|{name}/|'" + file
+            for name, files in self.history_info.items()
+            for file in files
         ]
 
-    def create_history_archive(self, tmp_dir: str) -> None:
-        arc_dst = os.path.join(self.arcs_dir, f"History/{self.today}.tar.xz")
-        self.utils.create_archive(tmp_dir, arc_dst)
-        self.utils.remove_folder(tmp_dir)
+    def _remove_history(self) -> None:
+        files = [file for files in self.history_info.values() for file in files]
+        [Utils.remove_file(file) for file in files]
 
 
 class Logs:
-    def __init__(self, today: str, arcs_dir: str) -> None:
-        self.today = today
-        self.arcs_dir = arcs_dir
-        self.utils = Utils()
+    def __init__(self) -> None:
         self.logs_dir = "/var/log"
+        self.arcs_logs_dir = Utils.path_join(ARCS_DIR_PATH, "Logs")
 
     def manage(self) -> None:
-        tmp_dir = self.create_tmp_folders()
-        self.copy_to_tmp_folder()
-        self.truncate_logs()
-        self.create_logs_archive(tmp_dir)
+        err = self._create_logs_archive()
+        if err != 0:
+            print("Error compressing logs, not truncating...")
+            return
+        self._truncate_logs()
 
-    def create_tmp_folders(self) -> str:
-        tmp_dir = f"/tmp/logs_management_{self.today}"
-        self.logs_tmp_dir = f"{tmp_dir}/var"
-        self.utils.create_folder(self.logs_tmp_dir)
-        return tmp_dir
+    def _create_logs_archive(self) -> int:
+        output_path = Utils.path_join(self.arcs_logs_dir, f"{TODAY}.tar.xz")
+        return Utils.create_archive(self.logs_dir, output_path)
 
-    def copy_to_tmp_folder(self) -> None:
-        if os.listdir(self.logs_dir) != 0:
-            [
-                self.utils.copy_file_or_folder(
-                    os.path.join(self.logs_dir, file_or_dir), self.logs_tmp_dir
-                )
-                for file_or_dir in os.listdir(self.logs_dir)
-            ]
-
-    def truncate_logs(self) -> None:
-        [
-            os.truncate(os.path.join(root_dirs_files[0], file), 0)
-            for root_dirs_files in os.walk(self.logs_dir)
-            for file in root_dirs_files[2]
-        ]
-
-    def create_logs_archive(self, tmp_dir: str) -> None:
-        arc_dst = os.path.join(self.arcs_dir, f"Logs/{self.today}.tar.xz")
-        self.utils.create_archive(tmp_dir, arc_dst)
-        self.utils.remove_folder(tmp_dir)
+    def _truncate_logs(self) -> None:
+        files = Utils.get_all_files_in_dir(self.logs_dir)
+        [Utils.truncate_file(file) for file in files]
 
 
 class Symlinks:
     def __init__(self) -> None:
-        self.utils = Utils()
         self.path_exceptions = "/run", "/proc", "/mnt"
 
-    def manage(self) -> None:
-        broken_symlinks = self.get_broken_symlinks()
+    def remove(self) -> None:
+        broken_symlinks = self._get_broken_symlinks()
         if len(broken_symlinks) == 0:
             return
         for symlink in broken_symlinks:
-            if not os.path.islink(symlink) or symlink.startswith(
-                self.path_exceptions
-            ):
+            if symlink.startswith(self.path_exceptions):
                 continue
-            self.remove_symlink(symlink)
+            self._remove_symlink(symlink)
 
-    def get_broken_symlinks(self) -> list[str]:
-        cmd = "find / -xtype l -print".split()
-        return (
-            subprocess.run(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
-            )
-            .stdout.decode("utf-8")
-            .split("\n")
-        )
+    def _get_broken_symlinks(self) -> list[str]:
+        cmd = "find / -xtype l -print"
+        return Utils.run_cmd_and_get_output(cmd).split("\n")
 
-    def remove_symlink(self, symlink: str) -> None:
+    def _remove_symlink(self, symlink: str) -> None:
         try:
-            self.utils.remove_file(symlink)
+            Utils.remove_file(symlink)
         except PermissionError:
             return
 
 
-class Trash:
-    def mng_worthless_files(self) -> None:
-        utils = Utils()
+def remove_worthless_files_and_dirs() -> None:
+    files_list = "file_1", "file_2", "file_3"
+    folders_list = "folder_1", "folder_2", "folder_3"
+    [Utils.remove_file(file) for file in files_list]
+    [Utils.remove_folder(folder) for folder in folders_list]
 
-        files_list = "file_1", "file_2", "file_3"
-        [utils.remove_file(file) for file in files_list if os.path.isfile(file)]
 
-        folders_list = "folder_1", "folder_2", "folder_3"
-        [
-            utils.remove_folder(folder)
-            for folder in folders_list
-            if os.path.isdir(folder)
-        ]
-
-    def mng_orphaned_packs(self) -> None:
-        cmd = "shell command to remove orphaned packages"
-        subprocess.run(cmd, shell=True)
+def remove_orphaned_packages() -> None:
+    cmd = "paru --clean"  # OR "sudo pacman -Rcns $(pacman -Qdtq)"
+    err = Utils.run_cmd(cmd)
+    if err != 0:
+        print("Error removing orphaned packages")
 
 
 def main() -> None:
-    pass
+    Cache().manage()
+    History().manage()
+    Logs().manage()
+    Symlinks().remove()
+    remove_worthless_files_and_dirs()
+    remove_orphaned_packages()
 
 
 if __name__ == "__main__":

@@ -5,20 +5,34 @@ import shutil
 
 class Utils:
     @staticmethod
-    def move_file_or_folder(file_or_folder: str, destination: str) -> None:
-        shutil.move(file_or_folder, destination)
+    def run_cmd(cmd: str) -> int:
+        return subprocess.call(cmd, shell=True)
 
     @staticmethod
-    def copy_file_or_folder(file_or_folder: str, destination: str) -> None:
-        if os.path.isdir(file_or_folder):
-            shutil.copytree(file_or_folder, destination, dirs_exist_ok=True)
-            return
-
-        if os.path.isdir(destination):
-            destination = os.path.join(
-                destination, os.path.basename(file_or_folder)
+    def run_cmd_and_get_output(cmd: str) -> str:
+        return (
+            subprocess.run(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
             )
-        shutil.copyfile(file_or_folder, destination)
+            .stdout.decode("utf-8")
+            .rstrip()
+        )
+
+    @staticmethod
+    def get_user_path(path: str) -> str:
+        return os.path.expanduser(path)
+
+    @staticmethod
+    def get_all_files_in_dir(dir_path: str) -> list[str]:
+        return [
+            os.path.join(root, file)
+            for root, _, files in os.walk(dir_path)
+            for file in files
+        ]
+
+    @staticmethod
+    def path_join(root_path: str, appendix: str) -> str:
+        return os.path.join(root_path, appendix)
 
     @staticmethod
     def remove_file(file: str) -> None:
@@ -33,11 +47,20 @@ class Utils:
         os.makedirs(folder, exist_ok=True)
 
     @staticmethod
+    def truncate_file(file: str) -> None:
+        os.truncate(file, 0)
+
+    @staticmethod
     def create_archive(
-        input_dir: str, output: str, compress: bool = True
-    ) -> None:
-        cp = " --use-compress-program='xz -9T0'" if compress else ""
-        subprocess.run(f"tar cf {output}{cp} -C {input_dir} .", shell=True)
+        input_paths: list | str, output_path: str, compress: bool = True
+    ) -> int:
+        compress_program = (
+            " --use-compress-program='xz -9T0'" if compress else ""
+        )
+        return subprocess.call(
+            f"tar cf {output_path}{compress_program} {' '.join(input_paths)}",
+            shell=True,
+        )
 
     @staticmethod
     def check_dir_size_mb(input_dir: str) -> int:
