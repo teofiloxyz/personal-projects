@@ -1,6 +1,5 @@
 #!/usr/bin/python3
-# Mounting tool for sdevs
-# Needs refactoring on mount and dismount files
+# CLI Mounting tool for partitions
 
 import argparse
 
@@ -8,17 +7,7 @@ from mount import Mount
 from dismount import Dismount
 
 
-def main() -> None:
-    mount, dismount = cmd()
-    if mount:
-        Mount().main()
-    elif dismount:
-        Dismount().main()
-    else:
-        print("Either --mount or --dismount...")
-
-
-def cmd() -> tuple:
+def handle_cmd_args() -> tuple:
     parser = argparse.ArgumentParser(description="Mounting tool")
     ex_args = parser.add_mutually_exclusive_group()
     ex_args.add_argument(
@@ -35,6 +24,16 @@ def cmd() -> tuple:
     )
     args = parser.parse_args()
     return args.mount, args.dismount
+
+
+def main() -> None:
+    mount, dismount = handle_cmd_args()
+    if mount:
+        Mount().main()
+    elif dismount:
+        Dismount().main()
+    else:
+        print("Either --mount or --dismount...")
 
 
 if __name__ == "__main__":
