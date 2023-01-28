@@ -1,13 +1,10 @@
-from Tfuncs import ffmt, fcol
-
 import os
 import subprocess
 
 from database import Database
-from csvfile import CSVFile
 
 
-class Menu:
+class DBManager:
     def __init__(self) -> None:
         self.databases_dir = "databases_dir"
 
