@@ -11,33 +11,35 @@ def main() -> None:
     menu = Menu(title="Databases-Menu")
 
     menu.add_option(
-        key="ls", func=manager.show_db_tab, help="show database table"
+        key="ls", func=manager.show_db_table, help="show database table"
     )
     menu.add_option(
         key="ad",
-        func=manager.add_entry_to_db_tab,
+        func=manager.add_entry_to_db_table,
         help="add entry to a database table",
     )
     menu.add_option(
         key="rm",
-        func=manager.remove_entry_from_db_tab,
+        func=manager.remove_entry_from_db_table,
         help="remove entry from database table",
     )
     menu.add_option(
         key="dc",
-        func=manager.db_tab_to_csv,
+        func=manager.db_table_to_csv,
         help="export database table to csv",
     )
     menu.add_option(
         key="cd",
-        func=manager.csv_to_db_tab,
+        func=manager.csv_to_db_table,
         help="import database table from csv",
     )
     menu.add_option(
-        key="adt", func=manager.create_db_tab, help="create new database table"
+        key="adt",
+        func=manager.create_db_table,
+        help="create new database table",
     )
     menu.add_option(
-        key="rmt", func=manager.remove_db_tab, help="remove database table"
+        key="rmt", func=manager.remove_db_table, help="remove database table"
     )
     menu.add_option(
         key="add", func=manager.create_db, help="create new database"
