@@ -3,8 +3,7 @@
 
 import argparse
 
-from mount import Mount
-from dismount import Dismount
+from mount_manager import MountManager
 
 
 def handle_cmd_args() -> tuple:
@@ -29,9 +28,9 @@ def handle_cmd_args() -> tuple:
 def main() -> None:
     mount, dismount = handle_cmd_args()
     if mount:
-        Mount().main()
+        MountManager().mount()
     elif dismount:
-        Dismount().main()
+        MountManager().dismount()
     else:
         print("Either --mount or --dismount...")
 
