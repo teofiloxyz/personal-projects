@@ -24,5 +24,6 @@ Main Projects
 * `./Python/Notifications`
 * `./Python/Music_playlist`
 * `./Python/Search_tools`
-* `./Python/Media`
+* `./Python/Archives`
 * `./Python/PDFs`
+* `./Python/Media`
