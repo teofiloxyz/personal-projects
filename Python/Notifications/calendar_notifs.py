@@ -3,15 +3,17 @@ de modo a criar notificações no ficheiro de scheduled."""
 
 import os
 
-from notifs import ScheduledNotif
+from notifs import Notif
+from database import Query, Edit
 from utils import Utils, Date
 
 
 class CalendarNotifs:
     utils, date = Utils(), Date()
+    query_db, edit_db = Query(), Edit()
+    notifs = query_db.get_scheduled(365)
     cals_path = "calendars_path"
     last_update_path = "last_calendar_update"
-    notifs = utils.get_scheduled_notifs()
 
     def main(self) -> None:
         last_update = self.get_last_update()
@@ -107,20 +109,19 @@ class CalendarNotifs:
                 notifs_uids.append(cal_file_uid)
 
                 date, hour = self.date.get_date_strf(notif_date_strp).split()
-                notif = ScheduledNotif(
+                notif = Notif(
                     uid=cal_file_uid,
                     date=date,
                     hour=hour,
                     title="Calendar",
                     message=notif_msg + notif_msg_appendix,
                 )
-                self.notifs.append(notif)
+                self.edit_db.add_to_scheduled(notif)
                 self.notifs = sorted(
                     self.notifs, key=lambda notif: (notif.date + notif.hour)
                 )
 
         self.refresh_notifs(cals_uids)
-        self.utils.save_scheduled_notifs(self.notifs)
         self.refresh_last_update()
 
     def get_last_update(self) -> str:

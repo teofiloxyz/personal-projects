@@ -1,20 +1,20 @@
 from Tfuncs import Rofi
 
-from notifs import ScheduledNotif
+from typing import Optional
+
+from notifs import Notif
+from database import Query, Edit
 from utils import Utils, Date
 
 
 class Scheduled:
     utils, date = Utils(), Date()
     rofi = Rofi()
-    notifs = utils.get_scheduled_notifs()
+    query_db, edit_db = Query(), Edit()
 
     def show(self, days_limit: int, show_index: bool = False) -> None:
-        date_limit_strp = self.date.get_date_limit_strp(days_limit)
-        for n, notif in enumerate(reversed(self.notifs), 1):
-            notif_full_date = f"{notif.date} {notif.hour}"
-            if self.date.get_date_strp(notif_full_date) > date_limit_strp:
-                continue
+        notifs = self.query_db.get_scheduled(days_limit)
+        for n, notif in enumerate(notifs, 1):
             entry = f"{notif.date} {notif.hour} - {notif.message}"
             if show_index:
                 entry = f"[{n}] " + entry
@@ -22,33 +22,31 @@ class Scheduled:
 
     def create_notif(
         self,
-        message: str | None = None,
-        date: str | None = None,
-        hour: str | None = None,
+        message: Optional[str] = None,
+        date: Optional[str] = None,
+        hour: Optional[str] = None,
         use_rofi: bool = False,
     ) -> None:
-        message = self.get_notif_message(message, use_rofi)
+        message = self._get_notif_message(message, use_rofi)
         if message == "q":
             print("Aborting...")
             return
 
-        date = self.get_notif_date(date, use_rofi)
-        if date == "q":
+        date = self._get_notif_date(date, use_rofi)
+        if not date:
             print("Aborting...")
             return
 
-        hour = self.get_notif_hour(hour, use_rofi)
-        if hour == "q":
+        hour = self._get_notif_hour(hour, use_rofi)
+        if not hour:
             print("Aborting...")
             return
 
-        notif = ScheduledNotif(
-            date=date, hour=hour, title="Scheduled", message=message
-        )
-        self.save_notif(notif)
-        self.show_schedule_message(notif, use_rofi)
+        notif = Notif(date=date, hour=hour, title="Scheduled", message=message)
+        self.edit_db.add_to_scheduled(notif)
+        self._show_schedule_message(notif, use_rofi)
 
-    def get_notif_message(self, message: str | None, use_rofi: bool) -> str:
+    def _get_notif_message(self, message: Optional[str], use_rofi: bool) -> str:
         if message is not None:
             return message
         question = "Enter the message of the notification"
@@ -58,7 +56,9 @@ class Scheduled:
             else input(question + ": ")
         )
 
-    def get_notif_date(self, date: str | None, use_rofi: bool) -> str:
+    def _get_notif_date(
+        self, date: Optional[str], use_rofi: bool
+    ) -> Optional[str]:
         question = (
             "Enter the date for the notification (e.g.: 12-1-21; 27 = "
             "27-curr.M-curr.Y)"
@@ -67,142 +67,117 @@ class Scheduled:
             question, date_type="%Y-%m-%d", answer=date, use_rofi=use_rofi
         )
 
-    def get_notif_hour(self, hour: str | None, use_rofi: bool) -> str:
+    def _get_notif_hour(
+        self, hour: Optional[str], use_rofi: bool
+    ) -> Optional[str]:
         question = "Enter the hour of the event (e.g.: 9-35; 9 = 9-00)"
         return self.date.prompt_hour(
             question, hour_type="%H:%M:%S", answer=hour, use_rofi=use_rofi
         )
 
-    def save_notif(self, notif: ScheduledNotif) -> None:
-        self.notifs.append(notif)
-        self.order_notifs()
-        self.utils.save_scheduled_notifs(self.notifs)
-
-    def order_notifs(self) -> None:
-        self.notifs = sorted(
-            self.notifs, key=lambda notif: (notif.date + notif.hour)
-        )
-
-    def show_schedule_message(
-        self, notif: ScheduledNotif, use_rofi: bool
-    ) -> None:
+    def _show_schedule_message(self, notif: Notif, use_rofi: bool) -> None:
         msg = (
             f"New notification '{notif.message}' on {notif.date} "
             f"at {notif.hour} added!"
         )
         self.rofi.message_box(msg) if use_rofi else print(msg)
 
-    def remove_notif(self) -> None:
+    def remove_notif(self) -> None:  # improve
+        notifs = self.query_db.get_scheduled(365)
         self.show(days_limit=365, show_index=True)
-        while True:
-            prompt = input(
-                "\nChoose the notification to remove or "
-                "several (e.g.: 30+4+43): "
-            )
-            if prompt == "q":
-                print("Aborting...")
+        prompt = input(
+            "\nChoose the notification to remove or several (e.g.: 30+4+43): "
+        )
+        if prompt == "q":
+            print("Aborting...")
+            return
+
+        for index in prompt.split("+"):
+            try:
+                notif = notifs[int(index) - 1]
+                self.edit_db.remove_from_scheduled(notif)
+            except (ValueError, IndexError):
+                print("Invalid input...\nAborting...")
                 return
 
-            nindex = prompt.split("+")
-            nindex = [self.correct_notif_index(x) for x in nindex]
-            all_index = range(len(self.notifs))
-            if None not in nindex and set(nindex).issubset(all_index):
-                break
-            print("Invalid input...")
-
-        [self.notifs.pop(x) for x in sorted(nindex, reverse=True)]
-        self.utils.save_scheduled_notifs(self.notifs)
-
-    def correct_notif_index(self, index: str) -> int | None:
-        """List is printed in reverse,
-        thus this needs to reverse the provided index"""
-
+    def edit_notif(self) -> None:  # improve
+        notifs = self.query_db.get_scheduled(365)
+        self.show(days_limit=365, show_index=True)
+        prompt = input("\nChoose the notification to edit: ")
+        if prompt == "q":
+            print("Aborting...")
+            return
         try:
-            return len(self.notifs) - int(index)
-        except ValueError:
-            return None
+            notif = notifs[int(prompt) - 1]
+        except (ValueError, IndexError):
+            print("Invalid input...\nAborting...")
+            return
 
-    def edit_notif(self) -> None:
-        self.show(days_limit=365, show_index=True)
-        while True:
-            prompt = input("\nChoose the notification to edit: ")
-            if prompt == "q":
-                print("Aborting...")
-                return
-            nindex = self.correct_notif_index(prompt)
-            if nindex is not None:
-                break
-        notif = self.notifs[nindex]
-
+        new_notif = notif
         while True:
             prompt = input("\n:: Edit what: message or time [M/t] ")
             if prompt == "q":
                 print("Aborting...")
                 return
             elif prompt in ("", "M", "m"):
-                message = self.edit_notif_message(notif)
+                message = self._edit_notif_message(notif)
                 if message == "q":
                     print("Aborting...")
                     return
-                notif.message = message
+                new_notif.message = message
                 break
             elif prompt in ("T", "t"):
-                full_date = self.edit_notif_full_date(notif)
-                if full_date == "q":
+                full_date = self._edit_notif_full_date(notif)
+                if not full_date:
                     print("Aborting...")
                     return
-                notif.date, notif.hour = full_date.split()
-                self.order_notifs()
+                new_notif.date, new_notif.hour = full_date.split()
                 break
 
-        self.utils.save_scheduled_notifs(self.notifs)
+        self.edit_db.update_on_scheduled(notif, new_notif)
 
-    def edit_notif_message(self, notif: ScheduledNotif) -> str:
+    def _edit_notif_message(self, notif: Notif) -> str:
         print(f"Current message: {notif.message}")
-        return self.get_notif_message(message=None, use_rofi=False)
+        return self._get_notif_message(message=None, use_rofi=False)
 
-    def edit_notif_full_date(self, notif: ScheduledNotif) -> str:
+    def _edit_notif_full_date(self, notif: Notif) -> Optional[str]:
         print(f"Current full date: {notif.date} {notif.hour}")
-        date = self.get_notif_date(date=None, use_rofi=False)
-        if date == "q":
-            return "q"
-        hour = self.get_notif_hour(hour=None, use_rofi=False)
-        if hour == "q":
-            return "q"
+        date = self._get_notif_date(date=None, use_rofi=False)
+        if not date:
+            return None
+        hour = self._get_notif_hour(hour=None, use_rofi=False)
+        if not hour:
+            return None
         return date + " " + hour
 
 
 # Should be triggered every minute or so
 class NotifSender:
     utils, date = Utils(), Date()
-    notifs = utils.get_scheduled_notifs()
+    query_db, edit_db = Query(), Edit()
     now = date.get_date_now()
     now_strp = date.get_date_strp(now)
 
     def main(self) -> None:
-        if len(self.notifs) == 0:
+        notifs = self.query_db.get_scheduled(1)
+        if len(notifs) == 0:
             return
 
-        notif_is_muted, update_file = False, False
-        for notif in list(self.notifs):  # Need a copy to not mess up the loop
-            if not self.notification_is_due(notif):
+        notif_is_muted = False
+        for notif in notifs:
+            if not self._notification_is_due(notif):
                 break
-            self.send_notification(notif, notif_is_muted)
-            self.notifs.pop(0)
-            notif_is_muted, update_file = True, True
+            self._send_notification(notif, notif_is_muted)
+            self.edit_db.remove_from_scheduled(notif)
+            notif_is_muted = True
 
-        if update_file:
-            self.utils.save_scheduled_notifs(self.notifs)
-
-    def notification_is_due(self, notif: ScheduledNotif) -> bool:
+    def _notification_is_due(self, notif: Notif) -> bool:
         notif_full_date = f"{notif.date} {notif.hour}"
         if self.now_strp >= self.date.get_date_strp(notif_full_date):
             return True
         return False
 
-    def send_notification(
-        self, notif: ScheduledNotif, notif_is_muted: bool
-    ) -> None:
+    def _send_notification(self, notif: Notif, notif_is_muted: bool) -> None:
         self.utils.send_notification(
             title=notif.title,
             message=notif.message,

@@ -3,19 +3,14 @@ from Tfuncs import Rofi
 import re
 import os
 import subprocess
-import pickle
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Optional, Generator
 
-from notifs import Notif, ScheduledNotif, Urgency
+from notifs import Urgency
 
 
 class Utils:
-    hist_path = "history_path"
-    unseen_notif_path = "unseen_notif_path"
-    scheduled_path = "scheduled_path"
-
     def send_notification(
         self,
         title: str,
@@ -49,62 +44,6 @@ class Utils:
         if substr:
             return substr.group(1)
         return not_found_str
-
-    def get_scheduled_notifs(self) -> list[ScheduledNotif]:
-        if self.check_for_file(self.scheduled_path):
-            return self.load_pkl(self.scheduled_path)
-        return list()
-
-    def save_scheduled_notifs(self, notifs: list[ScheduledNotif]) -> None:
-        self.write_pkl(self.scheduled_path, notifs)
-
-    def get_unseen_notifs(self) -> list[Notif]:
-        if self.check_for_file(self.unseen_notif_path):
-            return self.load_pkl(self.unseen_notif_path)
-        return list()
-
-    def save_unseen_notifs(self, notifs: list[Notif]) -> None:
-        self.write_pkl(self.unseen_notif_path, notifs)
-
-    def remove_unseen_notifs(self) -> None:
-        os.remove(self.unseen_notif_path)
-
-    def get_today_notifs_history(self) -> tuple[list[Notif], str]:
-        today = datetime.now().strftime("%Y-%m-%d")
-        file_path = os.path.join(self.hist_path, today)
-        if self.check_for_file(file_path):
-            return self.load_pkl(file_path), file_path
-        return list(), file_path
-
-    def save_today_notifs_history(
-        self, notifs: list[Notif], history_file_path: str
-    ) -> None:
-        self.write_pkl(history_file_path, notifs)
-
-    def get_notifs_history(self) -> list[list[Notif]]:
-        hist_files = self.get_history_files()
-        return [self.load_pkl(file) for file in hist_files]
-
-    def get_history_files(self) -> list[str]:
-        return [
-            os.path.join(self.hist_path, file)
-            for file in os.listdir(self.hist_path)
-        ]
-
-    def check_for_file(self, file_path: str) -> bool:
-        if os.path.exists(file_path):
-            return True
-        return False
-
-    def write_pkl(
-        self, file_path: str, notifs: list[Notif | ScheduledNotif]
-    ) -> None:
-        with open(file_path, "wb") as f:
-            pickle.dump(notifs, f)
-
-    def load_pkl(self, file_path: str) -> list[Notif | ScheduledNotif]:
-        with open(file_path, "rb") as f:
-            return pickle.load(f)
 
 
 class Date:  # improve prompt funcs

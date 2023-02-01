@@ -1,17 +1,15 @@
 from notifs import Notif, Urgency
+from database import Query, Edit
 from utils import Utils, Date
 
 
 class History:
     utils = Utils()
-    notifs_history = utils.get_notifs_history()
+    query_db, edit_db = Query(), Edit()
 
     def show_all(self) -> None:
-        notifs_hist = sorted(self.notifs_history, key=lambda x: x[0].date)
-        for day_notifs in notifs_hist:
-            day = day_notifs[0].date
-            print(day)
-            self.print_all_notifs(day_notifs)
+        notifs_hist = self.query_db.get_history()
+        self.print_all_notifs(notifs_hist)
 
     def print_all_notifs(self, notifs: list[Notif]) -> None:
         for notif in notifs:
@@ -28,11 +26,10 @@ class History:
         return urgency_colors[urgency]
 
     def show_unseen_notifs(self, resend_notifs: bool = False) -> None:
-        if not self.utils.check_for_file(self.utils.unseen_notif_path):
+        unseen_notifs = self.query_db.get_all_unseen()
+        if not unseen_notifs:
             print("No new notifications...")
             return
-
-        unseen_notifs = self.utils.get_unseen_notifs()
         print("NEW:")
         self.print_all_notifs(unseen_notifs)
 
@@ -47,7 +44,7 @@ class History:
                 )
                 for notif in unseen_notifs
             ]
-        self.utils.remove_unseen_notifs()
+        self.edit_db.remove_all_from_unseen()
 
     @staticmethod
     def start_updater_daemon() -> None:
@@ -56,6 +53,7 @@ class History:
 
 class UpdaterDaemon:
     utils, date = Utils(), Date()
+    edit_db = Edit()
 
     # Improve design
     def main(self) -> None:
@@ -146,9 +144,5 @@ class UpdaterDaemon:
         return ""
 
     def save_notif(self, notif: Notif) -> None:
-        unseen_notifs = self.utils.get_unseen_notifs()
-        notifs_hist, hist_path = self.utils.get_today_notifs_history()
-        unseen_notifs.append(notif)
-        notifs_hist.append(notif)
-        self.utils.save_unseen_notifs(unseen_notifs)
-        self.utils.save_today_notifs_history(notifs_hist, hist_path)
+        self.edit_db.add_to_history(notif)
+        self.edit_db.add_to_unseen(notif)
