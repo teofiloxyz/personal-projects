@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-from notifs import Notif
+from notifs import Notif, Urgency
 
 
 class Database:
@@ -46,12 +46,12 @@ class Query:
             f"WHERE date >= datetime('now', '-{days_delta} days')"
         )
         results = self._fetch_results(query)
-        return [Notif(*notif[1:]) for notif in results]
+        return [self._get_notif_with_results(notif) for notif in results]
 
     def get_all_unseen(self) -> list[Notif]:
         query = f"SELECT * FROM unseen"
         results = self._fetch_results(query)
-        return [Notif(*notif[1:]) for notif in results]
+        return [self._get_notif_with_results(notif) for notif in results]
 
     def get_scheduled(self, days_delta: int = 15) -> list[Notif]:
         query = (
@@ -59,12 +59,19 @@ class Query:
             f"WHERE date <= datetime('now', '+{days_delta} days')"
         )
         results = self._fetch_results(query)
-        return [Notif(*notif[1:]) for notif in results]
+        return [self._get_notif_with_results(notif) for notif in results]
 
     def _fetch_results(self, query: str) -> list:
         with self.db as (_, db_cursor):
             db_cursor.execute(query)
             return db_cursor.fetchall()
+
+    def _get_notif_with_results(self, notif_db_entry: tuple) -> Notif:
+        """notif_id isn't used on Notif object; also need to correct urg"""
+
+        notif = Notif(*notif_db_entry[1:])
+        notif.urgency = Urgency(notif.urgency)
+        return notif
 
 
 class Edit:
@@ -84,8 +91,9 @@ class Edit:
         db_cmd = (
             f"INSERT INTO {table} "
             "(date, hour, title, message, urgency, category, uid)"
-            f"VALUES({notif.date}, {notif.hour}, {notif.title}, "
-            f"{notif.message}, {notif.urgency}, {notif.category}, {notif.uid})"
+            f'VALUES("{notif.date}", "{notif.hour}", "{notif.title}", '
+            f'"{notif.message}", "{notif.urgency.value}", '
+            f'"{notif.category}", "{notif.uid}")'
         )
         self._execute(db_cmd)
 
@@ -95,17 +103,18 @@ class Edit:
 
     def remove_from_scheduled(self, notif: Notif) -> None:
         db_cmd = (
-            f"DELETE FROM unseen WHERE date={notif.date} AND hour={notif.hour} "
-            f"AND title={notif.title} AND message={notif.message}"
+            f'DELETE FROM scheduled WHERE date="{notif.date}" '
+            f'AND hour="{notif.hour}" '
+            f'AND title="{notif.title}" AND message="{notif.message}"'
         )
         self._execute(db_cmd)
 
     def update_on_scheduled(self, notif: Notif, new_notif: Notif) -> None:
         db_cmd = (
             f'UPDATE scheduled SET date="{new_notif.date}", '
-            f'hour="{new_notif.hour}" message="{notif.message}" '
-            f"WHERE date={notif.date} AND hour={notif.hour} "
-            f"AND title={notif.title} AND message={notif.message}"
+            f'hour="{new_notif.hour}", message="{new_notif.message}" '
+            f'WHERE date="{notif.date}" AND hour="{notif.hour}" '
+            f'AND title="{notif.title}" AND message="{notif.message}"'
         )
         self._execute(db_cmd)
 

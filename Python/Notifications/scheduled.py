@@ -1,5 +1,6 @@
 from Tfuncs import Rofi
 
+import copy
 from typing import Optional
 
 from notifs import Notif
@@ -12,8 +13,8 @@ class Scheduled:
     rofi = Rofi()
     query_db, edit_db = Query(), Edit()
 
-    def show(self, days_limit: int, show_index: bool = False) -> None:
-        notifs = self.query_db.get_scheduled(days_limit)
+    def show(self, days_delta: int, show_index: bool = False) -> None:
+        notifs = self.query_db.get_scheduled(days_delta)
         for n, notif in enumerate(notifs, 1):
             entry = f"{notif.date} {notif.hour} - {notif.message}"
             if show_index:
@@ -84,7 +85,7 @@ class Scheduled:
 
     def remove_notif(self) -> None:  # improve
         notifs = self.query_db.get_scheduled(365)
-        self.show(days_limit=365, show_index=True)
+        self.show(days_delta=365, show_index=True)
         prompt = input(
             "\nChoose the notification to remove or several (e.g.: 30+4+43): "
         )
@@ -102,7 +103,7 @@ class Scheduled:
 
     def edit_notif(self) -> None:  # improve
         notifs = self.query_db.get_scheduled(365)
-        self.show(days_limit=365, show_index=True)
+        self.show(days_delta=365, show_index=True)
         prompt = input("\nChoose the notification to edit: ")
         if prompt == "q":
             print("Aborting...")
@@ -113,7 +114,7 @@ class Scheduled:
             print("Invalid input...\nAborting...")
             return
 
-        new_notif = notif
+        new_notif = copy.copy(notif)
         while True:
             prompt = input("\n:: Edit what: message or time [M/t] ")
             if prompt == "q":
@@ -166,7 +167,7 @@ class NotifSender:
         notif_is_muted = False
         for notif in notifs:
             if not self._notification_is_due(notif):
-                break
+                continue
             self._send_notification(notif, notif_is_muted)
             self.edit_db.remove_from_scheduled(notif)
             notif_is_muted = True

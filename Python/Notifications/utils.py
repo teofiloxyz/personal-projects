@@ -23,7 +23,7 @@ class Utils:
             self.play_sound()
         cmd = ["notify-send", title, message]
         if urgency != "":
-            cmd.append(f"--urgency={urgency}")
+            cmd.append(f"--urgency={urgency.value}")
         if category != "":
             cmd.append(f"--category={category}")
         subprocess.Popen(cmd)

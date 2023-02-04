@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 
 
 class Urgency(Enum):
-    LOW = auto()
-    NORMAL = auto()
-    CRITICAL = auto()
+    LOW = "low"
+    NORMAL = "normal"
+    CRITICAL = "critical"
 
 
 @dataclass

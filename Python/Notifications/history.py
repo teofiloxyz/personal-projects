@@ -7,9 +7,9 @@ class History:
     utils = Utils()
     query_db, edit_db = Query(), Edit()
 
-    def show_all(self) -> None:
-        notifs_hist = self.query_db.get_history()
-        self.print_all_notifs(notifs_hist)
+    def show(self, days_delta: int) -> None:
+        notifs = self.query_db.get_history(days_delta)
+        self.print_all_notifs(notifs)
 
     def print_all_notifs(self, notifs: list[Notif]) -> None:
         for notif in notifs:
@@ -46,17 +46,13 @@ class History:
             ]
         self.edit_db.remove_all_from_unseen()
 
-    @staticmethod
-    def start_updater_daemon() -> None:
-        UpdaterDaemon().main()
-
 
 class UpdaterDaemon:
     utils, date = Utils(), Date()
     edit_db = Edit()
 
     # Improve design
-    def main(self) -> None:
+    def start(self) -> None:
         current_notifs, sender_num = dict(), "0"
         cmd = "dbus-monitor interface='org.freedesktop.Notifications'"
         for line in self.utils.shell_generator(cmd):

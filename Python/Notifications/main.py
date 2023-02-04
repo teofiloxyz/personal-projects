@@ -6,7 +6,7 @@ from Tfuncs import Menu
 import argparse
 
 from scheduled import Scheduled, NotifSender
-from history import History
+from history import History, UpdaterDaemon
 from calendar_notifs import CalendarNotifs
 
 
@@ -19,7 +19,7 @@ class Notifications:
         self.scheduled.create_notif(message=" ".join(message), use_rofi=True)
 
     def start_history_daemon(self) -> None:
-        self.history.start_updater_daemon()
+        UpdaterDaemon().start()
 
     def run_notif_sender(self) -> None:
         NotifSender().main()
@@ -38,13 +38,13 @@ class Notifications:
 
         menu.add_option(
             key="ls",
-            func=lambda days=30: self.scheduled.show(days_limit=int(days)),
-            help="show scheduled notifications for the next # (default 30) days",
+            func=lambda days=15: self.scheduled.show(days_delta=int(days)),
+            help="show scheduled notifications for the next # (default 15) days",
         )
         menu.add_option(
             key="lsh",
-            func=self.history.show_all,
-            help="show all past notifications",
+            func=lambda days=15: self.history.show(days_delta=int(days)),
+            help="show past notifications of the last # (default 15) days",
         )
         menu.add_option(
             key="ad",
