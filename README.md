@@ -2,11 +2,10 @@ Personal Projects
 =================
 
 This repo contains some of my personal projects that I use on a regular basis.
-These projects are merely for display, so don't expect them to work on your machine.
+These projects were written by me and are mainly for display purposes, so don't expect them to work on your machine.
 
-It primarily consists of Python scripts, which is my current focus.
+It primarily consists of Python scripts, which is my current focus, mostly due to my experience with the language.
 Besides that, there are "legacy" Bash scripts, and also some stuff written in Go.
-All the code was completely written by me.
 
 Feel free to take a look at some of my projects.
 
