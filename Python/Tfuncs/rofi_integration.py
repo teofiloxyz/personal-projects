@@ -11,6 +11,7 @@ class Rofi:
     )
 
     def simple_prompt(self, prompt: str, message: str = "") -> str:
+        prompt = self._clean_prompt(prompt)
         message = self._get_prompt_msg(message)
         cmd = (
             f"rofi -dmenu -p '{prompt}' -l 0 {self.cmd_config} "
@@ -19,6 +20,7 @@ class Rofi:
         return self._run_rofi(cmd)
 
     def custom_dmenu(self, prompt: str, dmenu: list, message: str = "") -> str:
+        prompt = self._clean_prompt(prompt)
         message = self._get_prompt_msg(message)
         tmp_file = self._get_tmp_file(dmenu)
         dmenu_lines = str(len(dmenu)) if len(dmenu) < 15 else "15"
@@ -33,19 +35,25 @@ class Rofi:
         cmd = f'rofi -e "{content}"'
         self._run_rofi(cmd)
 
-    def _run_rofi(self, cmd: str) -> str:
-        return (
-            subprocess.run(cmd, shell=True, capture_output=True)
-            .stdout.decode("utf-8")
-            .strip()
-        )
+    def _clean_prompt(self, prompt: str) -> str:
+        prompt = prompt.rstrip()
+        if prompt.endswith(":"):
+            prompt = prompt[:-1]
+        return prompt
+
+    def _get_prompt_msg(self, message: str) -> str:
+        if message != "":
+            message = f' -mesg "{message}"'
+        return message
 
     def _get_tmp_file(self, lines: list) -> str:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp:
             tmp.writelines("\n".join(lines))
             return tmp.name
 
-    def _get_prompt_msg(self, message: str) -> str:
-        if message != "":
-            message = f' -mesg "{message}"'
-        return message
+    def _run_rofi(self, cmd: str) -> str:
+        return (
+            subprocess.run(cmd, shell=True, capture_output=True)
+            .stdout.decode("utf-8")
+            .strip()
+        )
