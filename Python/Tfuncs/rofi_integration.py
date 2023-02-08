@@ -10,11 +10,14 @@ class Rofi:
         "{ children: [prompt, textbox-prompt-colon, entry]; }"
     )
 
-    def simple_prompt(self, prompt: str, message: str = "") -> str:
+    def simple_prompt(
+        self, prompt: str, hide_input: bool = False, message: str = ""
+    ) -> str:
         prompt = self._clean_prompt(prompt)
         message = self._get_prompt_msg(message)
+        hide_flag = "-password" if hide_input else ""
         cmd = (
-            f"rofi -dmenu -p '{prompt}' -l 0 {self.cmd_config} "
+            f"rofi -dmenu {hide_flag} -p '{prompt}' -l 0 {self.cmd_config} "
             f"listview {{ border: 0; }}' {message}"
         )
         return self._run_rofi(cmd)
