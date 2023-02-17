@@ -92,7 +92,7 @@ class Youtube:
             return self._download(ytb_link)
         elif prompt != "":
             self.entry = prompt
-        return self.main(self.entry)
+        return self.search(self.entry)
 
     def _add_to_playlist(self, ytb_link) -> None:
         cmd = f"{self.music_playlist_app} --add {ytb_link}"
