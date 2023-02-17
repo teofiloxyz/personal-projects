@@ -32,9 +32,9 @@ def main() -> None:
     if search_type == "paths":
         Paths(search_path).search(query)
     elif search_type == "code":
-        Code().search(query)
+        Code(search_path).search(query)
     elif search_type == "pdfs":
-        Pdfs().search(query)
+        Pdfs(search_path).search(query)
     elif search_type == "youtube":
         Youtube().search(query)
     else:
