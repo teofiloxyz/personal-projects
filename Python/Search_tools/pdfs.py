@@ -9,7 +9,7 @@ from typing import Optional
 from utils import Utils
 
 
-class Pdf:
+class Pdfs:
     rofi = Rofi()
     utils = Utils()
 

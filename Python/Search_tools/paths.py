@@ -5,7 +5,7 @@ from Tfuncs import Rofi
 from utils import Utils
 
 
-class Files:
+class Paths:
     utils = Utils()
     rofi = Rofi()
     dir_path = "/home"

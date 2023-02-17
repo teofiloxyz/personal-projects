@@ -3,9 +3,9 @@
 
 import argparse
 
+from paths import Paths
 from code import Code
-from files import Files
-from pdf import Pdf
+from pdfs import Pdfs
 from youtube import Youtube
 
 
