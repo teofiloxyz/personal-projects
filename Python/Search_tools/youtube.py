@@ -12,7 +12,7 @@ class Youtube:
     download_path = "download_path"
     max_results = 10
 
-    def main(self, entry: str) -> None:
+    def search(self, entry: str) -> None:
         self.entry = entry
         results = self._get_search_results(entry)
         if not results:

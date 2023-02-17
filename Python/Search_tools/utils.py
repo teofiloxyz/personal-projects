@@ -45,3 +45,7 @@ class Utils:
     @staticmethod
     def get_dirname(path: str) -> str:
         return os.path.dirname(path)
+
+    @staticmethod
+    def get_modification_time(path: str) -> float:
+        return os.path.getmtime(path)

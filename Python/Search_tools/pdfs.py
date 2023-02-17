@@ -13,7 +13,7 @@ class Pdfs:
     rofi = Rofi()
     utils = Utils()
 
-    def main(self, query: str) -> None:
+    def search(self, query: str) -> None:
         search_dir = self._get_search_dir()
         if not search_dir:
             self.rofi.message_box("Aborted...")

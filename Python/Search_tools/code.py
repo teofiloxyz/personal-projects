@@ -8,7 +8,7 @@ class Code:
     rofi = Rofi()
     options = {"python": ("python_path", ".py"), "bash": ("bash_path", ".sh")}
 
-    def main(self, cmd_query: str) -> None:
+    def search(self, cmd_query: str) -> None:
         divided_cmd_query = self.utils.divide_cmd_query(cmd_query, self.options)
         if not divided_cmd_query:
             return
