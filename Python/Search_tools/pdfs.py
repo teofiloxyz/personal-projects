@@ -4,22 +4,18 @@ from PIL import Image
 from Tfuncs import Rofi
 
 import tempfile
-from typing import Optional
 
 from utils import Utils
 
 
 class Pdfs:
-    rofi = Rofi()
-    utils = Utils()
+    def __init__(self, search_dir: str) -> None:
+        self.utils = Utils()
+        self.rofi = Rofi()
+        self.search_dir = search_dir
 
     def search(self, query: str) -> None:
-        search_dir = self._get_search_dir()
-        if not search_dir:
-            self.rofi.message_box("Aborted...")
-            return
-
-        files = self._get_files(search_dir)
+        files = self._get_files()
         if len(files) == 0:
             self.rofi.message_box(
                 "Didn't found any pdf file in the provided directory"
@@ -53,14 +49,8 @@ class Pdfs:
         file, page = self._process_choice(choice, results)
         self._open_choice(file, page)
 
-    def _get_search_dir(self) -> Optional[str]:
-        prompt = self.rofi.simple_prompt("Enter the directory to search")
-        if not self.utils.check_if_is_dir(prompt):
-            return None
-        return prompt
-
-    def _get_files(self, search_dir: str) -> list[str]:
-        cmd = f'find {search_dir} -iname "*.pdf" -print'
+    def _get_files(self) -> list[str]:
+        cmd = f'find {self.search_dir} -iname "*.pdf" -print'
         output = self.utils.run_cmd_and_get_output(cmd)
         return output.split("\n")
 
