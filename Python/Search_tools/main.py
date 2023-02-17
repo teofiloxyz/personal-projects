@@ -3,7 +3,6 @@
 
 import argparse
 
-from browser import Browser
 from code import Code
 from files import Files
 from pdf import Pdf
