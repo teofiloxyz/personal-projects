@@ -4,9 +4,8 @@ Search Tools
 This script is a CLI tool that provides a variety of search functionality.
 
 It allows the user to:
-* Perform searches on Google by opening the browser;
 * Search for specific entries within lines of code in a directory;
-* Quickly find files within the system;
+* Quickly find paths within the system;
 * Search for content within PDFs, using optical character recognition if necessary.
 * Allows the user to search for video titles on YouTube, select the desired video and play or download it.
 
