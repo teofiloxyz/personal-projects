@@ -6,10 +6,11 @@ from utils import Utils
 
 
 class Paths:
+    ROFI_MAX_LINE_SPACE = 93
+
     def __init__(self, search_dir: str) -> None:
         self.utils = Utils()
         self.rofi = Rofi()
-        self.ROFI_MAX_LINE_SPACE = 93
         self.search_dir = search_dir
 
     def search(self, query: str) -> None:
