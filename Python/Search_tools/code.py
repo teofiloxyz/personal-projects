@@ -1,6 +1,5 @@
 from Tfuncs import Rofi
 
-from typing import Optional
 from dataclasses import dataclass
 
 from utils import Utils
@@ -15,24 +14,14 @@ class Result:
 
 class Code:
     ROFI_MAX_LINE_SPACE = 93
-    OPTIONS = {
-        "python": ".py",
-    }
 
     def __init__(self, code_dir: str) -> None:
         self.utils = Utils()
         self.rofi = Rofi()
         self.code_dir = code_dir
 
-    def search(self, query: str) -> None:
-        if len(self.OPTIONS) == 1:
-            extension = list(self.OPTIONS.values())[0]
-        else:
-            extension = self._choose_option()
-            if not extension:
-                return
-
-        files = self._get_all_code_files(extension)
+    def search(self, query: str, file_extension: str) -> None:
+        files = self._get_all_code_files(file_extension)
         results = []
         for file in files:
             lines = self._get_lines_of_file(file)
@@ -59,15 +48,8 @@ class Code:
             choice = results[dmenu.index(dmenu_choice)]
         self._open_choice_with_vim(choice)
 
-    def _choose_option(self) -> Optional[str]:
-        dmenu = [option for option in self.OPTIONS.keys()]
-        dmenu_choice = self._choose_with_rofi_dmenu(dmenu)
-        if dmenu_choice == "":
-            return None
-        return self.OPTIONS[dmenu_choice]
-
-    def _get_all_code_files(self, extension: str) -> list[str]:
-        cmd = f'find {self.code_dir} -type f -iname "*{extension}"'
+    def _get_all_code_files(self, file_extension: str) -> list[str]:
+        cmd = f'find {self.code_dir} -type f -iname "*{file_extension}"'
         output = self.utils.run_cmd_and_get_output(cmd)
         return output.split("\n")
 
