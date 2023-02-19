@@ -1,79 +1,95 @@
 from Tfuncs import Rofi
 
+from typing import Optional
+from dataclasses import dataclass
+
 from utils import Utils
 
 
+@dataclass
+class Result:
+    path: str
+    rofi_line: str
+    line_num: int
+
+
 class Code:
-    utils = Utils()
-    rofi = Rofi()
-    options = {"python": ("python_path", ".py"), "bash": ("bash_path", ".sh")}
+    ROFI_MAX_LINE_SPACE = 93
+    OPTIONS = {
+        "python": ".py",
+    }
 
-    def search(self, cmd_query: str) -> None:
-        divided_cmd_query = self.utils.divide_cmd_query(cmd_query, self.options)
-        if not divided_cmd_query:
-            return
-        code_info, query = divided_cmd_query
-        code_dir, extension = code_info
+    def __init__(self, code_dir: str) -> None:
+        self.utils = Utils()
+        self.rofi = Rofi()
+        self.code_dir = code_dir
 
-        files = self.get_files(code_dir, extension)
-        results = {
-            file: self.search_query_in_file(file, query)
-            for file in files
-            if len(self.search_query_in_file(file, query)) != 0
-        }
+    def search(self, query: str) -> None:
+        if len(self.OPTIONS) == 1:
+            extension = list(self.OPTIONS.values())[0]
+        else:
+            extension = self._choose_option()
+            if not extension:
+                return
+
+        files = self._get_all_code_files(extension)
+        results = []
+        for file in files:
+            lines = self._get_lines_of_file(file)
+            for line_num, line in enumerate(lines, 1):
+                line = line.strip("\n")
+                if query.lower() not in line.lower():
+                    continue
+                result = self._create_result(file, line_num)
+                results.append(result)
+
         if len(results) == 0:
             self.rofi.message_box(
-                f"Didn't find any line of code with '{query}'"
+                f"Didn't find within {self.code_dir} "
+                f"any line of code with '{query}'"
             )
             return
+        elif len(results) == 1:
+            choice = results[0]
+        else:
+            dmenu = [result.rofi_line for result in results]
+            dmenu_choice = self._choose_with_rofi_dmenu(dmenu)
+            if dmenu_choice == "":
+                return
+            choice = results[dmenu.index(dmenu_choice)]
+        self._open_choice_with_vim(choice)
 
-        dmenu = self.create_dmenu_with_results(results)
-        choice = self.choose_with_rofi_dmenu(dmenu)
-        if not choice:
-            return
-        file, line = self.process_choice(choice, results)
-        self.open_choice_in_vim(file, line)
+    def _choose_option(self) -> Optional[str]:
+        dmenu = [option for option in self.OPTIONS.keys()]
+        dmenu_choice = self._choose_with_rofi_dmenu(dmenu)
+        if dmenu_choice == "":
+            return None
+        return self.OPTIONS[dmenu_choice]
 
-    def get_files(self, dir_path: str, extension: str) -> list[str]:
-        cmd = f'find {dir_path} -iname "*{extension}" -print'
+    def _get_all_code_files(self, extension: str) -> list[str]:
+        cmd = f'find {self.code_dir} -type f -iname "*{extension}"'
         output = self.utils.run_cmd_and_get_output(cmd)
         return output.split("\n")
 
-    def get_file_lines(self, file: str) -> list[str]:
+    def _get_lines_of_file(self, file: str) -> list[str]:
         with open(file, "r") as f:
             return f.readlines()
 
-    def search_query_in_file(self, file: str, query: str) -> list[tuple]:
-        lines = self.get_file_lines(file)
-        return [
-            (n, " ".join(line.split()))
-            for n, line in enumerate(lines, 1)
-            if query.lower() in line.lower()
-        ]
+    def _create_result(self, path: str, line_num: int) -> Result:
+        split_path = path.split("/")
+        name = split_path[-1]
+        last_two_dirs = "/".join(split_path[-3:-1])
+        caracters_space = len(name + str(line_num)) + 5 + len(last_two_dirs)
+        remaining_space = self.ROFI_MAX_LINE_SPACE - caracters_space
+        whitespace = " " * remaining_space
+        rofi_line = f"{name}:{line_num}{whitespace}.../{last_two_dirs}"
 
-    def create_dmenu_with_results(
-        self, results: dict[str, list[tuple[str, str]]]
-    ) -> list[str]:
-        return [
-            f"{line} -> {self.utils.get_basename(file)}: {line_num}"
-            for file, file_results in results.items()
-            for line_num, line in file_results
-        ]
+        return Result(path, rofi_line, line_num)
 
-    def choose_with_rofi_dmenu(self, dmenu: list) -> str:
-        prompt = "Choose which one to open in vim"
+    def _choose_with_rofi_dmenu(self, dmenu: list) -> str:
+        prompt = "Choose which one to open with vim: "
         return self.rofi.custom_dmenu(prompt, dmenu)
 
-    def process_choice(self, choice: str, results: dict) -> tuple[str, str]:
-        line, file_basename_line_num = choice.split(" -> ")
-        file_basename, line_num = file_basename_line_num.split(": ")
-
-        for result in results.values():
-            result_file_basename = self.utils.get_basename(result[1])
-            result = (result[0], result_file_basename, result[2])
-            if result == (line, file_basename, line_num):
-                return result[1], line_num
-
-    def open_choice_in_vim(self, file: str, line: str) -> None:
-        cmd = f"alacritty -e nvim +{line} {file}"
+    def _open_choice_with_vim(self, choice: Result) -> None:
+        cmd = f'alacritty -e nvim +{choice.line_num} "{choice.path}"'
         self.utils.run_cmd(cmd)
