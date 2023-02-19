@@ -86,7 +86,10 @@ class Youtube:
             "\nEnter another search or leave empty for same search"
             "\nOr [a]dd to playlist or [d]ownload: "
         )
-        if prompt == "a":
+        if prompt == "q":
+            print("Aborted...")
+            return
+        elif prompt == "a":
             return self._add_to_playlist(ytb_link)
         elif prompt == "d":
             return self._download(ytb_link)
