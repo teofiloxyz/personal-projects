@@ -1,7 +1,7 @@
 Personal Projects
 =================
 
-This repo contains some of my personal projects that I use on a regular basis.
+This repo contains some of my personal projects that I developed for fun.
 These projects were written by me and are mainly for display purposes, so don't expect them to work on your machine.
 
 It primarily consists of Python scripts, which is my current focus, mostly due to my experience with the language.
